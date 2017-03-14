@@ -1,4 +1,4 @@
-Role Name
+openshift-provision
 =========
 
 An Ansible role for provisioning resources within OpenShift clusters.
