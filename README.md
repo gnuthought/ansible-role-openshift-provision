@@ -26,7 +26,51 @@ Example Playbook
     - hosts: masters[0]
       roles:
          - role: openshift-logging-elasticsearch-hostmount
-           resource_definition: ocp/resources.yml
+           resource_definition: ocp-resouces/app.yml
+
+Example resources file:
+
+    app_project_quota:
+      hard:
+        requests.cpu: "10"
+        requests.memory: "50Gi"
+        limits.cpu: "20"
+        limits.memory: "50Gi"
+    
+    openshift_clusters:
+    - openshift_host_env: master.openshift.libvirt
+      openshift_resources:
+        projects:
+    
+        - name: app-dev
+          display_name: Application development
+          environment_type: build
+          labels:
+            application: appname
+          quotas:
+          - name: compute
+            spec: "{{ app_project_quota }}"
+          service_accounts:
+          - name: jenkins
+            cluster_roles:
+            - self-provisioner
+          user_to_role:
+          - user: system:serviceaccount:app-dev:jenkins
+            roles:
+            - admin
+    
+        - name: app-prod
+          environment_type: promotion
+          display_name: CIPE production
+          labels:
+            application: app
+          quotas:
+          - name: compute
+            spec: "{{ app_project_quota }}"
+          user_to_role:
+          - user: system:serviceaccount:app-dev:jenkins
+            roles:
+            - edit
 
 License
 -------
