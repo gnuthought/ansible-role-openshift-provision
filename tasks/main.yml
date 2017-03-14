@@ -1,0 +1,12 @@
+---
+
+# Read in application definition
+- include_vars: "{{ resource_definition }}"
+
+# Process openshift resources
+- include: openshift-resources.yml
+  static: false
+  with_items: "{{ openshift_clusters }}"
+  when: openshift_cluster.openshift_host_env == openshift_master_cluster_public_hostname and openshift_cluster.openshift_resources is defined
+  loop_control:
+    loop_var: openshift_cluster

@@ -1,0 +1,30 @@
+- name: Get current {{ quota.name }} quota on {{ project.name }}
+  command: >
+    oc get quota {{ quota.name }} -n {{ project.name }} -o json
+  changed_when: false
+  failed_when: false
+  register: get_quota
+
+- name: Create quota {{ quota.name }} quota on {{ project.name }}
+  shell: >
+    echo {{ quotadef | to_yaml | quote }}
+    | oc create -n {{ project.name }} -f -
+  vars:
+    quotadef:
+      apiVersion: v1
+      kind: ResourceQuota
+      metadata:
+        name: "{{ quota.name }}"
+      spec: "{{ quota.spec }}"
+  when: get_quota.rc != 0
+
+- name: Update quota {{ quota.name }} quota on {{ project.name }}
+  command: >
+    oc patch quota {{ quota.name}} -n {{ project.name }}
+    -p {{ patch | to_json | quote }}
+  vars:
+    patch:
+      spec: "{{ quota.spec }}" 
+  when: >
+    get_quota.rc == 0 and 
+    get_quota.stdout | from_json | json_query('spec') | to_yaml != quota.spec | to_yaml

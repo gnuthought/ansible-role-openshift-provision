@@ -1,0 +1,71 @@
+- name: Check if project {{ project.name }} exists
+  command: >
+    oc get project {{ project.name }} -o json
+  changed_when: false
+  failed_when: false
+  register: get_project
+
+- name: Create project {{ project.name }}
+  command: >
+    oc adm new-project {{ project.name }}
+    --display-name={{ project.display_name | default(project.name) | quote }}
+    --description={{ project.description | default('') | quote }}
+  when: get_project.rc != 0
+
+# Note:
+#
+# It should be possible to parse the values for display-name and description
+# using: something like:
+#
+#   get_project.stdout | from_json | json_query('metadata.annotations["openshift.io/display-name"]')
+#
+# But it appears that the current version of ansible has an incomplete
+# implementation of json query that does not understand the square bracket
+# notation for extracting an element from an object.
+#
+# As a workaround we call oc get project again to fetch each of these values.
+
+- name: Get project display name for {{ project.name }}
+  command: >
+    oc get project {{ project.name }}
+    --template '{{ '{{ index .metadata.annotations "openshift.io/display-name" }}' }}'
+  changed_when: false
+  register: get_project_display_name
+
+- name: Get project description name for {{ project.name }}
+  command: >
+    oc get project {{ project.name }}
+    --template '{{ '{{ index .metadata.annotations "openshift.io/description" }}' }}'
+  changed_when: false
+  register: get_project_description
+
+- name: Update project metadata for {{ project.name }}
+  when: >
+    get_project_display_name.stdout != project.display_name | default(project.name) or
+    get_project_description.stdout != project.description | default('') or
+    ( get_project.rc == 0 and get_project.stdout | from_json | json_query('metadata.labels') | to_yaml != project.labels | to_yaml )
+  command: >
+    oc patch namespace {{ project.name }}
+    -R -p {{ patch | to_json | quote }}
+  vars:
+    patch:
+      metadata:
+        annotations:
+          "openshift.io/display-name": "{{ project.display_name | default(project.name) }}"
+          "openshift.io/description": "{{ project.description | default('') }}"
+        labels: "{{ project.labels }}"
+
+- include: project-quota.yml
+  with_items: "{{ project.quotas | default([]) }}"
+  loop_control:
+    loop_var: quota
+
+- include: service-account.yml
+  with_items: "{{ project.service_accounts | default([]) }}"
+  loop_control:
+    loop_var: service_account
+
+- include: user-roles.yml
+  with_items: "{{ project.user_to_role | default([]) }}"
+  loop_control:
+    loop_var: user_role
