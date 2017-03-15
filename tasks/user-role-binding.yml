@@ -1,0 +1,12 @@
+- name: Get users with role {{ role }} in {{ project.name }}
+  command: >
+    oc get rolebinding {{ role | quote }} -n {{ project.name }}
+    --template '{{ '{{ range .userNames }}{{ . }}{{ "\n" }}{{ end }}' }}'
+  changed_when: false
+  failed_when: false
+  register: get_users_with_role
+
+- name: Grant {{ role }} to {{ user }} in project {{ project.name }}
+  command: >
+    oc adm policy add-role-to-user {{ role }} {{ user }} -n {{ project.name }}
+  when: user not in get_users_with_role.stdout_lines

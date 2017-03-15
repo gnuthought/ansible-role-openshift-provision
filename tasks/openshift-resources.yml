@@ -2,3 +2,8 @@
   with_items: "{{ openshift_resources.projects | default([]) }}"
   loop_control:
     loop_var: project
+
+- include: persistent-volume.yml
+  with_items: "{{ openshift_resources.persistent_volumes | default([]) }}"
+  loop_control:
+    loop_var: persistent_volume
