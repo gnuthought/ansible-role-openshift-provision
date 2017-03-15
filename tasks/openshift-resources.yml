@@ -1,5 +1,4 @@
 - include: project.yml
-  static: false
-  with_items: "{{ openshift_cluster.openshift_resources.projects | default([]) }}"
+  with_items: "{{ openshift_resources.projects | default([]) }}"
   loop_control:
     loop_var: project

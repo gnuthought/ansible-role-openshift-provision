@@ -1,0 +1,5 @@
+- include: openshift-resources.yml
+  static: no
+  vars:
+    openshift_resources: "{{ openshift_cluster.openshift_resources }}"
+  when: openshift_cluster.openshift_resources is defined

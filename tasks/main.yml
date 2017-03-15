@@ -5,7 +5,7 @@
   when: openshift_resource_definition is defined
 
 # Process openshift resources
-- include: openshift-resources.yml
+- include: openshift-cluster.yml
   static: false
   with_items: "{{ openshift_clusters }}"
   when: >
