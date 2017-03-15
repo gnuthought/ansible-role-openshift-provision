@@ -69,3 +69,8 @@
   with_items: "{{ project.user_to_role | default([]) }}"
   loop_control:
     loop_var: user_role
+
+- include: group-roles.yml
+  with_items: "{{ project.group_to_role | default([]) }}"
+  loop_control:
+    loop_var: group_role

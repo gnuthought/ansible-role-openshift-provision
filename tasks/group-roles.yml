@@ -1,0 +1,33 @@
+- include: group-role-binding.yml
+  vars:
+    group: "{{ group_role.group }}"
+    role: "{{ group_role.role }}"
+  when: >
+    group_role.group is defined and
+    group_role.role is defined
+
+- include: group-role-binding.yml
+  with_items: "{{ group_role.roles | default([]) }}"
+  vars:
+    group: "{{ group_role.group }}"
+  when: group_role.group is defined
+  loop_control:
+    loop_var: role
+
+- include: group-role-binding.yml
+  with_items: "{{ group_role.groups | default([]) }}"
+  vars:
+    role: "{{ group_role.role }}"
+  when: group_role.role is defined
+  loop_control:
+    loop_var: group
+
+- include: group-role-binding.yml
+  with_nested:
+  - "{{ group_role.groups | default([]) }}"
+  - "{{ group_role.roles | default([]) }}"
+  vars:
+    group: "{{ group_x_role[0] }}"
+    role: "{{ group_x_role[1] }}"
+  loop_control:
+    loop_var: group_x_role
