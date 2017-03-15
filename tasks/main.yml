@@ -8,6 +8,13 @@
 - include: openshift-resources.yml
   static: false
   with_items: "{{ openshift_clusters }}"
-  when: openshift_cluster.openshift_host_env == openshift_master_cluster_public_hostname and openshift_cluster.openshift_resources is defined
+  when: >
+    openshift_cluster.openshift_resources is defined  and
+    openshift_clusters != ""                          and
+    openshift_clusters|length > 0                     and
+    (
+      openshift_cluster.openshift_host_env is not defined or
+      openshift_cluster.openshift_host_env == openshift_master_cluster_public_hostname
+    )
   loop_control:
     loop_var: openshift_cluster
