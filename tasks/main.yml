@@ -1,7 +1,8 @@
 ---
 
 # Read in application definition
-- include_vars: "{{ resource_definition }}"
+- include_vars: "{{ openshift_resource_definition }}"
+  when: openshift_resource_definition is defined
 
 # Process openshift resources
 - include: openshift-resources.yml
