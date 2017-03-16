@@ -3,6 +3,11 @@
   loop_control:
     loop_var: persistent_volume
 
+- include: group.yml
+  with_items: "{{ openshift_resources.groups | default([]) }}"
+  loop_control:
+    loop_var: group
+
 - include: project.yml
   with_items: "{{ openshift_resources.projects | default([]) }}"
   loop_control:

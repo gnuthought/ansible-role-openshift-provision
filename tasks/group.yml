@@ -1,0 +1,35 @@
+- name: Get group {{ group.name }}
+  command: >
+    oc get group {{ group.name }} -o json
+  changed_when: false
+  failed_when: false
+  register: get_group
+
+- name: Create group {{ group.name }}
+  command: >
+    oc adm groups new {{ group.name }}
+  when: get_group.rc != 0
+
+- name: Members for group {{ group.name }}
+  command: >
+    oc adm groups add-users {{ group.name }} {{ user }}
+  with_items: "{{ group.members }}"
+  when: >
+    get_group.rc != 0 or
+    None == get_group.stdout | from_json | json_query('users') or
+    user not in get_group.stdout | from_json | json_query('users')
+  loop_control:
+    loop_var: user
+
+- name: Remove unlisted members from group {{ group.name }}
+  command: >
+    oc adm groups remove-users {{ group.name }} {{ user }}
+  when: >
+    group.remove_unlisted_members is defined and
+    group.remove_unlisted_members | bool and
+    user != None and
+    user != '' and
+    user not in group.members
+  with_items: "{% if get_group.stdout != '' %}{{ get_group.stdout | from_json | json_query('users') }}{% else %}}{{ [] }}{% endif %}"
+  loop_control:
+    loop_var: user
