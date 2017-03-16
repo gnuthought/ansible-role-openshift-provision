@@ -1,0 +1,35 @@
+- name: Get current {{ limit_range.name }} limit range on {{ project.name }}
+  command: >
+    oc get limitrange {{ limit_range.name }} -n {{ project.name }} -o json
+  changed_when: false
+  failed_when: false
+  register: get_limit_range
+
+- name: Create limit range {{ limit_range.name }} on {{ project.name }}
+  shell: >
+    echo {{ definition | to_yaml | quote }}
+    | oc create -n {{ project.name }} -f -
+  vars:
+    definition:
+      apiVersion: v1
+      kind: LimitRange
+      metadata:
+        name: "{{ limit_range.name }}"
+      spec: "{{ limit_range.spec }}"
+  when: get_limit_range.rc != 0
+
+- debug:
+    msg: "{{ get_limit_range.stdout | from_json | json_query('spec') | to_yaml }}"
+- debug:
+    msg: "{{ limit_range.spec | to_yaml }}"
+
+- name: Update limit range {{ limit_range.name }} on {{ project.name }}
+  command: >
+    oc patch limitrange {{ limit_range.name}} -n {{ project.name }}
+    -p {{ patch | to_json | quote }}
+  vars:
+    patch:
+      spec: "{{ limit_range.spec }}" 
+  when: >
+    get_limit_range.rc == 0 and 
+    get_limit_range.stdout | from_json | json_query('spec') | to_yaml != limit_range.spec | to_yaml

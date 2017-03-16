@@ -55,6 +55,11 @@
           "openshift.io/description": "{{ project.description | default('') }}"
         labels: "{{ project.labels }}"
 
+- include: project-limit-range.yml
+  with_items: "{{ project.limit_ranges | default([]) }}"
+  loop_control:
+    loop_var: limit_range
+
 - include: project-quota.yml
   with_items: "{{ project.quotas | default([]) }}"
   loop_control:
