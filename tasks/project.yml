@@ -65,12 +65,51 @@
   loop_control:
     loop_var: service_account
 
-- include: user-roles.yml
+- name: Get role bindings for project {{ project.name }}
+  command: >
+    oc get rolebinding -n {{ project.name }} --template '{{
+    '{{ range .items }}{{ .roleRef.name }}{{ ":\n  users:\n" }}{{ range .userNames }}  - "{{ . }}"{{ "\n" }}{{ end }}{{ "  groups:\n" }}{{ range .groupNames }}  - "{{ . }}"{{ "\n" }}{{ end }}{{ end }}'
+    }}'
+  changed_when: false
+  failed_when: false
+  register: get_role_bindings
+
+# Handle user_to_role
+- include: project-user-role-bindings.yml
   with_items: "{{ project.user_to_role | default([]) }}"
+  vars:
+    current_role_bindings: "{{ get_role_bindings.stdout | from_yaml }}"
   loop_control:
     loop_var: user_role
 
-- include: group-roles.yml
+# Handle group_to_role
+- include: project-group-role-bindings.yml
   with_items: "{{ project.group_to_role | default([]) }}"
+  vars:
+    current_role_bindings: "{{ get_role_bindings.stdout | from_yaml }}"
+  loop_control:
+    loop_var: group_role
+
+# Handle users in role_bindings
+- include: project-user-role-bindings.yml
+  static: false
+  with_items: "{{ project.role_bindings | default([]) }}"
+  when: >
+    user_role.users is defined or
+    user_role.user is defined
+  vars:
+    current_role_bindings: "{{ get_role_bindings.stdout | from_yaml }}"
+  loop_control:
+    loop_var: user_role
+
+# Handle groups in role_bindings
+- include: project-group-role-bindings.yml
+  static: false
+  with_items: "{{ project.role_bindings | default([]) }}"
+  when: >
+    group_role.groups is defined or
+    group_role.group is defined
+  vars:
+    current_role_bindings: "{{ get_role_bindings.stdout | from_yaml }}"
   loop_control:
     loop_var: group_role

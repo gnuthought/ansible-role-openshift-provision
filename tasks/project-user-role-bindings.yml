@@ -1,0 +1,7 @@
+- name: Grant user project role on {{ project.name }}
+  command: >
+    oc adm policy -n {{ project.name }} add-role-to-user {{ item[0] }} {{ item[1] }}
+  with_nested:
+  - "{{ user_role.roles | default( [user_role.role] ) }}"
+  - "{{ user_role.users | default( [user_role.user] ) }}"
+  when: item[1] not in current_role_bindings[item[0]]['users']

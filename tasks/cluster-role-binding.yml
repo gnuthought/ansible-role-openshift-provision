@@ -1,4 +1,4 @@
-- name: Grant user role {{ cluster-role_binding.role }}
+- name: Grant user cluster role {{ cluster_role_binding.role }}
   command: >
     oc adm policy add-cluster-role-to-user {{ cluster_role_binding.role }} {{ user }}
   with_items: "{{ cluster_role_binding.users | default([]) }}"
@@ -6,7 +6,7 @@
     loop_var: user
   when: user not in current_cluster_role_bindings[cluster_role_binding.role]['users']
 
-- name: Grant group role {{ cluster-role_binding.role }}
+- name: Grant group cluster role {{ cluster_role_binding.role }}
   command: >
     oc adm policy add-cluster-role-to-group {{ cluster_role_binding.role }} {{ group }}
   with_items: "{{ cluster_role_binding.groups | default([]) }}"
