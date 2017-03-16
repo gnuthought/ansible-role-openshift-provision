@@ -5,7 +5,7 @@
   failed_when: false
   register: get_quota
 
-- name: Create quota {{ quota.name }} quota on {{ project.name }}
+- name: Create quota {{ quota.name }} on {{ project.name }}
   shell: >
     echo {{ quotadef | to_yaml | quote }}
     | oc create -n {{ project.name }} -f -
@@ -18,7 +18,7 @@
       spec: "{{ quota.spec }}"
   when: get_quota.rc != 0
 
-- name: Update quota {{ quota.name }} quota on {{ project.name }}
+- name: Update quota {{ quota.name }} on {{ project.name }}
   command: >
     oc patch quota {{ quota.name}} -n {{ project.name }}
     -p {{ patch | to_json | quote }}
