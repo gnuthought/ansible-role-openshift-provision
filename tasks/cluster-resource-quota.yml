@@ -1,0 +1,31 @@
+- name: Get ClusterResourceQuota {{ cluster_resource_quota.name }}
+  command: >
+    oc get clusterresourcequota {{ cluster_resource_quota.name | quote }} -o json
+  failed_when: false
+  changed_when: false
+  register: get_obj
+
+- when: get_obj.rc != 0
+  name: Create ClusterResourceQuota {{ cluster_resource_quota.name }}
+  shell: >
+    echo {{ quotadef | to_json | quote }}
+    | oc create -f -
+  vars:
+    quotadef:
+      apiVersion: v1
+      kind: ClusterResourceQuota
+      metadata:
+        name: "{{ cluster_resource_quota.name }}"
+      spec: "{{ cluster_resource_quota.spec }}"
+
+- name: Update ClusterResourceQuota {{ cluster_resource_quota.name }}
+  when: >
+    get_obj.rc == 0 and
+    get_obj.stdout | from_json | json_query('spec') | to_yaml
+    != cluster_resource_quota.spec | to_yaml
+  command: >
+    oc patch clusterresourcequota {{ cluster_resource_quota.name | quote }}
+    -p {{ quotadef | to_json | quote }}
+  vars:
+    quotadef:
+      spec: "{{ cluster_resource_quota.spec }}"

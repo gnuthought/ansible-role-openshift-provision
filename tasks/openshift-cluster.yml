@@ -1,3 +1,9 @@
+
+- include: cluster-resource-quota.yml
+  with_items: "{{ openshift_cluster.cluster_resource_quotas | default([]) }}"
+  loop_control:
+    loop_var: cluster_resource_quota
+
 - include: openshift-resources.yml
   static: no
   vars:
