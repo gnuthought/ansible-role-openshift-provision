@@ -18,11 +18,6 @@
       spec: "{{ limit_range.spec }}"
   when: get_limit_range.rc != 0
 
-- debug:
-    msg: "{{ get_limit_range.stdout | from_json | json_query('spec') | to_yaml }}"
-- debug:
-    msg: "{{ limit_range.spec | to_yaml }}"
-
 - name: Update limit range {{ limit_range.name }} on {{ project.name }}
   command: >
     oc patch limitrange {{ limit_range.name}} -n {{ project.name }}
