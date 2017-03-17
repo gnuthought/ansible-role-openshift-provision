@@ -1,7 +1,7 @@
 - name: Grant group project role on {{ project.name }}
   command: >
-    oc adm policy -n {{ project.name }} add-role-to-group {{ item[0] }} {{ item[1] }}
+    oc adm policy -n {{ project.name }} add-role-to-group {{ item[0].name }} {{ item[1].name }}
   with_nested:
   - "{{ group_role.roles | default( [group_role.role] ) }}"
   - "{{ group_role.groups | default( [group_role.group] ) }}"
-  when: item[1] not in current_role_bindings[item[0]]['groups']
+  when: item[1].name not in current_role_bindings[item[0].name]['groups']
