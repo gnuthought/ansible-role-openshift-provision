@@ -65,6 +65,11 @@
   loop_control:
     loop_var: quota
 
+- include: persistent-volume-claim.yml
+  with_items: "{{ project.persistent_volume_claims | default([]) }}"
+  loop_control:
+    loop_var: persistent_volume_claim
+
 - include: service-account.yml
   with_items: "{{ project.service_accounts | default([]) }}"
   loop_control:
