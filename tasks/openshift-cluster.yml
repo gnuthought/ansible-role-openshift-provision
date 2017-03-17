@@ -1,3 +1,37 @@
+- include: persistent-volume.yml
+  with_items: "{{ openshift_cluster.persistent_volumes | default([]) }}"
+  loop_control:
+    loop_var: persistent_volume
+
+- include: group.yml
+  with_items: "{{ openshift_cluster.groups | default([]) }}"
+  loop_control:
+    loop_var: group
+
+- name: Get cluster role bindings
+  command: >
+    oc get clusterrolebinding --template '{{
+    '{{ range .items }}{{ .roleRef.name }}{{ ":\n  users:\n" }}{{ range .userNames }}  - "{{ . }}"{{ "\n" }}{{ end }}{{ "  groups:\n" }}{{ range .groupNames }}  - "{{ . }}"{{ "\n" }}{{ end }}{{ end }}'
+    }}'
+  changed_when: false
+  failed_when: false
+  register: get_cluster_role_bindings
+
+- include: cluster-role-binding.yml
+  with_items: "{{ openshift_cluster.cluster_role_bindings | default([]) }}"
+  vars:
+    current_cluster_role_bindings: "{{ get_cluster_role_bindings.stdout | from_yaml }}"
+  loop_control:
+    loop_var: cluster_role_binding
+
+- name: Get cluster role bindings
+  command: >
+    oc get clusterrolebinding --template '{{
+    '{{ range .items }}{{ .roleRef.name }}{{ ":\n  users:\n" }}{{ range .userNames }}  - "{{ . }}"{{ "\n" }}{{ end }}{{ "  groups:\n" }}{{ range .groupNames }}  - "{{ . }}"{{ "\n" }}{{ end }}{{ end }}'
+    }}'
+  changed_when: false
+  failed_when: false
+  register: get_cluster_role_bindings
 
 - include: cluster-resource-quota.yml
   with_items: "{{ openshift_cluster.cluster_resource_quotas | default([]) }}"
