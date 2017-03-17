@@ -4,7 +4,7 @@
     loop_var: persistent_volume
 
 - include: group.yml
-  with_items: "{{ openshift_cluster.groups | default([]) }}"
+  with_items: "{{ openshift_cluster.groups | default([]) | union(user_groups | default([])) }}"
   loop_control:
     loop_var: group
 

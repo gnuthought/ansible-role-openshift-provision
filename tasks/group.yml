@@ -12,15 +12,16 @@
 
 - name: Members for group {{ group.name }}
   command: >
-    oc adm groups add-users {{ group.name }} {{ user }}
+    oc adm groups add-users {{ group.name }} {{ user.user_name if user is mapping else user }}
   with_items: "{{ group.members }}"
   when: >
     get_group.rc != 0 or
     None == get_group.stdout | from_json | json_query('users') or
-    user not in get_group.stdout | from_json | json_query('users')
+    (user.user_name if user is mapping else user) not in get_group.stdout | from_json | json_query('users')
   loop_control:
     loop_var: user
 
+# FIXME - Handle group.members entries that are mappings with user_name key
 - name: Remove unlisted members from group {{ group.name }}
   command: >
     oc adm groups remove-users {{ group.name }} {{ user }}
