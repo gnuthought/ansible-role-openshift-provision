@@ -1,0 +1,32 @@
+- name: Get ClusterRole {{ cluster_role.metadata.name }}
+  command: >
+    oc get clusterrole {{ cluster_role.metadata.name | quote }} -o json
+  changed_when: false
+  failed_when: false
+  register: get_clusterrole
+
+- name: Create ClusterRole {{ cluster_role.metadata.name }}
+  when: get_clusterrole.rc != 0
+  shell: >
+    echo {{ objdef | to_yaml | quote }} |
+    oc create -f -
+  vars:
+    objdef:
+      apiVersion: v1
+      kind: ClusterRole
+      metadata: "{{ cluster_role.metadata }}"
+      rules: "{{ cluster_role.rules | default([]) }}"
+
+- name: Update ClusterRole {{ cluster_role.metadata.name }}
+  shell: >
+    echo {{ objdef | to_yaml | quote }} |
+    oc apply -f -
+  vars:
+    objdef:
+      apiVersion: v1
+      kind: ClusterRole
+      metadata: "{{ get_clusterrole.stdout | default('{}') | from_json | json_query('metadata') | combine(cluster_role.metadata, recursive=True) }}"
+      rules: "{{ cluster_role.rules | default([])}}" 
+  when: >
+    get_clusterrole.rc == 0 and
+    objdef != get_clusterrole.stdout | from_json

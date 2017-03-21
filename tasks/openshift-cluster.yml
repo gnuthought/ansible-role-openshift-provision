@@ -8,6 +8,11 @@
   loop_control:
     loop_var: group
 
+- include: cluster-role.yml
+  with_items: "{{ openshift_cluster.cluster_roles | default([]) }}"
+  loop_control:
+    loop_var: cluster_role
+
 - name: Get cluster role bindings
   command: >
     oc get clusterrolebinding --template '{{

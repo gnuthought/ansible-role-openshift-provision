@@ -70,6 +70,32 @@ Example resources file:
     openshift_clusters:
     - openshift_host_env: master.openshift.libvirt
 
+      cluster_roles:
+      - metadata:
+          name: network-joiner
+        rules:
+        - apiGroups:
+          - ""
+          attributeRestrictions: null
+          resources:
+          - netnamespaces
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - update
+          - watch
+        - apiGroups:
+          - ""
+          attributeRestrictions: null
+          resources:
+          - namespaces
+          - projects
+          verbs:
+          - get
+          - list
+
       cluster_role_bindings:
       - role: self-provisioner:
         user: system:serviceaccount:app-dev:jenkins
