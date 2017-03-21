@@ -43,7 +43,7 @@
   when: >
     get_project_display_name.stdout != project.display_name | default(project.name) or
     get_project_description.stdout != project.description | default('') or
-    ( get_project.rc == 0 and get_project.stdout | from_json | json_query('metadata.labels') | to_yaml != project.labels | to_yaml )
+    ( get_project.rc == 0 and get_project.stdout | from_json | json_query('metadata.labels') | to_yaml | regex_replace('null\n...','{}') != project.labels | to_yaml )
   command: >
     oc patch namespace {{ project.name }}
     -R -p {{ patch | to_json | quote }}
@@ -53,7 +53,7 @@
         annotations:
           "openshift.io/display-name": "{{ project.display_name | default(project.name) }}"
           "openshift.io/description": "{{ project.description | default('') }}"
-        labels: "{{ project.labels }}"
+        labels: "{{ project.labels | default({}) }}"
 
 - include: project-limit-range.yml
   with_items: "{{ project.limit_ranges | default([]) }}"
