@@ -13,3 +13,30 @@
   loop_control:
     loop_var: group
   when: group not in current_cluster_role_bindings[cluster_role_binding.role]['groups']
+
+- name: Remove unlisted users from cluster role {{ cluster_role_binding.role }}
+  command: >
+    oc adm policy remove-cluster-role-from-user {{ cluster_role_binding.role }} {{ user }}
+  with_items: "{{ current_cluster_role_bindings[cluster_role_binding.role]['users'] }}"
+  loop_control:
+    loop_var: user
+  when: >
+    cluster_role_binding.remove_unlisted_users is defined and
+    cluster_role_binding.remove_unlisted_users is defined | bool and
+    user != None and
+    user != '' and
+    user not in cluster_role_binding.users | default([])
+ 
+- name: Remove unlisted groups from cluster role {{ cluster_role_binding.role }}
+  command: >
+    oc adm policy remove-cluster-role-from-group {{ cluster_role_binding.role }} {{ group }}
+  with_items: "{{ current_cluster_role_bindings[cluster_role_binding.role]['groups'] }}"
+  loop_control:
+    loop_var: group
+  when: >
+    cluster_role_binding.remove_unlisted_groups is defined and
+    cluster_role_binding.remove_unlisted_groups is defined | bool and
+    group != None and
+    group != '' and
+    group not in cluster_role_binding.groups | default([])
+ 
