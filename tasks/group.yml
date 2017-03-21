@@ -13,7 +13,7 @@
 - name: Members for group {{ group.name }}
   command: >
     oc adm groups add-users {{ group.name }} {{ user.user_name if user is mapping else user }}
-  with_items: "{{ group.members }}"
+  with_items: "{{ group.members | default([])}}"
   when: >
     get_group.rc != 0 or
     None == get_group.stdout | from_json | json_query('users') or
@@ -30,7 +30,7 @@
     group.remove_unlisted_members | bool and
     user != None and
     user != '' and
-    user not in group.members
+    user not in group.members | default([])
   with_items: "{% if get_group.stdout != '' %}{{ get_group.stdout | from_json | json_query('users') }}{% else %}}{{ [] }}{% endif %}"
   loop_control:
     loop_var: user
