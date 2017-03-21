@@ -9,7 +9,6 @@
   static: false
   with_items: "{{ openshift_clusters }}"
   when: >
-    openshift_cluster.openshift_resources is defined  and
     openshift_clusters != ""                          and
     openshift_clusters|length > 0                     and
     (

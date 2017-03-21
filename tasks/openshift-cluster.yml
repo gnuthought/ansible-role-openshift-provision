@@ -29,15 +29,6 @@
   loop_control:
     loop_var: cluster_role_binding
 
-- name: Get cluster role bindings
-  command: >
-    oc get clusterrolebinding --template '{{
-    '{{ range .items }}{{ .roleRef.name }}{{ ":\n  users:\n" }}{{ range .userNames }}  - "{{ . }}"{{ "\n" }}{{ end }}{{ "  groups:\n" }}{{ range .groupNames }}  - "{{ . }}"{{ "\n" }}{{ end }}{{ end }}'
-    }}'
-  changed_when: false
-  failed_when: false
-  register: get_cluster_role_bindings
-
 - include: cluster-resource-quota.yml
   with_items: "{{ openshift_cluster.cluster_resource_quotas | default([]) }}"
   loop_control:
