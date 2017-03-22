@@ -25,7 +25,7 @@
     objdef:
       apiVersion: v1
       kind: ClusterRole
-      metadata: "{{ get_clusterrole.stdout | default('{}') | from_json | json_query('metadata') | combine(cluster_role.metadata, recursive=True) }}"
+      metadata: "{% if get_clusterrole.rc == 0  %}{{ get_clusterrole.stdout | from_json | json_query('metadata') | combine(cluster_role.metadata, recursive=True) }}{% endif %}"
       rules: "{{ cluster_role.rules | default([])}}" 
   when: >
     get_clusterrole.rc == 0 and
