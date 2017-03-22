@@ -1,0 +1,10 @@
+- name: Grant role {{ ocp_role_name }} to user {{ user_name }} in project {{ project.name }}
+  command: >
+    oc adm policy -n {{ project.name }} add-role-to-user
+    {{ ocp_role_name }} {{ user_name }}
+  when: >
+    current_role_bindings[ocp_role_name] is not defined or
+    current_role_bindings[ocp_role_name]['users'] is not defined or
+    current_role_bindings[ocp_role_name]['users'] == None or
+    user_name not in current_role_bindings[ocp_role_name]['users']
+    

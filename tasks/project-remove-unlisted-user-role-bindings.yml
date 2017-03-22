@@ -1,0 +1,10 @@
+- name: Remove role {{ ocp_role_name }} from user in project {{ project.name }}
+  command: >
+    oc adm policy -n {{ project.name }} remove-role-from-user
+    {{ ocp_role_name }} {{ user_name }}
+  with_items: "{{ current_role_bindings[ocp_role_name]['users'] }}"
+  loop_control:
+    loop_var: user_name
+  when: >
+    user_name not in ocp_users and
+    { "name": user_name } not in ocp_users

@@ -1,0 +1,10 @@
+- name: Grant role {{ ocp_role_name }} to group {{ group_name }} in project {{ project.name }}
+  command: >
+    oc adm policy -n {{ project.name }} add-role-to-group
+    {{ ocp_role_name }} {{ group_name }}
+  when: >
+    current_role_bindings[ocp_role_name] is not defined or
+    current_role_bindings[ocp_role_name]['groups'] is not defined or
+    current_role_bindings[ocp_role_name]['groups'] == None or
+    group_name not in current_role_bindings[ocp_role_name]['groups']
+    

@@ -1,11 +1,23 @@
-- name: Grant group project role on {{ project.name }}
-  command: >
-    oc adm policy -n {{ project.name }} add-role-to-group
-    {{ item[0].name if item[0] is mapping else item[0]}}
-    {{ item[1].name if item[1] is mapping else item[1]}}
+- include: project-group-role-binding.yml
+  vars:
+    ocp_role_name: "{{ group_role_ent[0].name if group_role_ent[0] is mapping else group_role_ent[0] }}"
+    group_name: "{{ group_role_ent[1].name if group_role_ent[1] is mapping else group_role_ent[1] }}"
   with_nested:
   - "{{ group_role.roles | default( [group_role.role] ) }}"
   - "{{ group_role.groups | default( [group_role.group] ) }}"
+  loop_control:
+    loop_var: group_role_ent
+
+- include: project-remove-unlisted-group-role-bindings.yml
+  static: false
+  with_items: "{{ group_role.roles | default( [group_role.role] ) }}"
+  loop_control:
+    loop_var: role_ent
+  vars:
+    ocp_role_name: "{{ role_ent.name if role_ent is mapping else role_ent }}"
+    ocp_groups: "{{ group_role.groups | default( [group_role.groups] ) }}"
   when: >
-    (item[1].name if item[1] is mapping else item[1]) not in
-    current_role_bindings[item[0].name if item[0] is mapping else item[0]]['groups']
+    group_role.remove_unlisted_groups | bool and
+    current_role_bindings[ocp_role_name] is defined and
+    current_role_bindings[ocp_role_name]['groups'] is defined and
+    current_role_bindings[ocp_role_name]['groups'] != None

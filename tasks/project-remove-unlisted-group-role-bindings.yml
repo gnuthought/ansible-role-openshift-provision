@@ -1,0 +1,10 @@
+- name: Remove role {{ ocp_role_name }} from group in project {{ project.name }}
+  command: >
+    oc adm policy -n {{ project.name }} remove-role-from-group
+    {{ ocp_role_name }} {{ group_name }}
+  with_items: "{{ current_role_bindings[ocp_role_name]['groups'] }}"
+  loop_control:
+    loop_var: group_name
+  when: >
+    group_name not in ocp_groups and
+    { "name": group_name } not in ocp_groups

@@ -1,11 +1,23 @@
-- name: Grant user project role on {{ project.name }}
-  command: >
-    oc adm policy -n {{ project.name }} add-role-to-user
-    {{ item[0].name if item[0] is mapping else item[0]}}
-    {{ item[1].user_name if item[1] is mapping else item[1]}}
+- include: project-user-role-binding.yml
+  vars:
+    ocp_role_name: "{{ user_role_ent[0].name if user_role_ent[0] is mapping else user_role_ent[0] }}"
+    user_name: "{{ user_role_ent[1].name if user_role_ent[1] is mapping else user_role_ent[1] }}"
   with_nested:
   - "{{ user_role.roles | default( [user_role.role] ) }}"
   - "{{ user_role.users | default( [user_role.user] ) }}"
+  loop_control:
+    loop_var: user_role_ent
+
+- include: project-remove-unlisted-user-role-bindings.yml
+  static: false
+  with_items: "{{ user_role.roles | default( [user_role.role] ) }}"
+  loop_control:
+    loop_var: role_ent
+  vars:
+    ocp_role_name: "{{ role_ent.name if role_ent is mapping else role_ent }}"
+    ocp_users: "{{ user_role.users | default( [user_role.users] ) }}"
   when: >
-    (item[1].user_name if item[1] is mapping else item[1]) not in
-    current_role_bindings[item[0].name if item[0] is mapping else item[0]]['users']
+    user_role.remove_unlisted_users | bool and
+    current_role_bindings[ocp_role_name] is defined and
+    current_role_bindings[ocp_role_name]['users'] is defined and
+    current_role_bindings[ocp_role_name]['users'] != None
