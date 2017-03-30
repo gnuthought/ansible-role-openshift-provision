@@ -1,2 +1,19 @@
 ---
 # vars file for openshift-application
+openshift_provision_supported_project_resource_types:
+- BuildConfig
+- ConfigMap
+- DaemonSet
+- DeploymentConfig
+- ImageStream
+- LimitRange
+- PersistentVolumeClaim
+- ReplicationController
+- ResourceQuota
+- Route
+- Service
+- Template
+
+openshift_provision_supported_cluster_resource_types:
+- ClusterResourceQuota
+- PersistentVolume

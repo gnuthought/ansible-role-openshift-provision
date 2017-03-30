@@ -123,3 +123,9 @@
     current_role_bindings: "{{ get_role_bindings.stdout | from_yaml }}"
   loop_control:
     loop_var: group_role
+
+- include: project-resource.yml
+  static: false
+  with_items: "{{ project.resources | default([]) }}"
+  loop_control:
+    loop_var: resource
