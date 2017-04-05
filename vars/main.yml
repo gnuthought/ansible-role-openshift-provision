@@ -11,6 +11,7 @@ openshift_provision_supported_project_resource_types:
 - ReplicationController
 - ResourceQuota
 - Route
+- Secret
 - Service
 - Template
 
