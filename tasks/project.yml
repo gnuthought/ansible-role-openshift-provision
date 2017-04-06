@@ -55,6 +55,12 @@
           "openshift.io/description": "{{ project.description | default('') }}"
         labels: "{{ project.labels | default({}) }}"
 
+- include: project-pod-network.yml
+  static: no
+  when:
+  - project.join_pod_network is defined
+  - project.join_pod_network != ''
+
 - include: project-limit-range.yml
   with_items: "{{ project.limit_ranges | default([]) }}"
   loop_control:
