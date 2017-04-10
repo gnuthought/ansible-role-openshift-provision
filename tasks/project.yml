@@ -12,48 +12,31 @@
     --description={{ project.description | default('') | quote }}
   when: get_project.rc != 0
 
-# Note:
-#
-# It should be possible to parse the values for display-name and description
-# using: something like:
-#
-#   get_project.stdout | from_json | json_query('metadata.annotations["openshift.io/display-name"]')
-#
-# But it appears that the current version of ansible has an incomplete
-# implementation of json query that does not understand the square bracket
-# notation for extracting an element from an object.
-#
-# As a workaround we call oc get project again to fetch each of these values.
-
-- name: Get project display name for {{ project.name }}
-  command: >
-    oc get project {{ project.name }}
-    --template '{{ '{{ index .metadata.annotations "openshift.io/display-name" }}' }}'
-  changed_when: false
-  register: get_project_display_name
-
-- name: Get project description name for {{ project.name }}
-  command: >
-    oc get project {{ project.name }}
-    --template '{{ '{{ index .metadata.annotations "openshift.io/description" }}' }}'
-  changed_when: false
-  register: get_project_description
-
 - name: Update project metadata for {{ project.name }}
-  when: >
-    get_project_display_name.stdout != project.display_name | default(project.name) or
-    get_project_description.stdout != project.description | default('') or
-    ( get_project.rc == 0 and get_project.stdout | from_json | json_query('metadata.labels') | to_yaml | regex_replace('null\n...','{}') != project.labels | default({}) | to_yaml )
   command: >
     oc patch namespace {{ project.name }}
     -R -p {{ patch | to_json | quote }}
   vars:
+    curproj: "{{ (get_project.stdout if get_project.rc == 0 else '{}') | from_json }}"
     patch:
       metadata:
         annotations:
           "openshift.io/display-name": "{{ project.display_name | default(project.name) }}"
           "openshift.io/description": "{{ project.description | default('') }}"
         labels: "{{ project.labels | default({}) }}"
+  when: >
+    get_project.rc == 0 and (
+      curproj | json_query('metadata.annotations."openshift.io/display-name"')
+        != project.display_name | default(project.name)
+      or
+      curproj | json_query('metadata.annotations."openshift.io/description"')
+        != project.description | default('')
+      or (
+        project.labels is defined
+        and curproj.metadata.labels != project.labels
+      )
+    )
+    
 
 - include: project-pod-network.yml
   static: no
