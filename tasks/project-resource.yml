@@ -56,4 +56,6 @@
       resource | json_query('objects') or
       curr_resource | json_query('metadata.labels') !=
       resource | json_query('metadata.labels')
+      curr_resource | json_query('metadata.annotations') !=
+      resource | json_query('metadata.annotations')
     )
