@@ -1,0 +1,29 @@
+## DESCRIPTION
+#
+# Process template and instantiate objects.
+#
+# Called from tasks/project.yml
+#
+## VARIABLES
+#
+# `project` - project in which to process template with keys:
+#   `name` - project name
+#
+# `template` - template information with keys:
+#   `name` - template name
+#   `parameters` - parameters to pass to template
+#
+
+# FIXME - Figure out a way to detect if apply actually changed anything and
+#         set changed_when to match.
+- name: Process and apply template
+  shell: >
+    oc process {{ template.name }}
+    {% if template.parameters is defined %}
+    {% for key, value in template.parameters.iteritems() %}
+    -v {{ (key ~ '=' ~ value) | quote }}
+    {% endfor %}
+    {% endif %}
+    {% if template.overwrite | default(False) | bool %}--overwrite{% endif %}
+    | oc apply -n {{ project.name | quote }} -f -
+  register: process_template

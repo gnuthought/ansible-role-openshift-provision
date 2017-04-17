@@ -36,7 +36,6 @@
         and curproj.metadata.labels != project.labels
       )
     )
-    
 
 - include: project-pod-network.yml
   static: no
@@ -118,3 +117,16 @@
   with_items: "{{ project.resources | default([]) }}"
   loop_control:
     loop_var: resource
+
+- include: process-template.yml
+  static: false
+  # Allow "process_templates" to also be specified as "templates" for
+  # compatibility with ansible-stacks.
+  with_items: >
+    {{
+    project.process_templates
+    | default([])
+    | union( project.templates | default([]) )
+    }}
+  loop_control:
+    loop_var: template
