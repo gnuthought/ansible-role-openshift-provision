@@ -45,17 +45,25 @@
     echo {{ resource | to_json | quote }}
     | oc apply -n {{ project.name }} -f -
   vars:
-    curr_resource: "{{ (get_resource.stdout if get_resource.rc == 0 else '{}') | from_json }}"
+    curr_resource: >
+      {{
+        (get_resource.stdout if get_resource.rc == 0 else '{}') | from_json
+      }}
   when: >
     get_resource.rc == 0 and (
       curr_resource | json_query('spec') !=
-      resource | json_query('spec') or
+        resource | json_query('spec')
+      or
       curr_resource | json_query('data') !=
-      resource | json_query('data') or
+        resource | json_query('data')
+      or
       curr_resource | json_query('objects') !=
-      resource | json_query('objects') or
+        resource | json_query('objects')
+      or
       curr_resource | json_query('metadata.labels') !=
-      resource | json_query('metadata.labels')
-      curr_resource | json_query('metadata.annotations') !=
-      resource | json_query('metadata.annotations')
+        resource | json_query('metadata.labels')
+      or
+      ( curr_resource | json_query('metadata.annotations') or {} ) !=
+      ( curr_resource | json_query('metadata.annotations') or {} )
+        | combine(resource | json_query('metadata.annotations') or {}, recursive=True)
     )
