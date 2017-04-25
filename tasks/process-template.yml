@@ -11,7 +11,8 @@
 #
 # `template` - template information with keys:
 #   `name` - template name
-#   `parameters` - parameters to pass to template
+#   `namespace` - template namespace (optional)
+#   `parameters` - parameters to pass to template (optional)
 #
 
 # FIXME - Figure out a way to detect if apply actually changed anything and
@@ -19,6 +20,7 @@
 - name: Process and apply template
   shell: >
     oc process {{ template.name }}
+    -n {{ template.namespace | default(project.name) }}
     {% if template.parameters is defined %}
     {% for key, value in template.parameters.iteritems() %}
     -v {{ (key ~ '=' ~ value) | quote }}
