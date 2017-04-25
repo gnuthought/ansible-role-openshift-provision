@@ -23,6 +23,7 @@
         annotations:
           "openshift.io/display-name": "{{ project.display_name | default(project.name) }}"
           "openshift.io/description": "{{ project.description | default('') }}"
+          "openshift.io/node-selector": "{{ project.node_selector | default('') }}"
         labels: "{{ project.labels | default({}) }}"
   when: >
     get_project.rc == 0 and (
@@ -31,6 +32,9 @@
       or
       curproj | json_query('metadata.annotations."openshift.io/description"')
         != project.description | default('')
+      or
+      curproj | json_query('metadata.annotations."openshift.io/node-selector"')
+        != project.node_selector | default('')
       or (
         project.labels is defined
         and curproj.metadata.labels != project.labels
