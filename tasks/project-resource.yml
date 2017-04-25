@@ -40,10 +40,8 @@
     | oc create -n {{ project.name }} -f -
   when: get_resource.rc != 0
 
-- name: Update {{ resource.kind }} {{ resource.metadata.name }} in {{ project.name }}
-  shell:
-    echo {{ resource | to_json | quote }}
-    | oc apply -n {{ project.name }} -f -
+- include: update-project-resource.yml
+  static: no
   vars:
     curr_resource: >
       {{
@@ -60,8 +58,9 @@
       curr_resource | json_query('objects') !=
         resource | json_query('objects')
       or
-      curr_resource | json_query('metadata.labels') !=
-        resource | json_query('metadata.labels')
+      ( curr_resource | json_query('metadata.labels') or {} ) !=
+      ( curr_resource | json_query('metadata.labels') or {} )
+        | combine(resource | json_query('metadata.labels') or {}, recursive=True)
       or
       ( curr_resource | json_query('metadata.annotations') or {} ) !=
       ( curr_resource | json_query('metadata.annotations') or {} )
