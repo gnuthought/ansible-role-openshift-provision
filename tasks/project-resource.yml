@@ -48,6 +48,7 @@
         (get_resource.stdout if get_resource.rc == 0 else '{}') | from_json
       }}
   when: >
+    not( resource.no_update | default(False) | bool ) and
     get_resource.rc == 0 and (
       curr_resource | json_query('spec') !=
         resource | json_query('spec')
