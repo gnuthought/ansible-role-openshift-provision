@@ -8,37 +8,96 @@
 - name: Create project {{ project.name }}
   command: >
     oc adm new-project {{ project.name }}
-    --display-name={{ project.display_name | default(project.name) | quote }}
-    --description={{ project.description | default('') | quote }}
+    {% if project.display_name is defined %}--display-name={{ project.display_name | quote }}{% endif %}
+    {% if project.description is defined %}--description={{ project.description | quote }}{% endif %}
+    {% if project.node_selector is defined %}--node-selector={{ project.node_selector | quote }}{% endif %}
   when: get_project.rc != 0
 
-- name: Update project metadata for {{ project.name }}
+- name: Set project display-name for {{ project.name }}
   command: >
     oc patch namespace {{ project.name }}
     -R -p {{ patch | to_json | quote }}
   vars:
-    curproj: "{{ (get_project.stdout if get_project.rc == 0 else '{}') | from_json }}"
+    current_display_name: >-
+      {{
+      (get_project.stdout if get_project.rc == 0 else '{}')
+      | from_json
+      | json_query('metadata.annotations."openshift.io/display-name"')
+      }}
     patch:
       metadata:
         annotations:
-          "openshift.io/display-name": "{{ project.display_name | default(project.name) }}"
+          "openshift.io/display-name": "{{ project.display_name | default('') }}"
+  when: >
+    get_project.rc == 0 and
+    project.display_name is defined and (
+      current_display_name is not defined or
+      current_display_name != project.display_name
+    )
+
+- name: Set project description for {{ project.name }}
+  command: >
+    oc patch namespace {{ project.name }}
+    -R -p {{ patch | to_json | quote }}
+  vars:
+    current_description: >-
+      {{
+      (get_project.stdout if get_project.rc == 0 else '{}')
+      | from_json
+      | json_query('metadata.annotations."openshift.io/description"')
+      }}
+    patch:
+      metadata:
+        annotations:
           "openshift.io/description": "{{ project.description | default('') }}"
+  when: >
+    get_project.rc == 0 and
+    project.description is defined and (
+      current_description is not defined or
+      current_description != project.description
+    )
+
+- name: Set project node-selector for {{ project.name }}
+  command: >
+    oc patch namespace {{ project.name }}
+    -R -p {{ patch | to_json | quote }}
+  vars:
+    current_node_selector: >-
+      {{
+      ( get_project.stdout if get_project.rc == 0 else '{}' )
+      | from_json
+      | json_query('metadata.annotations."openshift.io/node-selector"')
+      }}
+    patch:
+      metadata:
+        annotations:
           "openshift.io/node-selector": "{{ project.node_selector | default('') }}"
+  when: >
+    get_project.rc == 0 and
+    project.node_selector is defined and (
+      current_node_selector is not defined or
+      current_node_selector != project.node_selector
+    )
+
+- name: Set project labels for {{ project.name }}
+  command: >
+    oc patch namespace {{ project.name }}
+    -R -p {{ patch | to_json | quote }}
+  vars:
+    current_labels: >-
+      {{
+      ( get_project.stdout if get_project.rc == 0 else '{}' )
+      | from_json
+      | json_query('metadata.labels')
+      }}
+    patch:
+      metadata:
         labels: "{{ project.labels | default({}) }}"
   when: >
-    get_project.rc == 0 and (
-      curproj | json_query('metadata.annotations."openshift.io/display-name"')
-        != project.display_name | default(project.name)
-      or
-      curproj | json_query('metadata.annotations."openshift.io/description"')
-        != project.description | default('')
-      or
-      curproj | json_query('metadata.annotations."openshift.io/node-selector"')
-        != project.node_selector | default('')
-      or (
-        project.labels is defined
-        and curproj.metadata.labels != project.labels
-      )
+    project.labels is defined and (
+      get_project.rc != 0 or
+      current_labels is not defined or
+      current_labels != project.labels
     )
 
 - include: project-pod-network.yml
