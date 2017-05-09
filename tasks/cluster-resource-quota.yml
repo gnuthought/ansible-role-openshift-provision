@@ -29,3 +29,26 @@
   vars:
     quotadef:
       spec: "{{ cluster_resource_quota.spec }}"
+
+- name: Set annotations for ClusterResourceQuota {{ cluster_resource_quota.name }}
+  command: >
+    oc patch clusterresourcequota {{ cluster_resource_quota.name | quote }}
+    -R -p {{ patch | to_json | quote }}
+  vars:
+    current_annotations: >-
+      {{
+      ( get_obj.stdout if get_obj.rc == 0 else '{}' )
+      | from_json
+      | json_query('metadata.annotations')
+      }}
+    patch:
+      metadata:
+        annotations: "{{ cluster_resource_quota.annotations | default({}) }}"
+  when:
+    cluster_resource_quota.annotations is defined and (
+      get_obj.rc != 0 or
+      current_annotations is not defined or
+      current_annotations == '' or
+      current_annotations !=
+        current_annotations | combine(cluster_resource_quota.annotations, recursive=True)
+    )

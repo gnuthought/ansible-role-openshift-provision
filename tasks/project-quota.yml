@@ -18,13 +18,35 @@
       spec: "{{ quota.spec }}"
   when: get_quota.rc != 0
 
-- name: Update quota {{ quota.name }} on {{ project.name }}
+- name: Set spec for quota {{ quota.name }} in {{ project.name }}
   command: >
     oc patch quota {{ quota.name}} -n {{ project.name }}
     -p {{ patch | to_json | quote }}
   vars:
     patch:
-      spec: "{{ quota.spec }}" 
+      spec: "{{ quota.spec }}"
   when: >
-    get_quota.rc == 0 and 
+    get_quota.rc == 0 and
     get_quota.stdout | from_json | json_query('spec') | to_yaml != quota.spec | to_yaml
+
+- name: Set annotations for quota {{ quota.name }} in {{ project.name }}
+  command: >
+    oc patch quota {{ quota.name}} -n {{ project.name }}
+    -R -p {{ patch | to_json | quote }}
+  vars:
+    current_annotations: >-
+      {{
+      ( get_quota.stdout if get_quota.rc == 0 else '{}' )
+      | from_json
+      | json_query('metadata.annotations')
+      }}
+    patch:
+      metadata:
+        annotations: "{{ quota.annotations | default({}) }}"
+  when:
+    quota.annotations is defined and (
+      get_quota.rc != 0 or
+      current_annotations is not defined or
+      current_annotations == '' or
+      current_annotations != current_annotations | combine(quota.annotations, recursive=True)
+    )
