@@ -79,9 +79,31 @@
       current_node_selector != project.node_selector
     )
 
+- name: Set project annotations for {{ project.name }}
+  command: >
+    oc patch namespace {{ project.name | quote }}
+    -R -p {{ patch | to_json | quote }}
+  vars:
+    current_annotations: >-
+      {{
+      ( get_project.stdout if get_project.rc == 0 else '{}' )
+      | from_json
+      | json_query('metadata.annotations')
+      }}
+    patch:
+      metadata:
+        annotations: "{{ project.annotations | default({}) }}"
+  when: >
+    project.annotations is defined and (
+      get_project.rc != 0 or
+      current_annotations is not defined or
+      current_annotations == '' or
+      current_annotations != current_annotations | combine(project.annotations, recursive=True)
+    )
+
 - name: Set project labels for {{ project.name }}
   command: >
-    oc patch namespace {{ project.name }}
+    oc patch namespace {{ project.name | quote }}
     -R -p {{ patch | to_json | quote }}
   vars:
     current_labels: >-
