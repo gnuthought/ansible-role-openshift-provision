@@ -4,7 +4,11 @@
   with_items: "{{ cluster_role_binding.users | default([]) }}"
   loop_control:
     loop_var: user
-  when: user not in current_cluster_role_bindings[cluster_role_binding.role]['users']
+  when: >
+    current_cluster_role_bindings[cluster_role_binding.role] is not defined or
+    current_cluster_role_bindings[cluster_role_binding.role]['users'] is not defined or
+    current_cluster_role_bindings[cluster_role_binding.role]['users'] is none or
+    user not in current_cluster_role_bindings[cluster_role_binding.role]['users']
 
 - name: Grant group cluster role {{ cluster_role_binding.role }}
   command: >
@@ -12,12 +16,21 @@
   with_items: "{{ cluster_role_binding.groups | default([]) }}"
   loop_control:
     loop_var: group
-  when: group not in current_cluster_role_bindings[cluster_role_binding.role]['groups']
+  when: >
+    current_cluster_role_bindings[cluster_role_binding.role] is not defined or
+    current_cluster_role_bindings[cluster_role_binding.role]['groups'] is not defined or
+    current_cluster_role_bindings[cluster_role_binding.role]['groups'] is none or
+    group not in current_cluster_role_bindings[cluster_role_binding.role]['groups']
 
 - name: Remove unlisted users from cluster role {{ cluster_role_binding.role }}
   command: >
     oc adm policy remove-cluster-role-from-user {{ cluster_role_binding.role }} {{ user }}
-  with_items: "{{ current_cluster_role_bindings[cluster_role_binding.role]['users'] }}"
+  with_items: >-
+    {{
+      current_cluster_role_bindings[cluster_role_binding.role]['users'] | default([])
+      if current_cluster_role_bindings[cluster_role_binding.role] is defined
+      else []
+    }}
   loop_control:
     loop_var: user
   when: >
@@ -30,7 +43,12 @@
 - name: Remove unlisted groups from cluster role {{ cluster_role_binding.role }}
   command: >
     oc adm policy remove-cluster-role-from-group {{ cluster_role_binding.role }} {{ group }}
-  with_items: "{{ current_cluster_role_bindings[cluster_role_binding.role]['groups'] }}"
+  with_items: >-
+    {{
+      current_cluster_role_bindings[cluster_role_binding.role]['groups'] | default([])
+      if current_cluster_role_bindings[cluster_role_binding.role] is defined
+      else []
+    }}
   loop_control:
     loop_var: group
   when: >
