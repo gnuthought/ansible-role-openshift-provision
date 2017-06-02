@@ -20,7 +20,7 @@
 
 - name: Set spec for quota {{ quota.name }} in {{ project.name }}
   command: >
-    oc patch quota {{ quota.name}} -n {{ project.name }}
+    oc patch quota {{ quota.name }} -n {{ project.name }}
     -p {{ patch | to_json | quote }}
   vars:
     patch:
