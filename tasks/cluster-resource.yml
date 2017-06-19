@@ -54,8 +54,11 @@
     get_resource.rc == 0 and (
       curr_resource | json_query('spec') !=
       resource | json_query('spec') or
-      curr_resource | json_query('metadata.labels') !=
-      resource | json_query('metadata.labels') or
-      curr_resource | json_query('metadata.annotations') !=
-      resource | json_query('metadata.annotations')
+      ( curr_resource | json_query('metadata.labels') or {} ) !=
+      ( curr_resource | json_query('metadata.labels') or {} )
+        | combine(resource | json_query('metadata.labels') or {}, recursive=True)
+      or
+      ( curr_resource | json_query('metadata.annotations') or {} ) !=
+      ( curr_resource | json_query('metadata.annotations') or {} )
+        | combine(resource | json_query('metadata.annotations') or {}, recursive=True)
     )
