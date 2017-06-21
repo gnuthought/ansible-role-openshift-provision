@@ -136,53 +136,52 @@ Example resources file:
         labels:
           foo: bar2
     
-          openshift_resources:
-            projects:
+      projects:
         
-            - name: app-dev
-              display_name: Application development
-              environment_type: build
-              labels:
-                application: appname
-              quotas:
-              - name: compute
-                spec: "{{ app_project_quota }}"
-              limit_ranges:
-              - name: compute
-                spec: "{{ app_limit_range }}"
-              service_accounts:
-              - name: jenkins
-              user_to_role:
-              - user: system:serviceaccount:app-dev:jenkins
-                roles:
-                - edit
-              group_to_role:
-              - group: app-developer
-                roles:
-                - edit
-              - group: app-admin
-                roles:
-                - admin
+      - name: app-dev
+        display_name: Application development
+        environment_type: build
+        labels:
+          application: appname
+        quotas:
+        - name: compute
+          spec: "{{ app_project_quota }}"
+        limit_ranges:
+        - name: compute
+          spec: "{{ app_limit_range }}"
+        service_accounts:
+        - name: jenkins
+        role_bindings:
+        - role: admin
+          groups: app-admin
+          remove_unlisted: true
+        - role: edit
+          users:
+          - system:serviceaccount:app-dev:jenkins
+          groups:
+          - app-developer
+          remove_unlisted_groups: true
     
-        - name: app-prod
-          environment_type: promotion
-          display_name: Application production
-          labels:
-            application: appname
-          quotas:
-          - name: compute
-            spec: "{{ app_project_quota }}"
-          user_to_role:
-          - user: system:serviceaccount:app-dev:jenkins
-            roles:
-            - edit
-          group_to_role:
-          - group: app-developer
-            roles:
-            - view
-          - group: app-admin
-            roles:
-            - admin
+      - name: app-prod
+        environment_type: promotion
+        display_name: Application production
+        labels:
+          application: appname
+        quotas:
+        - name: compute
+          spec: "{{ app_project_quota }}"
+        role_bindings:
+        - role: admin
+          groups: app-admin
+          remove_unlisted: true
+        - role: edit
+          users:
+          - system:serviceaccount:app-dev:jenkins
+          remove_unlisted: true
+        - role: view
+          groups:
+          - app-developer
+          remove_unlisted: true
 
 License
 -------

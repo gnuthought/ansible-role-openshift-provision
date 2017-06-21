@@ -17,7 +17,8 @@
     ocp_role_name: "{{ role_ent.name if role_ent is mapping else role_ent }}"
     ocp_users: "{{ user_role.users | default( [user_role.users] ) }}"
   when: >
-    user_role.remove_unlisted_users | bool and
+    ( user_role.remove_unlisted | default(false) | bool or
+      user_role.remove_unlisted_users | default(false) | bool ) and
     current_role_bindings[ocp_role_name] is defined and
     current_role_bindings[ocp_role_name]['users'] is defined and
     current_role_bindings[ocp_role_name]['users'] != None

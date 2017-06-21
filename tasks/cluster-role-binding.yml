@@ -34,8 +34,8 @@
   loop_control:
     loop_var: user
   when: >
-    cluster_role_binding.remove_unlisted_users is defined and
-    cluster_role_binding.remove_unlisted_users | bool and
+    ( cluster_role_binding.remove_unlisted | default(false) | bool or
+      cluster_role_binding.remove_unlisted_users | default(false) | bool ) and
     user != None and
     user != '' and
     user not in cluster_role_binding.users | default([])
@@ -52,8 +52,8 @@
   loop_control:
     loop_var: group
   when: >
-    cluster_role_binding.remove_unlisted_groups is defined and
-    cluster_role_binding.remove_unlisted_groups | bool and
+    ( cluster_role_binding.remove_unlisted | default(false) | bool or
+      cluster_role_binding.remove_unlisted_groups | default(false) | bool ) and
     group != None and
     group != '' and
     group not in cluster_role_binding.groups | default([])
