@@ -3,19 +3,19 @@
     ocp_role_name: "{{ group_role_ent[0].name if group_role_ent[0] is mapping else group_role_ent[0] }}"
     group_name: "{{ group_role_ent[1].name if group_role_ent[1] is mapping else group_role_ent[1] }}"
   with_nested:
-  - "{{ group_role.roles | default( [group_role.role] ) }}"
-  - "{{ group_role.groups | default( [group_role.group] ) }}"
+  - "{{ group_role.roles | default([group_role.role]) | default([]) }}"
+  - "{{ group_role.groups | default([group_role.group] if group_role.group is defined else []) }}"
   loop_control:
     loop_var: group_role_ent
 
 - include: project-remove-unlisted-group-role-bindings.yml
   static: false
-  with_items: "{{ group_role.roles | default( [group_role.role] ) }}"
+  with_items: "{{ group_role.roles | default([group_role.role]) }}"
   loop_control:
     loop_var: role_ent
   vars:
     ocp_role_name: "{{ role_ent.name if role_ent is mapping else role_ent }}"
-    ocp_groups: "{{ group_role.groups | default( [group_role.groups] ) }}"
+    ocp_groups: "{{ group_role.groups | default([group_role.group] if group_role.group is defined else []) }}"
   when: >
     ( group_role.remove_unlisted | default(false) | bool or
       group_role.remove_unlisted_groups | default(false) | bool ) and

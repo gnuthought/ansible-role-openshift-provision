@@ -3,19 +3,19 @@
     ocp_role_name: "{{ user_role_ent[0].name if user_role_ent[0] is mapping else user_role_ent[0] }}"
     user_name: "{{ user_role_ent[1].name if user_role_ent[1] is mapping else user_role_ent[1] }}"
   with_nested:
-  - "{{ user_role.roles | default( [user_role.role] ) }}"
-  - "{{ user_role.users | default( [user_role.user] ) }}"
+  - "{{ user_role.roles | default([user_role.role]) }}"
+  - "{{ user_role.users | default([user_role.user] if user_role.user is defined else []) }}"
   loop_control:
     loop_var: user_role_ent
 
 - include: project-remove-unlisted-user-role-bindings.yml
   static: false
-  with_items: "{{ user_role.roles | default( [user_role.role] ) }}"
+  with_items: "{{ user_role.roles | default([user_role.role]) }}"
   loop_control:
     loop_var: role_ent
   vars:
     ocp_role_name: "{{ role_ent.name if role_ent is mapping else role_ent }}"
-    ocp_users: "{{ user_role.users | default( [user_role.users] ) }}"
+    ocp_users: "{{ user_role.users | default([user_role.user] if user_role.user is defined else []) }}"
   when: >
     ( user_role.remove_unlisted | default(false) | bool or
       user_role.remove_unlisted_users | default(false) | bool ) and

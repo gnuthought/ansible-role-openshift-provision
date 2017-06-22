@@ -179,7 +179,9 @@
   with_items: "{{ project.role_bindings | default([]) }}"
   when: >
     user_role.users is defined or
-    user_role.user is defined
+    user_role.user is defined or
+    user_role.remove_unlisted_users | default(false) | bool or
+    user_role.remove_unlisted | default(false) | bool
   vars:
     current_role_bindings: "{{ get_role_bindings.stdout | from_yaml }}"
   loop_control:
@@ -191,7 +193,9 @@
   with_items: "{{ project.role_bindings | default([]) }}"
   when: >
     group_role.groups is defined or
-    group_role.group is defined
+    group_role.group is defined or
+    group_role.remove_unlisted_groups | default(false) | bool or
+    group_role.remove_unlisted | default(false) | bool
   vars:
     current_role_bindings: "{{ get_role_bindings.stdout | from_yaml }}"
   loop_control:
