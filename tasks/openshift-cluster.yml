@@ -22,20 +22,22 @@
     loop_var: cluster_role
 
 - name: Get cluster role bindings
-  command: >
-    oc get clusterrolebinding --template '{{
-    '{{ range .items }}{{ .roleRef.name }}{{ ":\n  users:\n" }}{{ range .userNames }}  - "{{ . }}"{{ "\n" }}{{ end }}{{ "  groups:\n" }}{{ range .groupNames }}  - "{{ . }}"{{ "\n" }}{{ end }}{{ end }}'
-    }}'
+  command: oc get clusterrolebinding -o json
   changed_when: false
-  failed_when: false
   register: get_cluster_role_bindings
 
 - include: cluster-role-binding.yml
   with_items: "{{ openshift_cluster.cluster_role_bindings | default([]) }}"
-  vars:
-    current_cluster_role_bindings: "{{ get_cluster_role_bindings.stdout | from_yaml }}"
   loop_control:
     loop_var: cluster_role_binding
+  vars:
+    current_cluster_role_bindings: "{{ get_cluster_role_bindings.stdout | from_json }}"
+    current_cluster_role_users_query: "items[?roleRef.name=='{{ cluster_role_binding.role }}'].userNames[]"
+    current_cluster_role_users: >
+      {{ current_cluster_role_bindings | json_query(current_cluster_role_users_query) }}
+    current_cluster_role_groups_query: "items[?roleRef.name=='{{ cluster_role_binding.role }}'].groupNames[]"
+    current_cluster_role_groups: >
+      {{ current_cluster_role_bindings | json_query(current_cluster_role_groups_query) }}
 
 - include: cluster-resource-quota.yml
   with_items: "{{ openshift_cluster.cluster_resource_quotas | default([]) }}"
