@@ -13,7 +13,7 @@ ansible-galaxy install https://github.com/jkupferer/ansible-role-openshift-provi
 Requirements
 ------------
 
-OCP 3.3 or 3.4
+OCP 3.3+
 
 Role Variables
 --------------
