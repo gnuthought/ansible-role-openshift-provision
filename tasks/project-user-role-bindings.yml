@@ -1,12 +1,21 @@
-- include: project-user-role-binding.yml
-  vars:
-    ocp_role_name: "{{ user_role_ent[0].name if user_role_ent[0] is mapping else user_role_ent[0] }}"
-    user_name: "{{ user_role_ent[1].name if user_role_ent[1] is mapping else user_role_ent[1] }}"
+- name: Grant roles on {{ project.name }} to users
+  command: >-
+    oc adm policy -n {{ project.name }} add-role-to-user
+    {{ ocp_role_name }} {{ ocp_user_name }}
   with_nested:
   - "{{ user_role.roles | default([user_role.role]) }}"
   - "{{ user_role.users | default([user_role.user] if user_role.user is defined else []) }}"
   loop_control:
     loop_var: user_role_ent
+  vars:
+    ocp_role_name: >-
+      {{ user_role_ent[0].name if user_role_ent[0] is mapping else user_role_ent[0] }}
+    ocp_user_name: >-
+      {{ user_role_ent[1].name if user_role_ent[1] is mapping else user_role_ent[1] }}
+    current_role_users_query: "items[?roleRef.name=='{{ ocp_role_name }}'].userNames[]"
+    current_role_users: >-
+      {{ current_role_bindings | json_query(current_role_users_query) }}
+  when: ocp_user_name not in current_role_users
 
 - include: project-remove-unlisted-user-role-bindings.yml
   static: false
@@ -15,10 +24,11 @@
     loop_var: role_ent
   vars:
     ocp_role_name: "{{ role_ent.name if role_ent is mapping else role_ent }}"
-    ocp_users: "{{ user_role.users | default([user_role.user] if user_role.user is defined else []) }}"
-  when: >
-    ( user_role.remove_unlisted | default(false) | bool or
-      user_role.remove_unlisted_users | default(false) | bool ) and
-    current_role_bindings[ocp_role_name] is defined and
-    current_role_bindings[ocp_role_name]['users'] is defined and
-    current_role_bindings[ocp_role_name]['users'] != None
+    ocp_users: >-
+       {{ user_role.users | default([user_role.user] if user_role.user is defined else []) }}
+    current_role_users_query: "items[?roleRef.name=='{{ ocp_role_name }}'].userNames[]"
+    current_role_users: >-
+      {{ current_role_bindings | json_query(current_role_users_query) }}
+  when: >-
+    user_role.remove_unlisted | default(false) | bool or
+    user_role.remove_unlisted_users | default(false) | bool

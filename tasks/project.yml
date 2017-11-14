@@ -149,27 +149,26 @@
     loop_var: service_account
 
 - name: Get role bindings for project {{ project.name }}
-  command: >
-    oc get rolebinding -n {{ project.name }} --template '{{
-    '{{ range .items }}{{ .roleRef.name }}{{ ":\n  users:\n" }}{{ range .userNames }}  - "{{ . }}"{{ "\n" }}{{ end }}{{ "  groups:\n" }}{{ range .groupNames }}  - "{{ . }}"{{ "\n" }}{{ end }}{{ end }}'
-    }}'
+  command: oc get rolebinding -n {{ project.name }} -o json
   changed_when: false
   failed_when: false
   register: get_role_bindings
 
 # Handle user_to_role
+# DEPRECATED - Adapted from ansible stacks
 - include: project-user-role-bindings.yml
   with_items: "{{ project.user_to_role | default([]) }}"
   vars:
-    current_role_bindings: "{{ get_role_bindings.stdout | from_yaml }}"
+    current_role_bindings: "{{ get_role_bindings.stdout | from_json }}"
   loop_control:
     loop_var: user_role
 
 # Handle group_to_role
+# DEPRECATED - Adapted from ansible stacks
 - include: project-group-role-bindings.yml
   with_items: "{{ project.group_to_role | default([]) }}"
   vars:
-    current_role_bindings: "{{ get_role_bindings.stdout | from_yaml }}"
+    current_role_bindings: "{{ get_role_bindings.stdout | from_json }}"
   loop_control:
     loop_var: group_role
 
@@ -183,7 +182,7 @@
     user_role.remove_unlisted_users | default(false) | bool or
     user_role.remove_unlisted | default(false) | bool
   vars:
-    current_role_bindings: "{{ get_role_bindings.stdout | from_yaml }}"
+    current_role_bindings: "{{ get_role_bindings.stdout | from_json }}"
   loop_control:
     loop_var: user_role
 
