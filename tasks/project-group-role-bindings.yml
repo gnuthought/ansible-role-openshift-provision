@@ -1,12 +1,21 @@
-- include: project-group-role-binding.yml
-  vars:
-    ocp_role_name: "{{ group_role_ent[0].name if group_role_ent[0] is mapping else group_role_ent[0] }}"
-    group_name: "{{ group_role_ent[1].name if group_role_ent[1] is mapping else group_role_ent[1] }}"
+- name: Grant roles on {{ project.name }} to groups
+  command: >
+    oc adm policy -n {{ project.name }} add-role-to-group
+    {{ ocp_role_name }} {{ ocp_group_name }}
   with_nested:
   - "{{ group_role.roles | default([group_role.role]) | default([]) }}"
   - "{{ group_role.groups | default([group_role.group] if group_role.group is defined else []) }}"
   loop_control:
     loop_var: group_role_ent
+  vars:
+    ocp_role_name: >-
+      {{ group_role_ent[0].name if group_role_ent[0] is mapping else group_role_ent[0] }}
+    ocp_group_name: >-
+      {{ group_role_ent[1].name if group_role_ent[1] is mapping else group_role_ent[1] }}
+    current_role_groups_query: "items[?roleRef.name=='{{ ocp_role_name }}'].groupNames[]"
+    current_role_groups: >-
+      {{ current_role_bindings | json_query(current_role_groups_query) }}
+  when: ocp_group_name not in current_role_groups
 
 - include: project-remove-unlisted-group-role-bindings.yml
   static: false
@@ -15,10 +24,11 @@
     loop_var: role_ent
   vars:
     ocp_role_name: "{{ role_ent.name if role_ent is mapping else role_ent }}"
-    ocp_groups: "{{ group_role.groups | default([group_role.group] if group_role.group is defined else []) }}"
+    ocp_groups: >-
+      {{ group_role.groups | default([group_role.group] if group_role.group is defined else []) }}
+    current_role_groups_query: "items[?roleRef.name=='{{ ocp_role_name }}'].groupNames[]"
+    current_role_groups: >-
+      {{ current_role_bindings | json_query(current_role_groups_query) }}
   when: >
-    ( group_role.remove_unlisted | default(false) | bool or
-      group_role.remove_unlisted_groups | default(false) | bool ) and
-    current_role_bindings[ocp_role_name] is defined and
-    current_role_bindings[ocp_role_name]['groups'] is defined and
-    current_role_bindings[ocp_role_name]['groups'] != None
+    group_role.remove_unlisted | default(false) | bool or
+    group_role.remove_unlisted_groups | default(false) | bool
