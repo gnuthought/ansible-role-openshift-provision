@@ -1,6 +1,6 @@
 - name: Get ClusterResourceQuota {{ cluster_resource_quota.name }}
   command: >
-    oc get clusterresourcequota {{ cluster_resource_quota.name | quote }} -o json
+    {{ oc_cmd }} get clusterresourcequota {{ cluster_resource_quota.name | quote }} -o json
   failed_when: false
   changed_when: false
   register: get_obj
@@ -9,7 +9,7 @@
   name: Create ClusterResourceQuota {{ cluster_resource_quota.name }}
   shell: >
     echo {{ quotadef | to_json | quote }}
-    | oc create -f -
+    | {{ oc_cmd }} create -f -
   vars:
     quotadef:
       apiVersion: v1
@@ -24,7 +24,7 @@
     get_obj.stdout | from_json | json_query('spec') | to_yaml
     != cluster_resource_quota.spec | to_yaml
   command: >
-    oc patch clusterresourcequota {{ cluster_resource_quota.name | quote }}
+    {{ oc_cmd }} patch clusterresourcequota {{ cluster_resource_quota.name | quote }}
     -p {{ quotadef | to_json | quote }}
   vars:
     quotadef:
@@ -32,7 +32,7 @@
 
 - name: Set annotations for ClusterResourceQuota {{ cluster_resource_quota.name }}
   command: >
-    oc patch clusterresourcequota {{ cluster_resource_quota.name | quote }}
+    {{ oc_cmd }} patch clusterresourcequota {{ cluster_resource_quota.name | quote }}
     -R -p {{ patch | to_json | quote }}
   vars:
     current_annotations: >-

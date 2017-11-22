@@ -7,16 +7,21 @@
 # Process openshift resources
 - include: openshift-cluster.yml
   static: false
-  with_items: "{{ openshift_clusters }}"
-  when: >
-    openshift_clusters != ""                          and
-    openshift_clusters|length > 0                     and
-    (
-      openshift_cluster.openshift_host_env is not defined or
-      openshift_cluster.openshift_host_env == openshift_master_cluster_public_hostname or
-      ( openshift_cluster.openshift_host_env | is_list and
-        openshift_master_cluster_public_hostname in openshift_cluster.openshift_host_env
-      )
-    )
+  with_items: "{{ openshift_clusters | default([]) }}"
   loop_control:
     loop_var: openshift_cluster
+  vars:
+    oc_cmd_base: >-
+      oc {% if openshift_cluster.connection is defined %}
+      {% for key, value in openshift_cluster.connection.iteritems() %}
+      --{{ key | regex_replace('_', '-') }}={{ value | quote }}
+      {% endfor %}
+      {% endif %}
+  when: >
+    # openshift_host_env restricts play run to only process cluster on matching
+    # environments, only run if openshift_host_env is not defined or matches.
+    openshift_cluster.openshift_host_env is not defined or
+    openshift_cluster.openshift_host_env == openshift_master_cluster_public_hostname or
+    ( openshift_cluster.openshift_host_env | is_list and
+      openshift_master_cluster_public_hostname in openshift_cluster.openshift_host_env
+    )

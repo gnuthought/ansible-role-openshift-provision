@@ -1,6 +1,6 @@
 - name: Get current {{ quota.name }} quota on {{ project.name }}
   command: >
-    oc get quota {{ quota.name }} -n {{ project.name }} -o json
+    {{ oc_cmd }} get quota {{ quota.name }} -n {{ project.name }} -o json
   changed_when: false
   failed_when: false
   register: get_quota
@@ -8,7 +8,7 @@
 - name: Create quota {{ quota.name }} on {{ project.name }}
   shell: >
     echo {{ quotadef | to_yaml | quote }}
-    | oc create -n {{ project.name }} -f -
+    | {{ oc_cmd }} create -n {{ project.name }} -f -
   vars:
     quotadef:
       apiVersion: v1
@@ -20,7 +20,7 @@
 
 - name: Set spec for quota {{ quota.name }} in {{ project.name }}
   command: >
-    oc patch quota {{ quota.name }} -n {{ project.name }}
+    {{ oc_cmd }} patch quota {{ quota.name }} -n {{ project.name }}
     -p {{ patch | to_json | quote }}
   vars:
     patch:
@@ -31,7 +31,7 @@
 
 - name: Set annotations for quota {{ quota.name }} in {{ project.name }}
   command: >
-    oc patch quota {{ quota.name}} -n {{ project.name }}
+    {{ oc_cmd }} patch quota {{ quota.name}} -n {{ project.name }}
     -R -p {{ patch | to_json | quote }}
   vars:
     current_annotations: >-

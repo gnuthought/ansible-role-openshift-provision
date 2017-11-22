@@ -1,0 +1,45 @@
+# Process cluster_resources before processing other items, including projects.
+# This allows items like cluster roles to be defined within cluster_resources.
+- include: resource.yml
+  static: false
+  with_items: "{{ openshift_cluster.cluster_resources | default([]) }}"
+  loop_control:
+    loop_var: resource
+
+- include: persistent-volume.yml
+  with_items: "{{ openshift_cluster.persistent_volumes | default([]) }}"
+  loop_control:
+    loop_var: persistent_volume
+
+- include: group.yml
+  with_items: "{{ openshift_cluster.groups | default([]) | union(user_groups | default([])) }}"
+  loop_control:
+    loop_var: group
+
+- include: provision-cluster-roles.yml
+  when: openshift_cluster.cluster_roles is defined
+
+- include: cluster-resource-quota.yml
+  with_items: "{{ openshift_cluster.cluster_resource_quotas | default([]) }}"
+  loop_control:
+    loop_var: cluster_resource_quota
+
+- include: project.yml
+  with_items: "{{ openshift_cluster.projects | default([]) }}"
+  loop_control:
+    loop_var: project
+
+- include: openshift-resources.yml
+  static: no
+  vars:
+    openshift_resources: "{{ openshift_cluster.openshift_resources }}"
+  when: openshift_cluster.openshift_resources is defined
+
+# Process resources after processing other items such as projects. This
+# allows creation of resources in multiple projects in a specific order by
+# specifying the namespace in the resource metadata.
+- include: resource.yml
+  static: false
+  with_items: "{{ openshift_cluster.resources | default([]) }}"
+  loop_control:
+    loop_var: resource

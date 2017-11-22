@@ -26,7 +26,7 @@
 
 - name: Get {{ resource.kind }} {{ resource.metadata.name }} in {{ project.name }}
   command: >
-    oc {% if resource.kind == 'ImageStream' %}get{% else %}export{% endif %}
+    {{ oc_cmd }} {% if resource.kind == 'ImageStream' %}get{% else %}export{% endif %}
     -n {{ project.name | quote }} -o json
     {{ resource.kind | quote }}
     {{ resource.metadata.name | quote }}
@@ -37,7 +37,7 @@
 - name: Create {{ resource.kind }} {{ resource.metadata.name }} in {{ project.name }}
   shell:
     echo {{ resource | to_json | quote }}
-    | oc create -n {{ project.name }} -f -
+    | {{ oc_cmd }} create -n {{ project.name }} -f -
   when: get_resource.rc != 0
 
 - include: update-project-resource.yml

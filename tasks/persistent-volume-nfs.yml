@@ -18,7 +18,7 @@
 
 - name: Determine if persistent volume {{ persistent_volume.name }} exists
   command: >
-     oc get pv {{ persistent_volume.name }} -o json
+     {{ oc_cmd }} get pv {{ persistent_volume.name }} -o json
   register: get_pv
   failed_when: false
   changed_when: false
@@ -27,7 +27,7 @@
   when: get_pv.rc != 0
   shell: >
     echo {{ pvdef | to_json | quote }} |
-    oc create -f -
+    {{ oc_cmd }} create -f -
   vars:
     pvdef:
       apiVersion: v1

@@ -1,0 +1,53 @@
+---
+- name: Get role bindings for project {{ project.name }}
+  command: >-
+    {{ oc_cmd }} get rolebinding -n {{ project.name }} -o json
+  changed_when: false
+  failed_when: false
+  register: get_role_bindings
+
+# Handle user_to_role
+# DEPRECATED - Adapted from ansible stacks
+- include: project-user-role-bindings.yml
+  with_items: "{{ project.user_to_role | default([]) }}"
+  vars:
+    current_role_bindings: "{{ get_role_bindings.stdout | from_json }}"
+  loop_control:
+    loop_var: user_role
+
+# Handle group_to_role
+# DEPRECATED - Adapted from ansible stacks
+- include: project-group-role-bindings.yml
+  with_items: "{{ project.group_to_role | default([]) }}"
+  vars:
+    current_role_bindings: "{{ get_role_bindings.stdout | from_json }}"
+  loop_control:
+    loop_var: group_role
+
+# Handle users in role_bindings
+- include: project-user-role-bindings.yml
+  static: false
+  with_items: "{{ project.role_bindings | default([]) }}"
+  when: >
+    user_role.users is defined or
+    user_role.user is defined or
+    user_role.remove_unlisted_users | default(false) | bool or
+    user_role.remove_unlisted | default(false) | bool
+  vars:
+    current_role_bindings: "{{ get_role_bindings.stdout | from_json }}"
+  loop_control:
+    loop_var: user_role
+
+# Handle groups in role_bindings
+- include: project-group-role-bindings.yml
+  static: false
+  with_items: "{{ project.role_bindings | default([]) }}"
+  when: >
+    group_role.groups is defined or
+    group_role.group is defined or
+    group_role.remove_unlisted_groups | default(false) | bool or
+    group_role.remove_unlisted | default(false) | bool
+  vars:
+    current_role_bindings: "{{ get_role_bindings.stdout | from_yaml }}"
+  loop_control:
+    loop_var: group_role

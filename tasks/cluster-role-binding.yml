@@ -1,6 +1,6 @@
 - name: Grant user cluster role {{ cluster_role_binding.role }}
   command: >
-    oc adm policy add-cluster-role-to-user {{ cluster_role_binding.role }} {{ user }}
+    {{ oc_cmd }} adm policy add-cluster-role-to-user {{ cluster_role_binding.role }} {{ user }}
   with_items: "{{ cluster_role_binding.users | default([]) }}"
   loop_control:
     loop_var: user
@@ -8,7 +8,7 @@
 
 - name: Grant group cluster role {{ cluster_role_binding.role }}
   command: >
-    oc adm policy add-cluster-role-to-group {{ cluster_role_binding.role }} {{ group }}
+    {{ oc_cmd }} adm policy add-cluster-role-to-group {{ cluster_role_binding.role }} {{ group }}
   with_items: "{{ cluster_role_binding.groups | default([]) }}"
   loop_control:
     loop_var: group
@@ -17,7 +17,7 @@
 
 - name: Remove unlisted users from cluster role {{ cluster_role_binding.role }}
   command: >
-    oc adm policy remove-cluster-role-from-user {{ cluster_role_binding.role }} {{ user }}
+    {{ oc_cmd }} adm policy remove-cluster-role-from-user {{ cluster_role_binding.role }} {{ user }}
   with_items: "{{ current_cluster_role_users }}"
   loop_control:
     loop_var: user
@@ -28,7 +28,7 @@
  
 - name: Remove unlisted groups from cluster role {{ cluster_role_binding.role }}
   command: >
-    oc adm policy remove-cluster-role-from-group {{ cluster_role_binding.role }} {{ group }}
+    {{ oc_cmd }} adm policy remove-cluster-role-from-group {{ cluster_role_binding.role }} {{ group }}
   with_items: "{{ current_cluster_role_groups }}"
   loop_control:
     loop_var: group
