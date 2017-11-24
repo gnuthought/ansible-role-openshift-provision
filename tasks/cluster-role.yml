@@ -1,6 +1,6 @@
 - name: Get ClusterRole {{ cluster_role.metadata.name }}
   command: >
-    oc get clusterrole {{ cluster_role.metadata.name | quote }} -o json
+    {{ oc_cmd }} get clusterrole {{ cluster_role.metadata.name | quote }} -o json
   changed_when: false
   failed_when: false
   register: get_clusterrole
@@ -9,7 +9,7 @@
   when: get_clusterrole.rc != 0
   shell: >
     echo {{ objdef | to_yaml | quote }} |
-    oc create -f -
+    {{ oc_cmd }} create -f -
   vars:
     objdef:
       apiVersion: v1
@@ -20,7 +20,7 @@
 - name: Update ClusterRole {{ cluster_role.metadata.name }}
   shell: >
     echo {{ objdef | to_yaml | quote }} |
-    oc apply -f -
+    {{ oc_cmd }} apply -f -
   vars:
     objdef:
       apiVersion: v1

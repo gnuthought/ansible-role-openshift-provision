@@ -1,6 +1,6 @@
 - name: Grant roles on {{ project.name }} to groups
   command: >
-    oc adm policy -n {{ project.name }} add-role-to-group
+    {{ oc_cmd }} adm policy -n {{ project.name }} add-role-to-group
     {{ ocp_role_name }} {{ ocp_group_name }}
   with_nested:
   - "{{ group_role.roles | default([group_role.role]) | default([]) }}"

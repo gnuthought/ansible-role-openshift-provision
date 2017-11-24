@@ -9,7 +9,7 @@
 
 - name: Remove last-applied-configuration annotation
   command: >
-    oc patch -p {{ patch | to_json | quote }}
+    {{ oc_cmd }} patch -p {{ patch | to_json | quote }}
     -n {{ project.name | quote }}
     {{ resource.kind | quote }}
     {{ resource.metadata.name | quote }}
@@ -24,4 +24,4 @@
 - name: Update {{ resource.kind }} {{ resource.metadata.name }} in {{ project.name }}
   shell: >
     echo {{ resource | to_json | quote }}
-    | oc apply -n {{ project.name }} -f -
+    | {{ oc_cmd }} apply -n {{ project.name }} -f -

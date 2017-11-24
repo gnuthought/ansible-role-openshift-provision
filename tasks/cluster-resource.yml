@@ -1,4 +1,5 @@
-- name: Fail kind not specified for cluster level resource
+---
+- name: Fail if kind not specified for cluster level resource
   fail:
     msg: >
       Kind not specified for resource at cluster level.
@@ -26,7 +27,7 @@
 
 - name: Get {{ resource.kind }} {{ resource.metadata.name }}
   command: >
-    oc export -o json
+    {{ oc_cmd }} export -o json
     {{ resource.kind | quote }}
     {{ resource.metadata.name | quote }}
   changed_when: false
@@ -36,13 +37,13 @@
 - name: Create {{ resource.kind }} {{ resource.metadata.name }}
   shell:
     echo {{ resource | to_json | quote }}
-    | oc create -f -
+    | {{ oc_cmd }} create -f -
   when: get_resource.rc != 0
 
 - name: Update {{ resource.kind }} {{ resource.metadata.name }}
   shell:
     echo {{ resource | to_json | quote }}
-    | oc apply -f -
+    | {{ oc_cmd }} apply -f -
   vars:
     curr_resource: >
       {{

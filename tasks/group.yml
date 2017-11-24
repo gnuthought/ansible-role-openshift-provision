@@ -1,18 +1,18 @@
 - name: Get group {{ group.name }}
   command: >
-    oc get group {{ group.name }} -o json
+    {{ oc_cmd }} get group {{ group.name }} -o json
   changed_when: false
   failed_when: false
   register: get_group
 
 - name: Create group {{ group.name }}
   command: >
-    oc adm groups new {{ group.name }}
+    {{ oc_cmd }} adm groups new {{ group.name }}
   when: get_group.rc != 0
 
 - name: Members for group {{ group.name }}
   command: >
-    oc adm groups add-users {{ group.name }} {{ user.user_name if user is mapping else user }}
+    {{ oc_cmd }} adm groups add-users {{ group.name }} {{ user.user_name if user is mapping else user }}
   with_items: "{{ group.members | default([])}}"
   when: >
     get_group.rc != 0 or
@@ -24,7 +24,7 @@
 # FIXME - Handle group.members entries that are mappings with user_name key
 - name: Remove unlisted members from group {{ group.name }}
   command: >
-    oc adm groups remove-users {{ group.name }} {{ user }}
+    {{ oc_cmd }} adm groups remove-users {{ group.name }} {{ user }}
   when: >
     group.remove_unlisted_members is defined and
     group.remove_unlisted_members | bool and

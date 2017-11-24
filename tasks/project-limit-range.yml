@@ -1,6 +1,6 @@
 - name: Get current {{ limit_range.name }} limit range on {{ project.name }}
   command: >
-    oc get limitrange {{ limit_range.name }} -n {{ project.name }} -o json
+    {{ oc_cmd }} get limitrange {{ limit_range.name }} -n {{ project.name }} -o json
   changed_when: false
   failed_when: false
   register: get_limit_range
@@ -8,7 +8,7 @@
 - name: Create limit range {{ limit_range.name }} on {{ project.name }}
   shell: >
     echo {{ definition | to_yaml | quote }}
-    | oc create -n {{ project.name }} -f -
+    | {{ oc_cmd }} create -n {{ project.name }} -f -
   vars:
     definition:
       apiVersion: v1
@@ -20,7 +20,7 @@
 
 - name: Update limit range {{ limit_range.name }} on {{ project.name }}
   command: >
-    oc patch limitrange {{ limit_range.name}} -n {{ project.name }}
+    {{ oc_cmd }} patch limitrange {{ limit_range.name}} -n {{ project.name }}
     -p {{ patch | to_json | quote }}
   vars:
     patch:

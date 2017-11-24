@@ -1,6 +1,6 @@
 - name: Grant roles on {{ project.name }} to users
   command: >-
-    oc adm policy -n {{ project.name }} add-role-to-user
+    {{ oc_cmd }} adm policy -n {{ project.name }} add-role-to-user
     {{ ocp_role_name }} {{ ocp_user_name }}
   with_nested:
   - "{{ user_role.roles | default([user_role.role]) }}"

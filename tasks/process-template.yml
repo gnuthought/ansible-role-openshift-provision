@@ -20,7 +20,7 @@
 #         set changed_when to match.
 - name: Check if template is deployed
   command: >
-    oc get all -l template={{ template.name }}
+    {{ oc_cmd }} get all -l template={{ template.name }}
   failed_when: false
   changed_when: false
   register: check_template_deployed
@@ -28,7 +28,7 @@
 
 - name: Process and apply template
   shell: >
-    oc process {{ template.name }}
+    {{ oc_cmd }} process {{ template.name }}
     -n {{ template.namespace | default(project.name) }}
     {% if template.parameters is defined %}
     {% for key, value in template.parameters.iteritems() %}
@@ -36,7 +36,7 @@
     {% endfor %}
     {% endif %}
     {% if template.overwrite | default(False) | bool %}--overwrite{% endif %}
-    | oc apply -n {{ project.name | quote }} -f -
+    | {{ oc_cmd }} apply -n {{ project.name | quote }} -f -
   register: process_template
   when: >-
     not template.no_update|default(False)|bool or

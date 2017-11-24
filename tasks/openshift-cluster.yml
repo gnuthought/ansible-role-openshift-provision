@@ -1,65 +1,22 @@
-# Process cluster_resources before processing other items, including projects.
-# This allows items like cluster roles to be defined within cluster_resources.
-- include: resource.yml
-  static: false
-  with_items: "{{ openshift_cluster.cluster_resources | default([]) }}"
-  loop_control:
-    loop_var: resource
-
-- include: persistent-volume.yml
-  with_items: "{{ openshift_cluster.persistent_volumes | default([]) }}"
-  loop_control:
-    loop_var: persistent_volume
-
-- include: group.yml
-  with_items: "{{ openshift_cluster.groups | default([]) | union(user_groups | default([])) }}"
-  loop_control:
-    loop_var: group
-
-- include: cluster-role.yml
-  with_items: "{{ openshift_cluster.cluster_roles | default([]) }}"
-  loop_control:
-    loop_var: cluster_role
-
-- name: Get cluster role bindings
-  command: oc get clusterrolebinding -o json
+- name: Login to cluster
+  command: >-
+    {{ oc_cmd_base }} login
+    --username={{ openshift_cluster.login.username | quote }}
+    --password={{ openshift_cluster.login.password | quote }}
+  when: openshift_cluster.login is defined
   changed_when: false
-  register: get_cluster_role_bindings
 
-- include: cluster-role-binding.yml
-  with_items: "{{ openshift_cluster.cluster_role_bindings | default([]) }}"
-  loop_control:
-    loop_var: cluster_role_binding
+- name: Get login session token
+  command: >-
+    oc whoami -t
+  when: openshift_cluster.login is defined
+  register: oc_get_token
+  changed_when: false
+
+- include: openshift-cluster-provision.yml
   vars:
-    current_cluster_role_bindings: "{{ get_cluster_role_bindings.stdout | from_json }}"
-    current_cluster_role_users_query: "items[?roleRef.name=='{{ cluster_role_binding.role }}'].userNames[]"
-    current_cluster_role_users: >
-      {{ current_cluster_role_bindings | json_query(current_cluster_role_users_query) }}
-    current_cluster_role_groups_query: "items[?roleRef.name=='{{ cluster_role_binding.role }}'].groupNames[]"
-    current_cluster_role_groups: >
-      {{ current_cluster_role_bindings | json_query(current_cluster_role_groups_query) }}
-
-- include: cluster-resource-quota.yml
-  with_items: "{{ openshift_cluster.cluster_resource_quotas | default([]) }}"
-  loop_control:
-    loop_var: cluster_resource_quota
-
-- include: project.yml
-  with_items: "{{ openshift_cluster.projects | default([]) }}"
-  loop_control:
-    loop_var: project
-
-- include: openshift-resources.yml
-  static: no
-  vars:
-    openshift_resources: "{{ openshift_cluster.openshift_resources }}"
-  when: openshift_cluster.openshift_resources is defined
-
-# Process resources after processing other items such as projects. This
-# allows creation of resources in multiple projects in a specific order by
-# specifying the namespace in the resource metadata.
-- include: resource.yml
-  static: false
-  with_items: "{{ openshift_cluster.resources | default([]) }}"
-  loop_control:
-    loop_var: resource
+    oc_cmd: >-
+      {{ oc_cmd_base }}
+      {% if openshift_cluster.login is defined %}
+      --token={{ oc_get_token.stdout }}
+      {% endif %}
