@@ -1,3 +1,4 @@
+---
 - when: resource.metadata.namespace is defined
   include: project-resource.yml
   vars:

@@ -1,13 +1,13 @@
 - name: Check if project {{ project.name }} exists
   command: >
-    oc get project {{ project.name }} -o json
+    {{ oc_cmd }} get project {{ project.name }} -o json
   changed_when: false
   failed_when: false
   register: get_project
 
 - name: Create project {{ project.name }}
   command: >
-    oc new-project {{ project.name }}
+    {{ oc_cmd }} new-project {{ project.name }}
     {% if project.display_name is defined %}--display-name={{ project.display_name | quote }}{% endif %}
     {% if project.description is defined %}--description={{ project.description | quote }}{% endif %}
     {% if project.node_selector is defined %}--node-selector={{ project.node_selector | quote }}{% endif %}
@@ -15,7 +15,7 @@
 
 - name: Set project display-name for {{ project.name }}
   command: >
-    oc patch namespace {{ project.name }}
+    {{ oc_cmd }} patch namespace {{ project.name }}
     -R -p {{ patch | to_json | quote }}
   vars:
     current_display_name: >-
@@ -37,7 +37,7 @@
 
 - name: Set project description for {{ project.name }}
   command: >
-    oc patch namespace {{ project.name }}
+    {{ oc_cmd }} patch namespace {{ project.name }}
     -R -p {{ patch | to_json | quote }}
   vars:
     current_description: >-
@@ -59,7 +59,7 @@
 
 - name: Set project node-selector for {{ project.name }}
   command: >
-    oc patch namespace {{ project.name }}
+    {{ oc_cmd }} patch namespace {{ project.name }}
     -R -p {{ patch | to_json | quote }}
   vars:
     current_node_selector: >-
@@ -81,7 +81,7 @@
 
 - name: Set project annotations for {{ project.name }}
   command: >
-    oc patch namespace {{ project.name | quote }}
+    {{ oc_cmd }} patch namespace {{ project.name | quote }}
     -R -p {{ patch | to_json | quote }}
   vars:
     current_annotations: >-
@@ -103,7 +103,7 @@
 
 - name: Set project labels for {{ project.name }}
   command: >
-    oc patch namespace {{ project.name | quote }}
+    {{ oc_cmd }} patch namespace {{ project.name | quote }}
     -R -p {{ patch | to_json | quote }}
   vars:
     current_labels: >-
