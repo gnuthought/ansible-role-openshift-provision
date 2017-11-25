@@ -29,12 +29,6 @@
   loop_control:
     loop_var: project
 
-- include: openshift-resources.yml
-  static: no
-  vars:
-    openshift_resources: "{{ openshift_cluster.openshift_resources }}"
-  when: openshift_cluster.openshift_resources is defined
-
 # Process resources after processing other items such as projects. This
 # allows creation of resources in multiple projects in a specific order by
 # specifying the namespace in the resource metadata.
