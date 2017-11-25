@@ -1,16 +1,9 @@
 - name: Login to cluster
   command: >-
     {{ oc_cmd_base }} login
-    {% if openshift_cluster.login is defined %}
     --username={{ openshift_cluster.login.username | quote }}
     --password={{ openshift_cluster.login.password | quote }}
-    {% else %}
-    --username={{ openshift_login_username | quote }}
-    --password={{ openshift_login_password | quote }}
-    {% endif %}
-  when: >-
-    openshift_login_username is defined or
-    openshift_cluster.login is defined
+  when: openshift_cluster.login is defined
   changed_when: false
 
 - name: Get login session token

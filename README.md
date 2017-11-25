@@ -18,54 +18,7 @@ OCP 3.3+
 Role Variables
 --------------
 
-* `resource_definition` - Ansible variables file definining resources to
-   create by use of `include_vars`
-
-* `openshift_clusters` - Array of openshift cluster definitions as defined
-  below
-
-* `openshift_connection_certificate_authority` - ...
-
-* `openshift_connection_insecure_skip_tls_verify` - ...
-
-* `openshift_connection_server` - ...
-
-* `openshift_connection_token` - ...
-
-* `openshift_login_username` - ...
-
-* `openshift_login_password` - ...
-
-* `user_groups` (DEPRECATED) - Array of groups to create across all clusters,
-  use of `groups` under `openshift_clusters` is preferred 
-
-### OpenShift cluster definitions
-
-* `connection` - OpenShift connection parameters, defined to match `oc` command
-  line including `server`, `certificate_authority`, `insecure_skip_tls_verify`,
-  and `token`. If omitted then it is assumed the environment is already has a
-  valid OpenShift command line login session
-
-* `login` - Credentials for login to the OpenShift cluster, `username` and
-  `password`
-
-* `cluster_resources` - Array of OpenShift resource definitions, these should
-  be cluster level resources
-
-* `cluster_resource_quotas` - ...
-
-* `cluster_roles` - Array of standard OpenShift cluster role definitions
-
-* `cluster_role_bindings` - ...
-
-* `groups` - ...
-
-* `persistent_volumes` - ...
-
-* `projects` - ...
-
-* `resources` - Array of OpenShift resource definitions, these should be
-  project level resources that define the namespace
+* `resource_definition` - Ansible variables file definining resources to create
 
 Example Playbook
 ----------------
@@ -77,12 +30,45 @@ Example Playbook
 
 Example resources file:
 
+    app_project_quota:
+      hard:
+        requests.cpu: "10"
+        requests.memory: "50Gi"
+        limits.cpu: "20"
+        limits.memory: "50Gi"
+
+    app_limit_range:
+      limits:
+      - type: Pod
+        min:
+          cpu: 50m
+          memory: 4Mi
+        max:
+          cpu: "2"
+          memory: 5Gi
+      - type: Container
+        min:
+          cpu: 50m
+          memory: 4Mi
+        max:
+          cpu: "2"
+          memory: 5Gi
+        default:
+          cpu: "1"
+          memory: 1Gi
+        defaultRequest:
+          cpu: 200m
+          memory: 1Gi
+
+    user_groups:
+    - name: app-admin
+      remove_unlisted_members: true
+      members:
+      - alice
+      - bob
+    
     openshift_clusters:
-    - connection:
-        server: openshift-master.libvirt
-      login:
-        username: username
-        password: password
+    - openshift_host_env: master.openshift.libvirt
 
       cluster_roles:
       - metadata:
@@ -127,14 +113,6 @@ Example resources file:
             annotations:
               openshift.io/requester: system:serviceaccount:app-dev:jenkins
 
-      groups:
-      - name: app-admin
-        remove_unlisted_members: true
-        members:
-        - alice
-        - bob
-    
-
       persistent_volumes:
     
       - name: pv01
@@ -167,36 +145,10 @@ Example resources file:
           application: appname
         quotas:
         - name: compute
-          spec:
-            hard:
-              requests.cpu: "10"
-              requests.memory: "50Gi"
-              limits.cpu: "20"
-              limits.memory: "50Gi"
-              limit_ranges:
+          spec: "{{ app_project_quota }}"
+        limit_ranges:
         - name: compute
-          spec:
-            limits:
-            - type: Pod
-              min:
-                cpu: 50m
-                memory: 4Mi
-              max:
-                cpu: "2"
-                memory: 5Gi
-            - type: Container
-              min:
-                cpu: 50m
-                memory: 4Mi
-              max:
-                cpu: "2"
-                memory: 5Gi
-              default:
-                cpu: "1"
-                memory: 1Gi
-              defaultRequest:
-                cpu: 200m
-                memory: 1Gi
+          spec: "{{ app_limit_range }}"
         service_accounts:
         - name: jenkins
         role_bindings:
@@ -217,13 +169,7 @@ Example resources file:
           application: appname
         quotas:
         - name: compute
-          spec:
-            hard:
-              requests.cpu: "10"
-              requests.memory: "50Gi"
-              limits.cpu: "20"
-              limits.memory: "50Gi"
-              limit_ranges:
+          spec: "{{ app_project_quota }}"
         role_bindings:
         - role: admin
           groups: app-admin
