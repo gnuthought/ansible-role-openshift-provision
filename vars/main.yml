@@ -5,14 +5,17 @@ openshift_provision_supported_project_resource_types:
 - ConfigMap
 - DaemonSet
 - DeploymentConfig
+- Deployment
 - ImageStream
 - LimitRange
 - PersistentVolumeClaim
 - ReplicationController
+- ReplicaSet
 - ResourceQuota
 - Route
 - Secret
 - Service
+- StatefulSet
 - Template
 
 openshift_provision_supported_cluster_resource_types:
