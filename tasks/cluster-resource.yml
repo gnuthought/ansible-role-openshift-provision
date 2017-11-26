@@ -43,15 +43,17 @@
 - name: Update {{ resource.kind }} {{ resource.metadata.name }}
   shell:
     echo {{ resource | to_json | quote }}
-    | {{ oc_cmd }} apply -f -
+    | {{ oc_cmd }} {{ resource_action }} -f -
   vars:
     curr_resource: >
       {{
         (get_resource.stdout if get_resource.rc == 0 else '{}')
         | from_json
       }}
+    resource_action: "{{ resource.action | default('apply') }}"
   when: >
     not( resource.no_update | default(False) | bool ) and
+    not( resource_action == 'create' ) and
     get_resource.rc == 0 and (
       curr_resource | json_query('spec') !=
         resource | json_query('spec')
