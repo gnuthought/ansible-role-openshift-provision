@@ -1,3 +1,5 @@
+# DEPRECATED - LimitRange resources should be created through `resources`
+---
 - name: Get current {{ limit_range.name }} limit range on {{ project.name }}
   command: >
     {{ oc_cmd }} get limitrange {{ limit_range.name }} -n {{ project.name }} -o json

@@ -21,7 +21,6 @@
   loop_control:
     loop_var: user
 
-# FIXME - Handle group.members entries that are mappings with user_name key
 - name: Remove unlisted members from group {{ group.name }}
   command: >
     {{ oc_cmd }} adm groups remove-users {{ group.name }} {{ user }}

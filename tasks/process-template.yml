@@ -16,18 +16,23 @@
 #   `no_update` - boolean flag (optional)
 #
 
+# FIXME - Add support for template files
+
 # FIXME - Figure out a way to detect if apply actually changed anything and
 #         set changed_when to match.
+
 - name: Check if template is deployed
   command: >
     {{ oc_cmd }} get all -l template={{ template.name }}
   failed_when: false
   changed_when: false
   register: check_template_deployed
-  when: template.no_update | default(False) | bool
+  when: >-
+    template.no_update | default(False) | bool or
+    'create' == template.action | default('apply')
 
 - name: Process and apply template
-  shell: >
+  shell: >-
     {{ oc_cmd }} process {{ template.name }}
     -n {{ template.namespace | default(project.name) }}
     {% if template.parameters is defined %}
@@ -35,9 +40,17 @@
     -p {{ (key ~ '=' ~ value) | quote }}
     {% endfor %}
     {% endif %}
+    | {{ oc_cmd }} {{ template.action | default('apply') }} -f -
+    -n {{ project.name | quote }}
+    {% if template.cascade | default(False) | bool %}--cascade{% endif %}
+    {% if template.force | default(False) | bool %}--force{% endif %}
     {% if template.overwrite | default(False) | bool %}--overwrite{% endif %}
-    | {{ oc_cmd }} apply -n {{ project.name | quote }} -f -
+    {% if template.prune | default(False) | bool %}--prune{% endif %}
+    {% for prune_whitelist in template.prune_whitelist | default([]) %}
+     --prune-whitelist={{ prune_whitelist }}
+    {% endfor %}
   register: process_template
   when: >-
-    not template.no_update|default(False)|bool or
-    'No resources found' in check_template_deployed.stdout
+    'No resources found' in check_template_deployed.stdout or
+    not( 'create' == template.action | default('apply) ) or
+    not( template.no_update | default(False) | bool )

@@ -1,0 +1,109 @@
+---
+- hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    persistent_volume:
+      apiVersion: v1
+      kind: PersistentVolume                                                
+      metadata:
+        creationTimestamp: null                          
+        labels:                                                   
+          foo: bar                                                   
+        name: nfs-foo                                                        
+      spec:                                                                 
+        accessModes:  
+        - ReadWriteMany                                                 
+        capacity:                                                            
+          storage: 10Gi                                                      
+        nfs:                                                                 
+          path: /export/foo                                                  
+          server: nfsserver.example.com                                     
+        persistentVolumeReclaimPolicy: Retain  
+      status: {}
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - cluster_resources:
+      - "{{ persistent_volume }}"
+
+  tasks:
+  - name: Get PersistentVolume
+    command: oc export persistentvolume nfs-foo -o yaml
+    register: get_persistentvolume
+    changed_when: false
+
+  - name: Verify PersistentVolume
+    fail:
+      msg: |
+        PersistentVolume not defined as expected
+        >>>
+        {{ persistent_volume | to_yaml }}
+        ===
+        {{ got_persistentvolume | to_yaml }}
+        <<<
+    vars:
+      got_persistentvolume: "{{ get_persistentvolume.stdout | from_yaml }}"
+      blank_last_applied_configuration:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+    when: >-
+      persistent_volume | combine(blank_last_applied_configuration, recursive=True) !=
+      got_persistentvolume | combine(blank_last_applied_configuration, recursive=True)
+
+- hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    persistent_volume:
+      apiVersion: v1
+      kind: PersistentVolume                                                
+      metadata:
+        creationTimestamp: null                          
+        labels:                                                   
+          foo: bartest                                                  
+        name: nfs-foo                                                        
+      spec:                                                                 
+        accessModes:  
+        - ReadWriteMany                                                 
+        capacity:                                                            
+          storage: 10Gi                                                      
+        nfs:                                                                 
+          path: /export/foo                                                  
+          server: nfsserver.example.com                                     
+        persistentVolumeReclaimPolicy: Retain  
+      status: {}
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - cluster_resources:
+      - "{{ persistent_volume }}"
+
+  tasks:
+  - name: Get PersistentVolume
+    command: oc export persistentvolume nfs-foo -o yaml
+    register: get_persistentvolume
+    changed_when: false
+
+  - name: Verify PersistentVolume Update
+    fail:
+      msg: |
+        PersistentVolume not defined as expected
+        >>>
+        {{ persistent_volume | to_yaml }}
+        ===
+        {{ got_persistentvolume | to_yaml }}
+        <<<
+    vars:
+      got_persistentvolume: "{{ get_persistentvolume.stdout | from_yaml }}"
+      blank_last_applied_configuration:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+    when: >-
+      persistent_volume | combine(blank_last_applied_configuration, recursive=True) !=
+      got_persistentvolume | combine(blank_last_applied_configuration, recursive=True)
