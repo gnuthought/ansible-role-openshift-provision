@@ -1,0 +1,17 @@
+---
+- hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - groups:
+      - name: subgenius
+        members:
+        - alice
+        - bob
+        remove_unlisted_members: True
+
+# FIXME - Add Verification

@@ -1,0 +1,110 @@
+---
+- hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    cluster_resource_quota:
+      apiVersion: v1
+      kind: ClusterResourceQuota
+      metadata:
+        creationTimestamp: null
+        name: test-clusterresourcequota
+      spec:
+        quota: 
+          hard:
+            pods: "10"
+            secrets: "20"
+        selector:
+          annotations: 
+            openshift.io/requester: testuser
+          labels: null 
+      status:
+        namespaces: null
+        total: {}
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - cluster_resources:
+      - "{{ cluster_resource_quota }}"
+
+  tasks:
+  - name: Get ClusterResourceQuota
+    command: oc export clusterresourcequota test-clusterresourcequota -o yaml
+    register: get_clusterresourcequota
+    changed_when: false
+
+  - name: Verify ClusterResourceQuota
+    fail:
+      msg: |
+        ClusterResourceQuota not defined as expected
+        >>>
+        {{ cluster_resource_quota | to_yaml }}
+        ===
+        {{ got_clusterresourcequota | to_yaml }}
+        <<<
+    vars:
+      got_clusterresourcequota: "{{ get_clusterresourcequota.stdout | from_yaml }}"
+      blank_last_applied_configuration:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+    when: >-
+      cluster_resource_quota | combine(blank_last_applied_configuration, recursive=True) !=
+      got_clusterresourcequota | combine(blank_last_applied_configuration, recursive=True)
+
+- hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    cluster_resource_quota:
+      apiVersion: v1
+      kind: ClusterResourceQuota
+      metadata:
+        creationTimestamp: null
+        name: test-clusterresourcequota
+      spec:
+        quota: 
+          hard:
+            pods: "20"
+            secrets: "30"
+        selector:
+          annotations: 
+            openshift.io/requester: testuser
+          labels: null 
+      status:
+        namespaces: null
+        total: {}
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - cluster_resources:
+      - "{{ cluster_resource_quota }}"
+
+  tasks:
+  - name: Get ClusterResourceQuota
+    command: oc export clusterresourcequota test-clusterresourcequota -o yaml
+    register: get_clusterresourcequota
+    changed_when: false
+
+  - name: Verify ClusterResourceQuota Update
+    fail:
+      msg: |
+        ClusterResourceQuota not defined as expected
+        >>>
+        {{ cluster_resource_quota | to_yaml }}
+        ===
+        {{ got_clusterresourcequota | to_yaml }}
+        <<<
+    vars:
+      got_clusterresourcequota: "{{ get_clusterresourcequota.stdout | from_yaml }}"
+      blank_last_applied_configuration:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+    when: >-
+      cluster_resource_quota | combine(blank_last_applied_configuration, recursive=True) !=
+      got_clusterresourcequota | combine(blank_last_applied_configuration, recursive=True)

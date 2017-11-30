@@ -1,0 +1,32 @@
+---
+- hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - cluster_resources:
+      - apiVersion: v1
+        kind: ClusterRole
+        metadata:
+          creationTimestamp: null
+          name: test-cluster-role
+        rules:
+        - apiGroups:
+          - ""
+          attributeRestrictions: null
+          resources:
+          - pods
+          verbs:
+          - get
+      cluster_role_bindings:
+      - role: test-cluster-role
+        users:
+        - bob
+        groups:
+        - subgenius
+        remove_unlisted: True
+
+# FIXME - Add Verification
