@@ -1,1 +1,20 @@
-#FIXME
+---
+- hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: testproj
+        annotations:
+          test-annotation: foo
+        description: Test Project Description
+        display_name: Test Project
+        labels:
+          test-label: bar
+        node_selector: region=app
+
+# FIXME - Add Validation
