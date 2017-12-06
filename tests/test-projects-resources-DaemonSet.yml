@@ -1,1 +1,190 @@
-#FIXME
+---
+- hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    daemonset:
+      apiVersion: extensions/v1beta1
+      kind: DaemonSet
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: ''
+        creationTimestamp: null
+        generation: 0
+        labels: 
+          name: test-daemonset
+        name: test-daemonset
+      spec:
+        selector:
+          matchLabels:
+            name: test-daemonset
+        template:
+          metadata:
+            creationTimestamp: null
+            labels:
+              name: test-daemonset
+          spec:
+            containers:
+            - image: openshift/hello-openshift
+              imagePullPolicy: IfNotPresent
+              name: registry
+              ports:
+              - containerPort: 80
+                protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+            dnsPolicy: ClusterFirst
+            nodeSelector:
+              type: infra
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            serviceAccount: default
+            serviceAccountName: default
+            terminationGracePeriodSeconds: 10
+        templateGeneration: 0
+        updateStrategy:
+          type: OnDelete
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: testproj
+        resources:
+        - "{{ daemonset }}"
+
+  tasks:
+  - set_fact:
+      test_oc_cmd: >-
+        oc
+        {% if openshift_connection_certificate_authority is defined %}
+        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
+        {% endif %}
+        {% if openshift_connection_insecure_skip_tls_verify is defined %}
+        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+        {% endif %}
+        {% if openshift_connection_server is defined %}
+        --server={{ openshift_connection_server | quote }}
+        {% endif %}
+        {% if openshift_connection_token is defined %}
+        --token={{ openshift_connection_token | quote }}
+        {% endif %}
+
+  - name: Get DaemonSet
+    command: >-
+      {{ test_oc_cmd }} export daemonset test-daemonset -n testproj -o yaml
+    register: get_daemonset
+    changed_when: false
+
+  - name: Verify DaemonSet
+    fail:
+      msg: |
+        DaemonSet not defined as expected
+        >>>
+        {{ daemonset | to_yaml }}
+        ===
+        {{ got_daemonset | combine(ignore_changes, recursive=True) | to_yaml }}
+        <<<
+    vars:
+      got_daemonset: "{{ get_daemonset.stdout | from_yaml | combine(ignore_changes, recursive=True) }}"
+      ignore_changes:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+          generation: 0
+        spec:
+          templateGeneration: 0
+    when: >-
+      daemonset.metadata != got_daemonset.metadata or
+      daemonset.spec != got_daemonset.spec
+
+- hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    daemonset:
+      apiVersion: extensions/v1beta1
+      kind: DaemonSet
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: ''
+        creationTimestamp: null
+        generation: 0
+        labels: 
+          name: test-daemonset
+        name: test-daemonset
+      spec:
+        selector:
+          matchLabels:
+            name: test-daemonset
+        template:
+          metadata:
+            creationTimestamp: null
+            labels:
+              name: test-daemonset
+          spec:
+            containers:
+            - image: openshift/hello-openshift
+              imagePullPolicy: Always
+              name: registry
+              ports:
+              - containerPort: 80
+                protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+            dnsPolicy: ClusterFirst
+            nodeSelector:
+              type: infra
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            serviceAccount: default
+            serviceAccountName: default
+            terminationGracePeriodSeconds: 10
+        templateGeneration: 0
+        updateStrategy:
+          type: OnDelete
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: testproj
+        resources:
+        - "{{ daemonset }}"
+
+  tasks:
+  - name: Get DaemonSet
+    command: >-
+      {{ test_oc_cmd }} export daemonset test-daemonset -n testproj -o yaml
+    register: get_daemonset
+    changed_when: false
+
+  - name: Verify DaemonSet Update
+    fail:
+      msg: |
+        DaemonSet not defined as expected
+        >>>
+        {{ daemonset | to_yaml }}
+        ===
+        {{ got_daemonset | combine(ignore_changes, recursive=True) | to_yaml }}
+        <<<
+    vars:
+      got_daemonset: "{{ get_daemonset.stdout | from_yaml | combine(ignore_changes, recursive=True) }}"
+      ignore_changes:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+          generation: 0
+        spec:
+          templateGeneration: 0
+    when: >-
+      daemonset.metadata != got_daemonset.metadata or
+      daemonset.spec != got_daemonset.spec

@@ -30,8 +30,25 @@
       - "{{ cluster_resource_quota }}"
 
   tasks:
+  - set_fact:
+      test_oc_cmd: >-
+        oc
+        {% if openshift_connection_certificate_authority is defined %}
+        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
+        {% endif %}
+        {% if openshift_connection_insecure_skip_tls_verify is defined %}
+        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+        {% endif %}
+        {% if openshift_connection_server is defined %}
+        --server={{ openshift_connection_server | quote }}
+        {% endif %}
+        {% if openshift_connection_token is defined %}
+        --token={{ openshift_connection_token | quote }}
+        {% endif %}
+
   - name: Get ClusterResourceQuota
-    command: oc export clusterresourcequota test-clusterresourcequota -o yaml
+    command: >-
+      {{ test_oc_cmd }} export clusterresourcequota test-clusterresourcequota -o yaml
     register: get_clusterresourcequota
     changed_when: false
 
@@ -86,7 +103,8 @@
 
   tasks:
   - name: Get ClusterResourceQuota
-    command: oc export clusterresourcequota test-clusterresourcequota -o yaml
+    command: >-
+      {{ test_oc_cmd }} export clusterresourcequota test-clusterresourcequota -o yaml
     register: get_clusterresourcequota
     changed_when: false
 
