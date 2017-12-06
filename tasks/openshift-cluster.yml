@@ -1,29 +1,30 @@
-- name: Login to cluster
-  command: >-
-    {{ oc_cmd_base }} login
-    {% if openshift_cluster.login is defined %}
-    --username={{ openshift_cluster.login.username | quote }}
-    --password={{ openshift_cluster.login.password | quote }}
-    {% else %}
-    --username={{ openshift_login_username | quote }}
-    --password={{ openshift_login_password | quote }}
-    {% endif %}
-  when: >-
+---
+- when: >-
     openshift_login_username is defined or
     openshift_cluster.login is defined
-  changed_when: false
+  block:
+  - name: Login to cluster
+    command: >-
+      {{ oc_cmd_base }} login
+      {% if openshift_cluster.login is defined %}
+      --username={{ openshift_cluster.login.username | quote }}
+      --password={{ openshift_cluster.login.password | quote }}
+      {% else %}
+      --username={{ openshift_login_username | quote }}
+      --password={{ openshift_login_password | quote }}
+      {% endif %}
+    changed_when: false
 
-- name: Get login session token
-  command: >-
-    oc whoami -t
-  when: openshift_cluster.login is defined
-  register: oc_get_token
-  changed_when: false
+  - name: Get login session token
+    command: >-
+      oc whoami -t
+    register: oc_get_token
+    changed_when: false
 
 - include: openshift-cluster-provision.yml
   vars:
     oc_cmd: >-
       {{ oc_cmd_base }}
-      {% if openshift_cluster.login is defined %}
+      {% if not oc_get_token.skipped | default(False) %}
       --token={{ oc_get_token.stdout }}
       {% endif %}
