@@ -1,1 +1,237 @@
-#FIXME
+---
+- name: Test Provision
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  tasks:
+  - set_fact:
+      test_oc_cmd: >-
+        oc
+        {% if openshift_connection_certificate_authority is defined %}
+        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
+        {% endif %}
+        {% if openshift_connection_insecure_skip_tls_verify is defined %}
+        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+        {% endif %}
+        {% if openshift_connection_server is defined %}
+        --server={{ openshift_connection_server | quote }}
+        {% endif %}
+        {% if openshift_connection_token is defined %}
+        --token={{ openshift_connection_token | quote }}
+        {% endif %}
+      ignore_differences:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+            openshift.io/image.dockerRepositoryCheck: '1970-01-01T00:00:00Z'
+          creationTimestamp: null
+          generation: 0
+          namespace: ''
+          resourceVersion: '0'
+          selfLink: ''
+          uid: ''
+        spec:
+          tags:
+          - name: "5.5"
+            generation: null
+          - name: "5.6"
+            generation: null
+          - name: "5.7"
+            generation: null
+          - name: "latest"
+            generation: null
+          templateGeneration: 0
+
+- hosts: localhost
+  connection: local
+  vars:
+    provision_imagestream:
+      apiVersion: v1
+      kind: ImageStream
+      metadata:
+        labels:
+          provision-test: imagestream
+        name: test-imagestream
+      spec:
+        lookupPolicy:
+          local: false
+        tags:
+        - annotations:
+            description: Provides a MySQL 5.5 database on RHEL 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/mysql-container/tree/master/5.5/README.md.
+            iconClass: icon-mysql-database
+            openshift.io/display-name: MySQL 5.5
+            tags: hidden,mysql
+            version: "5.5"
+          from:
+            kind: DockerImage
+            name: registry.access.redhat.com/openshift3/mysql-55-rhel7:latest
+          generation: 2
+          importPolicy: {}
+          name: "5.5"
+          referencePolicy:
+            type: Source
+        - annotations:
+            description: Provides a MySQL 5.6 database on RHEL 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/mysql-container/tree/master/5.6/README.md.
+            iconClass: icon-mysql-database
+            openshift.io/display-name: MySQL 5.6
+            tags: mysql
+            version: "5.6"
+          from:
+            kind: DockerImage
+            name: registry.access.redhat.com/rhscl/mysql-56-rhel7:latest
+          generation: 2
+          importPolicy: {}
+          name: "5.6"
+          referencePolicy:
+            type: Source
+        - annotations:
+            description: |-
+              Provides a MySQL database on RHEL 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/mysql-container/tree/master/5.6/README.md.
+              WARNING: By selecting this tag, your application will automatically update to use the latest version of MySQL available on OpenShift, including major versions updates.
+            iconClass: icon-mysql-database
+            openshift.io/display-name: MySQL (Latest)
+            tags: mysql
+          from:
+            kind: ImageStreamTag
+            name: "5.6"
+          generation: 1
+          importPolicy: {}
+          name: latest
+          referencePolicy:
+            type: Source
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: testproj
+        resources:
+        - "{{ provision_imagestream }}"
+
+  tasks:
+  - name: Get ImageStream
+    command: >-
+      {{ test_oc_cmd }} get imagestream test-imagestream -n testproj -o json
+    register: get_imagestream
+    changed_when: false
+
+  - name: Verify ImageStream
+    fail:
+      msg: |
+        ImageStream not defined as expected
+        >>>
+        {{ cmp_imagestream | to_yaml }}
+        ===
+        {{ got_imagestream | to_yaml }}
+        <<<
+    vars:
+      got_imagestream: "{{ get_imagestream.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_imagestream: "{{ provision_imagestream | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_imagestream.metadata != got_imagestream.metadata or
+      cmp_imagestream.spec != got_imagestream.spec
+
+- name: Test Update
+  hosts: localhost
+  connection: local
+  vars:
+    provision_imagestream:
+      apiVersion: v1
+      kind: ImageStream
+      metadata:
+        labels:
+          provision-test: imagestream
+        name: test-imagestream
+      spec:
+        lookupPolicy:
+          local: false
+        tags:
+        - annotations:
+            description: Provides a MySQL 5.5 database on RHEL 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/mysql-container/tree/master/5.5/README.md.
+            iconClass: icon-mysql-database
+            openshift.io/display-name: MySQL 5.5
+            tags: hidden,mysql
+            version: "5.5"
+          from:
+            kind: DockerImage
+            name: registry.access.redhat.com/openshift3/mysql-55-rhel7:latest
+          generation: 2
+          importPolicy: {}
+          name: "5.5"
+          referencePolicy:
+            type: Source
+        - annotations:
+            description: Provides a MySQL 5.6 database on RHEL 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/mysql-container/tree/master/5.6/README.md.
+            iconClass: icon-mysql-database
+            openshift.io/display-name: MySQL 5.6
+            tags: mysql
+            version: "5.6"
+          from:
+            kind: DockerImage
+            name: registry.access.redhat.com/rhscl/mysql-56-rhel7:latest
+          generation: 2
+          importPolicy: {}
+          name: "5.6"
+          referencePolicy:
+            type: Source
+        - annotations:
+            description: Provides a MySQL 5.7 database on RHEL 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/mysql-container/tree/master/5.7/README.md.
+            iconClass: icon-mysql-database
+            openshift.io/display-name: MySQL 5.7
+            tags: mysql
+            version: "5.7"
+          from:
+            kind: DockerImage
+            name: registry.access.redhat.com/rhscl/mysql-57-rhel7:latest
+          generation: 2
+          importPolicy: {}
+          name: "5.7"
+          referencePolicy:
+            type: Source
+        - annotations:
+            description: |-
+              Provides a MySQL database on RHEL 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/mysql-container/tree/master/5.6/README.md.
+              WARNING: By selecting this tag, your application will automatically update to use the latest version of MySQL available on OpenShift, including major versions updates.
+            iconClass: icon-mysql-database
+            openshift.io/display-name: MySQL (Latest)
+            tags: mysql
+          from:
+            kind: ImageStreamTag
+            name: "5.7"
+          generation: 1
+          importPolicy: {}
+          name: latest
+          referencePolicy:
+            type: Source
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: testproj
+        resources:
+        - "{{ provision_imagestream }}"
+
+  tasks:
+  - name: Get ImageStream
+    command: >-
+      {{ test_oc_cmd }} get imagestream test-imagestream -n testproj -o json
+    register: get_imagestream
+    changed_when: false
+
+  - name: Verify ImageStream Update
+    fail:
+      msg: |
+        ImageStream not defined as expected
+        >>>
+        {{ cmp_imagestream | to_yaml }}
+        ===
+        {{ got_imagestream | to_yaml }}
+        <<<
+    vars:
+      got_imagestream: "{{ get_imagestream.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_imagestream: "{{ provision_imagestream | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_imagestream.metadata != got_imagestream.metadata or
+      cmp_imagestream.spec != got_imagestream.spec
