@@ -64,6 +64,12 @@
       curr_resource | json_query('objects') !=
         resource | json_query('objects')
       or
+      curr_resource | json_query('secrets') !=
+        resource | json_query('secrets')
+      or
+      curr_resource | json_query('imagePullSecrets') !=
+        resource | json_query('imagePullSecrets')
+      or
       ( curr_resource | json_query('metadata.labels') or {} ) !=
       ( curr_resource | json_query('metadata.labels') or {} )
         | combine(resource | json_query('metadata.labels') or {}, recursive=True)
