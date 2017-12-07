@@ -51,6 +51,6 @@
     {% endfor %}
   register: process_template
   when: >-
-    'No resources found' in check_template_deployed.stdout or
-    not( 'create' == template.action | default('apply) ) or
-    not( template.no_update | default(False) | bool )
+    not( 'create' == template.action | default('apply') ) or
+    not( template.no_update | default(False) | bool ) or
+    'No resources found' in check_template_deployed.stdout

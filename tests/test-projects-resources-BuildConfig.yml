@@ -1,1 +1,150 @@
-#FIXME
+---
+- hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    buildconfig:
+      apiVersion: v1
+      kind: BuildConfig
+      metadata:
+        creationTimestamp: null
+        name: test-buildconfig
+      spec:
+        nodeSelector: null
+        output:
+          to:
+            kind: ImageStreamTag
+            name: testbuild:latest
+        postCommit: {}
+        resources: {}
+        runPolicy: Serial
+        source:
+          git:
+            uri: https://nosuch.example.com/blah.git
+          type: Git
+        strategy:
+          sourceStrategy:
+            from:
+              kind: ImageStreamTag
+              name: httpd:2.4
+              namespace: openshift
+          type: Source
+        triggers: []
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: testproj
+        resources:
+        - "{{ buildconfig }}"
+
+  tasks:
+  - set_fact:
+      test_oc_cmd: >-
+        oc
+        {% if openshift_connection_certificate_authority is defined %}
+        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
+        {% endif %}
+        {% if openshift_connection_insecure_skip_tls_verify is defined %}
+        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+        {% endif %}
+        {% if openshift_connection_server is defined %}
+        --server={{ openshift_connection_server | quote }}
+        {% endif %}
+        {% if openshift_connection_token is defined %}
+        --token={{ openshift_connection_token | quote }}
+        {% endif %}
+
+  - name: Get BuildConfig
+    command: >-
+      {{ test_oc_cmd }} export buildconfig test-buildconfig -n testproj -o yaml
+    register: get_buildconfig
+    changed_when: false
+
+  - name: Verify BuildConfig
+    fail:
+      msg: |
+        BuildConfig not defined as expected
+        >>>
+        {{ buildconfig | to_yaml }}
+        ===
+        {{ got_buildconfig | to_yaml }}
+        <<<
+    vars:
+      got_buildconfig: "{{ get_buildconfig.stdout | from_yaml }}"
+      blank_last_applied_configuration:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: ''
+    when: >-
+      buildconfig.spec != got_buildconfig.spec or
+      buildconfig.metadata | combine(blank_last_applied_configuration, recursive=True) !=
+      got_buildconfig.metadata | combine(blank_last_applied_configuration, recursive=True)
+
+- hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    buildconfig:
+      apiVersion: v1
+      kind: BuildConfig
+      metadata:
+        creationTimestamp: null
+        name: test-buildconfig
+      spec:
+        nodeSelector: null
+        output:
+          to:
+            kind: ImageStreamTag
+            name: testbuild:latest
+        postCommit: {}
+        resources: {}
+        runPolicy: Serial
+        source:
+          git:
+            uri: https://nosuch.example.com/blah.git
+          type: Git
+        strategy:
+          sourceStrategy:
+            from:
+              kind: ImageStreamTag
+              name: httpd:latest
+              namespace: openshift
+          type: Source
+        triggers: []
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: testproj
+        resources:
+        - "{{ buildconfig }}"
+
+  tasks:
+  - name: Get BuildConfig
+    command: >-
+      {{ test_oc_cmd }} export buildconfig test-buildconfig -n testproj -o yaml
+    register: get_buildconfig
+    changed_when: false
+
+  - name: Verify BuildConfig Update
+    fail:
+      msg: |
+        BuildConfig not defined as expected
+        >>>
+        {{ buildconfig | to_yaml }}
+        ===
+        {{ got_buildconfig | to_yaml }}
+        <<<
+    vars:
+      got_buildconfig: "{{ get_buildconfig.stdout | from_yaml }}"
+      blank_last_applied_configuration:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: ''
+    when: >-
+      buildconfig.spec != got_buildconfig.spec or
+      buildconfig.metadata | combine(blank_last_applied_configuration, recursive=True) !=
+      got_buildconfig.metadata | combine(blank_last_applied_configuration, recursive=True)

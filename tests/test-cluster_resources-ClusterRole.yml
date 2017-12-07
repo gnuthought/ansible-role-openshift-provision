@@ -47,8 +47,25 @@
       - "{{ cluster_role }}"
 
   tasks:
+  - set_fact:
+      test_oc_cmd: >-
+        oc
+        {% if openshift_connection_certificate_authority is defined %}
+        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
+        {% endif %}
+        {% if openshift_connection_insecure_skip_tls_verify is defined %}
+        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+        {% endif %}
+        {% if openshift_connection_server is defined %}
+        --server={{ openshift_connection_server | quote }}
+        {% endif %}
+        {% if openshift_connection_token is defined %}
+        --token={{ openshift_connection_token | quote }}
+        {% endif %}
+
   - name: Get ClusterRole
-    command: oc export clusterrole network-joiner -o yaml
+    command: >-
+      {{ test_oc_cmd }} export clusterrole network-joiner -o yaml
     register: get_clusterrole
     changed_when: false
 
@@ -121,7 +138,8 @@
 
   tasks:
   - name: Get ClusterRole
-    command: oc export clusterrole network-joiner -o yaml
+    command: >-
+      {{ test_oc_cmd }} export clusterrole network-joiner -o yaml
     register: get_clusterrole
     changed_when: false
 

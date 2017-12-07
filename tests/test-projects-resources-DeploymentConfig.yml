@@ -1,1 +1,249 @@
-#FIXME
+---
+- hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    deploymentconfig:
+      apiVersion: v1
+      kind: DeploymentConfig
+      metadata:
+        annotations: 
+          kubectl.kubernetes.io/last-applied-configuration: ''
+        creationTimestamp: null
+        generation: 0
+        labels:
+          provision-test: openshift-provision
+        name: test-deploymentconfig
+      spec:
+        replicas: 1
+        selector:
+          deploymentconfig: test-deploymentconfig
+        strategy:
+          activeDeadlineSeconds: 21600
+          resources: {}
+          rollingParams:
+            intervalSeconds: 1
+            maxSurge: 25%
+            maxUnavailable: 25%
+            timeoutSeconds: 600
+            updatePeriodSeconds: 1
+          type: Rolling
+        template:
+          metadata:
+            creationTimestamp: null
+            labels:
+              deploymentconfig: test-deploymentconfig
+          spec:
+            containers:
+            - image: registry.access.redhat.com/rhscl/httpd-24-rhel7:latest
+              imagePullPolicy: IfNotPresent
+              livenessProbe:
+                failureThreshold: 3
+                httpGet: 
+                  path: /
+                  port: 8080
+                  scheme: HTTP
+                initialDelaySeconds: 30
+                periodSeconds: 10
+                successThreshold: 1
+                timeoutSeconds: 3
+              name: httpd-example
+              readinessProbe:
+                failureThreshold: 3
+                httpGet: 
+                  path: /
+                  port: 8080
+                  scheme: HTTP
+                initialDelaySeconds: 3
+                periodSeconds: 10
+                successThreshold: 1
+                timeoutSeconds: 3
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+              securityContext:
+                privileged: false
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+            dnsPolicy: ClusterFirst
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+        templateGeneration: 0
+        test: false
+        triggers:
+        - type: ConfigChange
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: testproj
+        resources:
+        - "{{ deploymentconfig }}"
+
+  tasks:
+  - set_fact:
+      test_oc_cmd: >-
+        oc
+        {% if openshift_connection_certificate_authority is defined %}
+        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
+        {% endif %}
+        {% if openshift_connection_insecure_skip_tls_verify is defined %}
+        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+        {% endif %}
+        {% if openshift_connection_server is defined %}
+        --server={{ openshift_connection_server | quote }}
+        {% endif %}
+        {% if openshift_connection_token is defined %}
+        --token={{ openshift_connection_token | quote }}
+        {% endif %}
+
+  - name: Get DeploymentConfig
+    command: >-
+      {{ test_oc_cmd }} export deploymentconfig test-deploymentconfig -n testproj -o yaml
+    register: get_deploymentconfig
+    changed_when: false
+
+  - name: Verify DeploymentConfig
+    fail:
+      msg: |
+        DeploymentConfig not defined as expected
+        >>>
+        {{ deploymentconfig | to_yaml }}
+        ===
+        {{ got_deploymentconfig | combine(ignore_changes, recursive=True) | to_yaml }}
+        <<<
+    vars:
+      got_deploymentconfig: "{{ get_deploymentconfig.stdout | from_yaml | combine(ignore_changes, recursive=True) }}"
+      ignore_changes:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+          generation: 0
+        spec:
+          templateGeneration: 0
+    when: >-
+      deploymentconfig.metadata != got_deploymentconfig.metadata or
+      deploymentconfig.spec != got_deploymentconfig.spec
+
+- hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    deploymentconfig:
+      apiVersion: v1
+      kind: DeploymentConfig
+      metadata:
+        annotations: 
+          kubectl.kubernetes.io/last-applied-configuration: ''
+        creationTimestamp: null
+        generation: 0
+        labels:
+          provision-test: openshift-provision
+          newlabel: foo
+        name: test-deploymentconfig
+      spec:
+        replicas: 1
+        selector:
+          deploymentconfig: test-deploymentconfig
+        strategy:
+          activeDeadlineSeconds: 21600
+          resources: {}
+          rollingParams:
+            intervalSeconds: 1
+            maxSurge: 25%
+            maxUnavailable: 25%
+            timeoutSeconds: 600
+            updatePeriodSeconds: 1
+          type: Rolling
+        template:
+          metadata:
+            creationTimestamp: null
+            labels:
+              deploymentconfig: test-deploymentconfig
+          spec:
+            containers:
+            - image: registry.access.redhat.com/rhscl/httpd-24-rhel7:latest
+              imagePullPolicy: IfNotPresent
+              livenessProbe:
+                failureThreshold: 3
+                httpGet: 
+                  path: /
+                  port: 8080
+                  scheme: HTTP
+                initialDelaySeconds: 30
+                periodSeconds: 10
+                successThreshold: 1
+                timeoutSeconds: 3
+              name: httpd-example
+              readinessProbe:
+                failureThreshold: 3
+                httpGet: 
+                  path: /
+                  port: 8080
+                  scheme: HTTP
+                initialDelaySeconds: 3
+                periodSeconds: 10
+                successThreshold: 1
+                timeoutSeconds: 3
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+              securityContext:
+                privileged: false
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+            dnsPolicy: ClusterFirst
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+        templateGeneration: 0
+        test: false
+        triggers:
+        - type: ConfigChange
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: testproj
+        resources:
+        - "{{ deploymentconfig }}"
+
+  tasks:
+  - name: Get DeploymentConfig
+    command: >-
+      {{ test_oc_cmd }} export deploymentconfig test-deploymentconfig -n testproj -o yaml
+    register: get_deploymentconfig
+    changed_when: false
+
+  - name: Verify DeploymentConfig Update
+    fail:
+      msg: |
+        DeploymentConfig not defined as expected
+        >>>
+        {{ deploymentconfig | to_yaml }}
+        ===
+        {{ got_deploymentconfig | combine(ignore_changes, recursive=True) | to_yaml }}
+        <<<
+    vars:
+      got_deploymentconfig: "{{ get_deploymentconfig.stdout | from_yaml | combine(ignore_changes, recursive=True) }}"
+      ignore_changes:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+          generation: 0
+        spec:
+          templateGeneration: 0
+    when: >-
+      deploymentconfig.metadata != got_deploymentconfig.metadata or
+      deploymentconfig.spec != got_deploymentconfig.spec

@@ -10,7 +10,6 @@
     {{ oc_cmd }} new-project {{ project.name }}
     {% if project.display_name is defined %}--display-name={{ project.display_name | quote }}{% endif %}
     {% if project.description is defined %}--description={{ project.description | quote }}{% endif %}
-    {% if project.node_selector is defined %}--node-selector={{ project.node_selector | quote }}{% endif %}
   when: get_project.rc != 0
 
 - name: Set project display-name for {{ project.name }}
@@ -73,7 +72,6 @@
         annotations:
           "openshift.io/node-selector": "{{ project.node_selector | default('') }}"
   when: >
-    get_project.rc == 0 and
     project.node_selector is defined and (
       current_node_selector is not defined or
       current_node_selector != project.node_selector

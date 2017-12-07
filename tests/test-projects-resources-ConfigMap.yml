@@ -1,1 +1,113 @@
-#FIXME
+---
+- hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    configmap:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        creationTimestamp: null
+        name: test-configmap
+      data:
+        foo: bar
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: testproj
+        resources:
+        - "{{ configmap }}"
+
+  tasks:
+  - set_fact:
+      test_oc_cmd: >-
+        oc
+        {% if openshift_connection_certificate_authority is defined %}
+        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
+        {% endif %}
+        {% if openshift_connection_insecure_skip_tls_verify is defined %}
+        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+        {% endif %}
+        {% if openshift_connection_server is defined %}
+        --server={{ openshift_connection_server | quote }}
+        {% endif %}
+        {% if openshift_connection_token is defined %}
+        --token={{ openshift_connection_token | quote }}
+        {% endif %}
+
+  - name: Get ConfigMap
+    command: >-
+      {{ test_oc_cmd }} export configmap test-configmap -n testproj -o yaml
+    register: get_configmap
+    changed_when: false
+
+  - name: Verify ConfigMap
+    fail:
+      msg: |
+        ConfigMap not defined as expected
+        >>>
+        {{ configmap | to_yaml }}
+        ===
+        {{ got_configmap | to_yaml }}
+        <<<
+    vars:
+      got_configmap: "{{ get_configmap.stdout | from_yaml }}"
+      blank_last_applied_configuration:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: ''
+    when: >-
+      configmap.data != got_configmap.data or
+      configmap.metadata | combine(blank_last_applied_configuration, recursive=True) !=
+      got_configmap.metadata | combine(blank_last_applied_configuration, recursive=True)
+
+- hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    configmap:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        creationTimestamp: null
+        name: test-configmap
+      data:
+        foo: boop
+        bar: three
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: testproj
+        resources:
+        - "{{ configmap }}"
+
+  tasks:
+  - name: Get ConfigMap
+    command: >-
+      {{ test_oc_cmd }} export configmap test-configmap -n testproj -o yaml
+    register: get_configmap
+    changed_when: false
+
+  - name: Verify ConfigMap Update
+    fail:
+      msg: |
+        ConfigMap not defined as expected
+        >>>
+        {{ configmap | to_yaml }}
+        ===
+        {{ got_configmap | to_yaml }}
+        <<<
+    vars:
+      got_configmap: "{{ get_configmap.stdout | from_yaml }}"
+      blank_last_applied_configuration:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: ''
+    when: >-
+      configmap.data != got_configmap.data or
+      configmap.metadata | combine(blank_last_applied_configuration, recursive=True) !=
+      got_configmap.metadata | combine(blank_last_applied_configuration, recursive=True)

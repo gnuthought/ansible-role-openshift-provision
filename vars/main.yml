@@ -15,6 +15,7 @@ openshift_provision_supported_project_resource_types:
 - Route
 - Secret
 - Service
+- ServiceAccount
 - StatefulSet
 - Template
 
