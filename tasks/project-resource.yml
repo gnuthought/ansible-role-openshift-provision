@@ -51,6 +51,7 @@
         (get_resource.stdout if get_resource.rc == 0 else '{}') | from_json
       }}
     resource_action: "{{ resource.action | default('apply') }}"
+  # FIXME - There must be a more elegant solution for this logic
   when: >
     not( resource.no_update | default(False) | bool ) and
     not( resource_action == 'create' ) and
@@ -61,8 +62,14 @@
       curr_resource | json_query('data') !=
         resource | json_query('data')
       or
+      curr_resource | json_query('labels') !=
+        resource | json_query('labels')
+      or
       curr_resource | json_query('objects') !=
         resource | json_query('objects')
+      or
+      curr_resource | json_query('parameters') !=
+        resource | json_query('parameters')
       or
       curr_resource | json_query('secrets') !=
         resource | json_query('secrets')
