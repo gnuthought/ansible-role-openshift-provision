@@ -1,1 +1,135 @@
-#FIXME
+---
+- name: Set Facts
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  tasks:
+  - set_fact:
+      test_oc_cmd: >-
+        oc
+        {% if openshift_connection_certificate_authority is defined %}
+        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
+        {% endif %}
+        {% if openshift_connection_insecure_skip_tls_verify is defined %}
+        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+        {% endif %}
+        {% if openshift_connection_server is defined %}
+        --server={{ openshift_connection_server | quote }}
+        {% endif %}
+        {% if openshift_connection_token is defined %}
+        --token={{ openshift_connection_token | quote }}
+        {% endif %}
+      ignore_differences:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+
+- name: Test Provision
+  hosts: localhost
+  connection: local
+  vars:
+    provision_service:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: null
+        name: test-service
+      spec:
+        ports:
+        - name: 8023-tcp
+          port: 8023
+          protocol: TCP
+          targetPort: 8023
+        selector:
+          test-app: appname
+        sessionAffinity: ClientIP
+        type: ClusterIP
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: testproj
+        resources:
+        - "{{ provision_service }}"
+
+  tasks:
+  - name: Get Service
+    command: >-
+      {{ test_oc_cmd }} export service test-service -n testproj -o json
+    register: get_service
+    changed_when: false
+
+  - name: Verify Service
+    fail:
+      msg: |
+        Service not defined as expected
+        >>>
+        {{ cmp_service | to_yaml }}
+        ===
+        {{ got_service | to_yaml }}
+        <<<
+    vars:
+      got_service: "{{ get_service.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_service: "{{ provision_service | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_service.metadata != got_service.metadata or
+      cmp_service.spec != got_service.spec
+
+- name: Test Update
+  hosts: localhost
+  connection: local
+  vars:
+    provision_service:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: null
+        name: test-service
+      spec:
+        ports:
+        - name: 8023-tcp
+          port: 8023
+          protocol: TCP
+          targetPort: 8023
+        - name: 8093-tcp
+          port: 8093
+          protocol: TCP
+          targetPort: 8093
+        selector:
+          test-app: appname
+        sessionAffinity: ClientIP
+        type: ClusterIP
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: testproj
+        resources:
+        - "{{ provision_service }}"
+
+  tasks:
+  - name: Get Service
+    command: >-
+      {{ test_oc_cmd }} export service test-service -n testproj -o json
+    register: get_service
+    changed_when: false
+
+  - name: Verify Service Update
+    fail:
+      msg: |
+        Service not defined as expected
+        >>>
+        {{ cmp_service | to_yaml }}
+        ===
+        {{ got_service | to_yaml }}
+        <<<
+    vars:
+      got_service: "{{ get_service.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_service: "{{ provision_service | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_service.metadata != got_service.metadata or
+      cmp_service.spec != got_service.spec
