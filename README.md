@@ -150,6 +150,11 @@ List of OpenShift groups to manage
 
 * `display_name` - Project display name string
 
+* `imagestreams` - Names of imagestreams to create in the project. This
+   parameter is meant to allow for simple creation of imagestreams such as are
+   created by `oc create imagestream NAME`. For more sophisticated imagestream
+   creation a full definition may be provided within `resources`
+
 * `join_pod_network` - Name of target project to which this project network
   should be joined for use with multi-tenant SDN
 

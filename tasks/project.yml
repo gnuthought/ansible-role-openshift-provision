@@ -151,6 +151,10 @@
     project.user_to_role is defined or
     project.group_to_role is defined
 
+- include: project-imagestreams.yml
+  when: >-
+    project.imagestreams is defined
+
 - include: project-resource.yml
   static: false
   with_items: "{{ project.resources | default([]) }}"
