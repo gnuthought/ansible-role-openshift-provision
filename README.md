@@ -173,7 +173,8 @@ List of OpenShift groups to manage
 
 * `service_accounts` - List of service accounts to provision within this
   project. Each entry is a name of a service account to create. Service
-  accounts may also be created with `resources`
+  accounts may also be created with `resources`, which allows for specifying
+  `secrets` and `imagePullSecrets`.
 
 * `limit_ranges` (DEPRECATED) - List of limit ranges to apply to project, use
   of `resources` is preferred to create LimitRange objects
