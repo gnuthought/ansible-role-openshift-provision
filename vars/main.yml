@@ -6,6 +6,7 @@ openshift_provision_supported_project_resource_types:
 - DaemonSet
 - DeploymentConfig
 - Deployment
+- HorizontalPodAutoscaler
 - ImageStream
 - LimitRange
 - PersistentVolumeClaim
