@@ -160,6 +160,9 @@ List of OpenShift groups to manage
 
 * `labels` - Dictionary of project labels
 
+* `multicast_enabled` - Boolean value indicating whether multicast should
+  be enabled in the annotations on this project's netnamespace
+
 * `node_selector` - Node selector to apply to the project namespace
 
 * `process_templates` - Templates to process to create resources within this
