@@ -1,6 +1,6 @@
 ---
 - name: Get imagestreams in {{ project.name }}
-  command: >
+  command: >-
     {{ oc_cmd }} get is -n {{ project.name }} -o json
   changed_when: false
   failed_when: false

@@ -44,7 +44,6 @@
   shell: >
     echo {{ resource | to_json | quote }}
     | {{ oc_cmd }} {{ resource_action }} -n {{ project.name }} -f -
-  static: no
   vars:
     curr_resource: >
       {{
