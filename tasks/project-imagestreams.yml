@@ -1,0 +1,21 @@
+---
+- name: Get imagestreams in {{ project.name }}
+  command: >-
+    {{ oc_cmd }} get is -n {{ project.name }} -o json
+  changed_when: false
+  failed_when: false
+  register: get_imagestreams
+
+- name: Create imagestreams in {{ project.name }}
+  command: >-
+    {{ oc_cmd }} create imagestream {{ imagestream }} -n {{ project.name }}
+  with_items: "{{ project.imagestreams | default([]) }}"
+  loop_control:
+    loop_var: imagestream
+  vars:
+    imagestream_query: "items[?metadata.name=='{{ imagestream }}']|[0]"
+    current_imagestream: >-
+      {{ get_imagestreams.stdout | from_json | json_query(imagestream_query) }}
+  when: >-
+    current_imagestream is undefined or
+    current_imagestream == ''

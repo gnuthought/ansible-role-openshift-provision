@@ -29,24 +29,13 @@
   - role: openshift-provision
     openshift_clusters:
     - projects:
-      - name: test-join-target
+      - name: provision-test
 
-      - name: test-join-project
-        join_pod_network: test-join-target
+        imagestreams:
+        - test-imagestream1
 
   tasks:
-  - name: get target netid
+  - name: Get Imagestream
     command: >-
-      {{ test_oc_cmd }} get netnamespace test-join-target -o jsonpath='{.netid}'
+      {{ test_oc_cmd }} get imagestream -n provision-test test-imagestream1
     changed_when: false
-    register: get_target_netid
-
-  - name: get project netid
-    command: >-
-      {{ test_oc_cmd }} get netnamespace test-join-project -o jsonpath='{.netid}'
-    changed_when: false
-    register: get_project_netid
-
-  - fail:
-      msg: Project NETIDs differ
-    when: get_project_netid.stdout != get_target_netid.stdout

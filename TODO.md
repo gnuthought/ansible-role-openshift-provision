@@ -1,9 +1,5 @@
-* Support simple interface to create imagestreams
+* Add delete resource functionality
 
-* Support secret management
+* Template processing to properly indicate changes
 
-* Support horizontal pod autoscalers
-
-* Support multicast settings on projects
-
-`oc annotate netnamespace <project> netnamespace.network.openshift.io/multicast-enabled="true"`
+* Allow resources to be specified as `from_file: ...` or `from_template: ...`

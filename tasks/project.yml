@@ -1,3 +1,4 @@
+---
 - name: Check if project {{ project.name }} exists
   command: >
     {{ oc_cmd }} get project {{ project.name }} -o json
@@ -126,6 +127,12 @@
   - project.join_pod_network is defined
   - project.join_pod_network != ''
 
+- include: project-multicast.yml
+  static: no
+  when:
+  - project.multicast_enabled is defined
+  - project.multicast_enabled != ''
+
 - include: project-limit-range.yml
   with_items: "{{ project.limit_ranges | default([]) }}"
   loop_control:
@@ -150,6 +157,10 @@
     project.role_bindings is defined or
     project.user_to_role is defined or
     project.group_to_role is defined
+
+- include: project-imagestreams.yml
+  when: >-
+    project.imagestreams is defined
 
 - include: project-resource.yml
   static: false

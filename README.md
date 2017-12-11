@@ -150,10 +150,18 @@ List of OpenShift groups to manage
 
 * `display_name` - Project display name string
 
+* `imagestreams` - Names of imagestreams to create in the project. This
+   parameter is meant to allow for simple creation of imagestreams such as are
+   created by `oc create imagestream NAME`. For more sophisticated imagestream
+   creation a full definition may be provided within `resources`
+
 * `join_pod_network` - Name of target project to which this project network
   should be joined for use with multi-tenant SDN
 
 * `labels` - Dictionary of project labels
+
+* `multicast_enabled` - Boolean value indicating whether multicast should
+  be enabled in the annotations on this project's netnamespace
 
 * `node_selector` - Node selector to apply to the project namespace
 
@@ -168,7 +176,8 @@ List of OpenShift groups to manage
 
 * `service_accounts` - List of service accounts to provision within this
   project. Each entry is a name of a service account to create. Service
-  accounts may also be created with `resources`
+  accounts may also be created with `resources`, which allows for specifying
+  `secrets` and `imagePullSecrets`.
 
 * `limit_ranges` (DEPRECATED) - List of limit ranges to apply to project, use
   of `resources` is preferred to create LimitRange objects

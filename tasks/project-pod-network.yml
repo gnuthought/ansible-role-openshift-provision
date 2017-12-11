@@ -1,3 +1,4 @@
+---
 - name: Get pod network for {{ project.name }}
   command: >
     {{ oc_cmd }} get netnamespace {{ project.name | quote }}

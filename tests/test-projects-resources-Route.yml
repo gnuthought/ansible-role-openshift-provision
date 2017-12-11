@@ -1,1 +1,133 @@
-#FIXME
+---
+- name: Set Facts
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  tasks:
+  - set_fact:
+      test_oc_cmd: >-
+        oc
+        {% if openshift_connection_certificate_authority is defined %}
+        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
+        {% endif %}
+        {% if openshift_connection_insecure_skip_tls_verify is defined %}
+        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+        {% endif %}
+        {% if openshift_connection_server is defined %}
+        --server={{ openshift_connection_server | quote }}
+        {% endif %}
+        {% if openshift_connection_token is defined %}
+        --token={{ openshift_connection_token | quote }}
+        {% endif %}
+      ignore_differences:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+
+- name: Test Provision
+  hosts: localhost
+  connection: local
+  vars:
+    provision_route:
+      apiVersion: v1
+      kind: Route
+      metadata:
+        annotations:
+          openshift.io/host.generated: "true"
+        creationTimestamp: null
+        name: test-route
+      spec:
+        host: test-route.example.com
+        tls:
+          termination: passthrough
+        to:
+          kind: Service
+          name: test-service
+          weight: 100
+        wildcardPolicy: None
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: testproj
+        resources:
+        - "{{ provision_route }}"
+
+  tasks:
+  - name: Get Route
+    command: >-
+      {{ test_oc_cmd }} export route test-route -n testproj -o json
+    register: get_route
+    changed_when: false
+
+  - name: Verify Route
+    fail:
+      msg: |
+        Route not defined as expected
+        >>>
+        {{ cmp_route | to_yaml }}
+        ===
+        {{ got_route | to_yaml }}
+        <<<
+    vars:
+      got_route: "{{ get_route.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_route: "{{ provision_route | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_route.metadata != got_route.metadata or
+      cmp_route.spec != got_route.spec
+
+- name: Test Update
+  hosts: localhost
+  connection: local
+  vars:
+    provision_route:
+      apiVersion: v1
+      kind: Route
+      metadata:
+        annotations:
+          openshift.io/host.generated: "true"
+        creationTimestamp: null
+        name: test-route
+      spec:
+        host: test-route.example.com
+        tls:
+          termination: passthrough
+        to:
+          kind: Service
+          name: test-service-foo
+          weight: 200
+        wildcardPolicy: None
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: testproj
+        resources:
+        - "{{ provision_route }}"
+
+  tasks:
+  - name: Get Route
+    command: >-
+      {{ test_oc_cmd }} export route test-route -n testproj -o json
+    register: get_route
+    changed_when: false
+
+  - name: Verify Route
+    fail:
+      msg: |
+        Route not defined as expected
+        >>>
+        {{ cmp_route | to_yaml }}
+        ===
+        {{ got_route | to_yaml }}
+        <<<
+    vars:
+      got_route: "{{ get_route.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_route: "{{ provision_route | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_route.metadata != got_route.metadata or
+      cmp_route.spec != got_route.spec

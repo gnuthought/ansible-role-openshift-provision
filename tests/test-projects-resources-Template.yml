@@ -1,1 +1,137 @@
-#FIXME
+---
+- name: Set Facts
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  tasks:
+  - set_fact:
+      test_oc_cmd: >-
+        oc
+        {% if openshift_connection_certificate_authority is defined %}
+        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
+        {% endif %}
+        {% if openshift_connection_insecure_skip_tls_verify is defined %}
+        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+        {% endif %}
+        {% if openshift_connection_server is defined %}
+        --server={{ openshift_connection_server | quote }}
+        {% endif %}
+        {% if openshift_connection_token is defined %}
+        --token={{ openshift_connection_token | quote }}
+        {% endif %}
+      ignore_differences:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+
+- name: Test Provision
+  hosts: localhost
+  connection: local
+  vars:
+    provision_template:
+      apiVersion: v1
+      kind: Template
+      labels:
+        template: test-template
+      metadata:
+        name: test-template
+      objects:
+      - apiVersion: v1
+        kind: ImageStream
+        metadata:
+          name: ${NAME}
+      parameters:
+      - name: NAME
+        required: true
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: testproj
+        resources:
+        - "{{ provision_template }}"
+
+  tasks:
+  - name: Get Template
+    command: >-
+      {{ test_oc_cmd }} export template test-template -n testproj -o json
+    register: get_template
+    changed_when: false
+
+  - name: Verify Template
+    fail:
+      msg: |
+        Template not defined as expected
+        >>>
+        {{ cmp_template | to_yaml }}
+        ===
+        {{ got_template | to_yaml }}
+        <<<
+    vars:
+      got_template: "{{ get_template.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_template: "{{ provision_template | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_template.metadata != got_template.metadata or
+      cmp_template.labels != got_template.labels or
+      cmp_template.objects != got_template.objects or
+      cmp_template.parameters != got_template.parameters
+
+- name: Test Update
+  hosts: localhost
+  connection: local
+  vars:
+    provision_template:
+      apiVersion: v1
+      kind: Template
+      labels:
+        template: test-template
+      metadata:
+        name: test-template
+      objects:
+      - apiVersion: v1
+        kind: ImageStream
+        metadata:
+          name: ${NAME}
+          labels:
+            app: ${APPNAME}
+      parameters:
+      - name: NAME
+        required: true
+      - name: APPNAME
+        required: true
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: testproj
+        resources:
+        - "{{ provision_template }}"
+
+  tasks:
+  - name: Get Template
+    command: >-
+      {{ test_oc_cmd }} export template test-template -n testproj -o json
+    register: get_template
+    changed_when: false
+
+  - name: Verify Template Update
+    fail:
+      msg: |
+        Template not defined as expected
+        >>>
+        {{ cmp_template | to_yaml }}
+        ===
+        {{ got_template | to_yaml }}
+        <<<
+    vars:
+      got_template: "{{ get_template.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_template: "{{ provision_template | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_template.metadata != got_template.metadata or
+      cmp_template.labels != got_template.labels or
+      cmp_template.objects != got_template.objects or
+      cmp_template.parameters != got_template.parameters
