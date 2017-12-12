@@ -1,3 +1,5 @@
+* Ansible module for OpenShift resource provisioning
+
 * Add delete resource functionality
 
 * Template processing to properly indicate changes

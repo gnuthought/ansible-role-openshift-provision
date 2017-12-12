@@ -50,7 +50,7 @@ Role Variables
   set within `openshift_clusters` as `login.password`
 
 * `user_groups` (DEPRECATED) - List of groups to create across all clusters,
-  use of `groups` under `openshift_clusters` is preferred 
+  use of `groups` under `openshift_clusters` is preferred
 
 ### `openshift_clusters[*]`
 
@@ -428,7 +428,7 @@ Example resources file:
         - role: view
           groups:
           - app-developer
-    
+
         service_accounts:
         - jenkins
 

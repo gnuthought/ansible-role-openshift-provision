@@ -11,14 +11,14 @@
         creationTimestamp: null
         name: test-clusterresourcequota
       spec:
-        quota: 
+        quota:
           hard:
             pods: "10"
             secrets: "20"
         selector:
-          annotations: 
+          annotations:
             openshift.io/requester: testuser
-          labels: null 
+          labels: null
       status:
         namespaces: null
         total: {}
@@ -83,14 +83,14 @@
         creationTimestamp: null
         name: test-clusterresourcequota
       spec:
-        quota: 
+        quota:
           hard:
             pods: "20"
             secrets: "30"
         selector:
-          annotations: 
+          annotations:
             openshift.io/requester: testuser
-          labels: null 
+          labels: null
       status:
         namespaces: null
         total: {}

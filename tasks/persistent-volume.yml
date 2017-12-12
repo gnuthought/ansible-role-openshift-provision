@@ -9,6 +9,6 @@
 # At present only NFS is supported
 - when: >
     persistent_volume.nfs_path is defined or
-    persistent_volume.nfs_server is defined or 
+    persistent_volume.nfs_server is defined or
     persistent_volume.nfs is defined
   include: persistent-volume-nfs.yml
