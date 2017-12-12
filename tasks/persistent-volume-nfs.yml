@@ -31,7 +31,7 @@
   vars:
     pvdef:
       apiVersion: v1
-      kind: PersistentVolume 
+      kind: PersistentVolume
       metadata:
         name: "{{ persistent_volume.name }}"
         labels: "{{ persistent_volume.labels }}"

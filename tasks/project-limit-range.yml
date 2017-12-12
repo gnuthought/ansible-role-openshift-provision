@@ -26,7 +26,7 @@
     -p {{ patch | to_json | quote }}
   vars:
     patch:
-      spec: "{{ limit_range.spec }}" 
+      spec: "{{ limit_range.spec }}"
   when: >
-    get_limit_range.rc == 0 and 
+    get_limit_range.rc == 0 and
     get_limit_range.stdout | from_json | json_query('spec') | to_yaml != limit_range.spec | to_yaml

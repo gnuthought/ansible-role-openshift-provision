@@ -6,21 +6,21 @@
   vars:
     persistent_volume:
       apiVersion: v1
-      kind: PersistentVolume                                                
+      kind: PersistentVolume
       metadata:
-        creationTimestamp: null                          
-        labels:                                                   
-          foo: bar                                                   
-        name: nfs-foo                                                        
-      spec:                                                                 
-        accessModes:  
-        - ReadWriteMany                                                 
-        capacity:                                                            
-          storage: 10Gi                                                      
-        nfs:                                                                 
-          path: /export/foo                                                  
-          server: nfsserver.example.com                                     
-        persistentVolumeReclaimPolicy: Retain  
+        creationTimestamp: null
+        labels:
+          foo: bar
+        name: nfs-foo
+      spec:
+        accessModes:
+        - ReadWriteMany
+        capacity:
+          storage: 10Gi
+        nfs:
+          path: /export/foo
+          server: nfsserver.example.com
+        persistentVolumeReclaimPolicy: Retain
       status: {}
   roles:
   - role: openshift-provision
@@ -77,21 +77,21 @@
   vars:
     persistent_volume:
       apiVersion: v1
-      kind: PersistentVolume                                                
+      kind: PersistentVolume
       metadata:
-        creationTimestamp: null                          
-        labels:                                                   
-          foo: bartest                                                  
-        name: nfs-foo                                                        
-      spec:                                                                 
-        accessModes:  
-        - ReadWriteMany                                                 
-        capacity:                                                            
-          storage: 10Gi                                                      
-        nfs:                                                                 
-          path: /export/foo                                                  
-          server: nfsserver.example.com                                     
-        persistentVolumeReclaimPolicy: Retain  
+        creationTimestamp: null
+        labels:
+          foo: bartest
+        name: nfs-foo
+      spec:
+        accessModes:
+        - ReadWriteMany
+        capacity:
+          storage: 10Gi
+        nfs:
+          path: /export/foo
+          server: nfsserver.example.com
+        persistentVolumeReclaimPolicy: Retain
       status: {}
 
   roles:
