@@ -1,0 +1,255 @@
+---
+- name: Set Facts
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  tasks:
+  - set_fact:
+      test_oc_cmd: >-
+        oc
+        {% if openshift_connection_certificate_authority is defined %}
+        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
+        {% endif %}
+        {% if openshift_connection_insecure_skip_tls_verify is defined %}
+        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+        {% endif %}
+        {% if openshift_connection_server is defined %}
+        --server={{ openshift_connection_server | quote }}
+        {% endif %}
+        {% if openshift_connection_token is defined %}
+        --token={{ openshift_connection_token | quote }}
+        {% endif %}
+      openshift_connection:
+        server: "{{ openshift_connection_server }}"
+        insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify }}"
+        token: "{{ openshift_connection_token }}"
+      ignore_differences:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+          generation: 0
+        spec:
+          template:
+            metadata:
+              creationTimestamp: null
+          volumeClaimTemplates:
+          - metadata:
+              name: www
+              creationTimestamp: null
+            status:
+              phase: ""
+
+- name: Test Provision
+  hosts: localhost
+  connection: local
+  vars:
+    provision_statefulset:
+      apiVersion: apps/v1beta1
+      kind: StatefulSet
+      metadata:
+        name: test-statefulset
+        labels:
+          app: nginx
+      spec:
+        serviceName: nginx
+        replicas: 2
+        selector:
+          matchLabels:
+            app: nginx
+        template:
+          metadata:
+            labels:
+              app: nginx
+          spec:
+            containers:
+            - name: nginx
+              image: gcr.io/google_containers/nginx-slim:0.8
+              imagePullPolicy: IfNotPresent
+              ports:
+              - containerPort: 80
+                name: web
+                protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+              - name: www
+                mountPath: /usr/share/nginx/html
+            dnsPolicy: ClusterFirst
+            restartPolicy: Always                                                                              
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+        volumeClaimTemplates:
+        - metadata:
+            name: www
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+
+  roles:
+  - role: openshift-provision
+
+  tasks:
+  - name: Provision StatefulSet
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_statefulset }}"
+
+  - name: Get StatefulSet
+    command: >-
+      {{ test_oc_cmd }} export statefulset
+      test-statefulset -n provision-test -o json
+    register: get_statefulset
+    changed_when: false
+
+  - name: Verify StatefulSet
+    fail:
+      msg: |
+        StatefulSet not defined as expected
+        >>>
+        {{ cmp_statefulset | to_yaml }}
+        ===
+        {{ got_statefulset | to_yaml }}
+        <<<
+    vars:
+      got_statefulset: "{{ get_statefulset.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_statefulset: "{{ provision_statefulset | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_statefulset.metadata != got_statefulset.metadata or
+      cmp_statefulset.spec != got_statefulset.spec
+
+  - name: Check reprovision StatefulSet
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_statefulset }}"
+    register: reprovision_statefulset
+
+  - fail:
+      msg: Reprovision indicated change to StatefulSet
+    when: reprovision_statefulset.changed
+
+- name: Test Update
+  hosts: localhost
+  connection: local
+  vars:
+    provision_statefulset:
+      apiVersion: apps/v1beta1
+      kind: StatefulSet
+      metadata:
+        name: test-statefulset
+        labels:
+          app: nginx
+      spec:
+        serviceName: nginx
+        replicas: 2
+        selector:
+          matchLabels:
+            app: nginx
+        template:
+          metadata:
+            labels:
+              app: nginx
+          spec:
+            containers:
+            - name: nginx
+              image: gcr.io/google_containers/nginx-slim:0.8
+              imagePullPolicy: IfNotPresent
+              ports:
+              - containerPort: 8080
+                name: web
+                protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+              - name: www
+                mountPath: /usr/share/nginx/html
+            dnsPolicy: ClusterFirst
+            restartPolicy: Always                                                                              
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+        volumeClaimTemplates:
+        - metadata:
+            name: www
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+
+  roles:
+  - role: openshift-provision
+
+  tasks:
+  - name: Apply update to StatefulSet
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_statefulset }}"
+
+  - name: Get StatefulSet
+    command: >-
+      {{ test_oc_cmd }} export statefulset test-statefulset
+      -n provision-test -o json
+    register: get_statefulset
+    changed_when: false
+
+  - name: Verify StatefulSet Update
+    fail:
+      msg: |
+        StatefulSet not defined as expected
+        >>>
+        {{ cmp_statefulset | to_yaml }}
+        ===
+        {{ got_statefulset | to_yaml }}
+        <<<
+    vars:
+      got_statefulset: "{{ get_statefulset.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_statefulset: "{{ provision_statefulset | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_statefulset.metadata != got_statefulset.metadata or
+      cmp_statefulset.spec != got_statefulset.spec
+
+- name: Test Delete
+  hosts: localhost
+  connection: local
+  vars:
+    provision_statefulset:
+      kind: StatefulSet
+      metadata:
+        name: test-statefulset
+  roles:
+  - role: openshift-provision
+  tasks:
+  - name: Delete Statefulset
+    openshift_provision:
+      action: delete
+      namespace: provision-test
+      openshift_connection: "{{ openshift_connection }}"
+      resource: "{{ provision_statefulset }}"
+
+  - name: Verify StatefulSet Delete
+    command: >-
+      {{ test_oc_cmd }} export statefulset
+      test-statefulset -n provision-test -o json
+    register: get_statefulset
+    failed_when: get_statefulset.rc == 0
+    changed_when: false
+
+  - name: Verify Service Delete
+    command: >-
+      {{ test_oc_cmd }} export service
+      test-service -n provision-test -o json
+    register: get_service
+    failed_when: get_service.rc == 0
+    changed_when: false

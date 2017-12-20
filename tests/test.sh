@@ -4,5 +4,7 @@ set -e
 set -x
 
 for PLAYBOOK in test-*.yml; do
-  ansible-playbook $PLAYBOOK
+  if [ -s $PLAYBOOK ]; then
+    ansible-playbook $PLAYBOOK
+  fi
 done

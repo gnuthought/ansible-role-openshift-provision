@@ -1,0 +1,181 @@
+---
+- name: Set Facts
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  tasks:
+  - set_fact:
+      test_oc_cmd: >-
+        oc
+        {% if openshift_connection_certificate_authority is defined %}
+        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
+        {% endif %}
+        {% if openshift_connection_insecure_skip_tls_verify is defined %}
+        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+        {% endif %}
+        {% if openshift_connection_server is defined %}
+        --server={{ openshift_connection_server | quote }}
+        {% endif %}
+        {% if openshift_connection_token is defined %}
+        --token={{ openshift_connection_token | quote }}
+        {% endif %}
+      openshift_connection:
+        server: "{{ openshift_connection_server }}"
+        insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify }}"
+        token: "{{ openshift_connection_token }}"
+      ignore_differences:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+
+- name: Test Provision
+  hosts: localhost
+  connection: local
+  vars:
+    provision_template:
+      apiVersion: v1
+      kind: Template
+      metadata:
+        name: test-template
+      objects:
+      - apiVersion: v1
+        kind: ImageStream
+        metadata:
+          name: ${NAME}
+      parameters:
+      - name: NAME
+        required: true
+
+  roles:
+  - role: openshift-provision
+
+  tasks:
+  - name: Provision Template
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_template }}"
+
+  - name: Get Template
+    command: >-
+      {{ test_oc_cmd }} export template
+      test-template -n provision-test -o json
+    register: get_template
+    changed_when: false
+
+  - name: Verify Template
+    fail:
+      msg: |
+        Template not defined as expected
+        >>>
+        {{ cmp_template | to_yaml }}
+        ===
+        {{ got_template | to_yaml }}
+        <<<
+    vars:
+      got_template: "{{ get_template.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_template: "{{ provision_template | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_template.metadata != got_template.metadata or
+      cmp_template.labels | default({}) != got_template.labels | default({}) or
+      cmp_template.objects != got_template.objects or
+      cmp_template.parameters != got_template.parameters
+
+  - name: Check reprovision Template
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_template }}"
+    register: reprovision_template
+
+  - fail:
+      msg: Reprovision indicated change to Template
+    when: reprovision_template.changed
+
+- name: Test Update
+  hosts: localhost
+  connection: local
+  vars:
+    provision_template:
+      apiVersion: v1
+      kind: Template
+      labels:
+        template: test-template
+      metadata:
+        name: test-template
+      objects:
+      - apiVersion: v1
+        kind: ImageStream
+        metadata:
+          name: ${NAME}
+          labels:
+            app: ${APPNAME}
+      parameters:
+      - name: NAME
+        required: true
+      - name: APPNAME
+        required: true
+
+  roles:
+  - role: openshift-provision
+
+  tasks:
+  - name: Apply update to Template
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_template }}"
+
+  - name: Get Template
+    command: >-
+      {{ test_oc_cmd }} export template
+      test-template -n provision-test -o json
+    register: get_template
+    changed_when: false
+
+  - name: Verify Update Template
+    fail:
+      msg: |
+        Template not defined as expected
+        >>>
+        {{ cmp_template | to_yaml }}
+        ===
+        {{ got_template | to_yaml }}
+        <<<
+    vars:
+      got_template: "{{ get_template.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_template: "{{ provision_template | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_template.metadata != got_template.metadata or
+      cmp_template.labels != got_template.labels or
+      cmp_template.objects != got_template.objects or
+      cmp_template.parameters != got_template.parameters
+
+- name: Test Delete
+  hosts: localhost
+  connection: local
+  vars:
+    provision_template:
+      apiVersion: extensions/v1beta1
+      kind: Template
+      metadata:
+        name: test-template
+  roles:
+  - role: openshift-provision
+  tasks:
+  - name: Delete Template
+    openshift_provision:
+      action: delete
+      namespace: provision-test
+      openshift_connection: "{{ openshift_connection }}"
+      resource: "{{ provision_template }}"
+
+  - name: Verify Template Delete
+    command: >-
+      {{ test_oc_cmd }} export template
+      test-template -n provision-test -o json
+    register: get_template
+    failed_when: get_template.rc == 0
+    changed_when: false

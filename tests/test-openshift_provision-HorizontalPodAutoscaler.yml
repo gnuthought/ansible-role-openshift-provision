@@ -30,7 +30,8 @@
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
 
-- hosts: localhost
+- name: Test Provision
+  hosts: localhost
   connection: local
   vars:
     provision_horizontalpodautoscaler:
@@ -49,16 +50,18 @@
 
   roles:
   - role: openshift-provision
-    openshift_clusters:
-    - projects:
-      - name: testproj
-        resources:
-        - "{{ provision_horizontalpodautoscaler }}"
 
   tasks:
+  - name: Provision HorizontalPodAutoscaler
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_horizontalpodautoscaler }}"
+
   - name: Get HorizontalPodAutoscaler
     command: >-
-      {{ test_oc_cmd }} export horizontalpodautoscaler test-horizontalpodautoscaler -n testproj -o json
+      {{ test_oc_cmd }} export horizontalpodautoscaler
+      test-horizontalpodautoscaler -n provision-test -o json
     register: get_horizontalpodautoscaler
     changed_when: false
 
@@ -77,6 +80,17 @@
     when: >-
       cmp_horizontalpodautoscaler.metadata != got_horizontalpodautoscaler.metadata or
       cmp_horizontalpodautoscaler.spec != got_horizontalpodautoscaler.spec
+
+  - name: Check reprovision HorizontalPodAutoscaler
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_horizontalpodautoscaler }}"
+    register: reprovision_horizontalpodautoscaler
+
+  - fail:
+      msg: Reprovision indicated change to HorizontalPodAutoscaler
+    when: reprovision_horizontalpodautoscaler.changed
 
 - name: Test Update
   hosts: localhost
@@ -98,20 +112,22 @@
 
   roles:
   - role: openshift-provision
-    openshift_clusters:
-    - projects:
-      - name: testproj
-        resources:
-        - "{{ provision_horizontalpodautoscaler }}"
 
   tasks:
+  - name: Apply update to HorizontalPodAutoscaler
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_horizontalpodautoscaler }}"
+
   - name: Get HorizontalPodAutoscaler
     command: >-
-      {{ test_oc_cmd }} export horizontalpodautoscaler test-horizontalpodautoscaler -n testproj -o json
+      {{ test_oc_cmd }} export horizontalpodautoscaler
+      test-horizontalpodautoscaler -n provision-test -o json
     register: get_horizontalpodautoscaler
     changed_when: false
 
-  - name: Verify HorizontalPodAutoscaler Update
+  - name: Verify Update HorizontalPodAutoscaler
     fail:
       msg: |
         HorizontalPodAutoscaler not defined as expected
@@ -126,3 +142,29 @@
     when: >-
       cmp_horizontalpodautoscaler.metadata != got_horizontalpodautoscaler.metadata or
       cmp_horizontalpodautoscaler.spec != got_horizontalpodautoscaler.spec
+
+- name: Test Delete
+  hosts: localhost
+  connection: local
+  vars:
+    provision_horizontalpodautoscaler:
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: test-horizontalpodautoscaler
+  roles:
+  - role: openshift-provision
+  tasks:
+  - name: Delete HorizontalPodAutoscaler
+    openshift_provision:
+      action: delete
+      namespace: provision-test
+      openshift_connection: "{{ openshift_connection }}"
+      resource: "{{ provision_horizontalpodautoscaler }}"
+
+  - name: Verify HorizontalPodAutoscaler Delete
+    command: >-
+      {{ test_oc_cmd }} export horizontalpodautoscaler
+      test-horizontalpodautoscaler -n provision-test -o json
+    register: get_horizontalpodautoscaler
+    failed_when: get_horizontalpodautoscaler.rc == 0
+    changed_when: false

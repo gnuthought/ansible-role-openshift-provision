@@ -1,0 +1,202 @@
+---
+- name: Set Facts
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  tasks:
+  - set_fact:
+      test_oc_cmd: >-
+        oc
+        {% if openshift_connection_certificate_authority is defined %}
+        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
+        {% endif %}
+        {% if openshift_connection_insecure_skip_tls_verify is defined %}
+        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+        {% endif %}
+        {% if openshift_connection_server is defined %}
+        --server={{ openshift_connection_server | quote }}
+        {% endif %}
+        {% if openshift_connection_token is defined %}
+        --token={{ openshift_connection_token | quote }}
+        {% endif %}
+      openshift_connection:
+        server: "{{ openshift_connection_server }}"
+        insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify }}"
+        token: "{{ openshift_connection_token }}"
+      ignore_differences:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+
+- name: Test Provision
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    provision_buildconfig:
+      apiVersion: v1
+      kind: BuildConfig
+      metadata:
+        name: test-buildconfig
+      spec:
+        nodeSelector: null
+        output:
+          to:
+            kind: ImageStreamTag
+            name: testbuild:latest
+        postCommit: {}
+        resources: {}
+        runPolicy: Serial
+        source:
+          git:
+            uri: https://nosuch.example.com/blah.git
+          type: Git
+        strategy:
+          sourceStrategy:
+            from:
+              kind: ImageStreamTag
+              name: httpd:2.4
+              namespace: openshift
+          type: Source
+        triggers: []
+
+  roles:
+  - role: openshift-provision
+
+  tasks:
+  - name: Provision BuildConfig
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_buildconfig }}"
+
+  - name: Get BuildConfig
+    command: >-
+      {{ test_oc_cmd }} export buildconfig
+      test-buildconfig -n provision-test -o json
+    register: get_buildconfig
+    changed_when: false
+
+  - name: Verify BuildConfig
+    fail:
+      msg: |
+        BuildConfig not defined as expected
+        >>>
+        {{ cmp_buildconfig | to_yaml }}
+        ===
+        {{ got_buildconfig | to_yaml }}
+        <<<
+    vars:
+      got_buildconfig: "{{ get_buildconfig.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_buildconfig: "{{ provision_buildconfig | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_buildconfig.metadata != got_buildconfig.metadata or
+      cmp_buildconfig.spec != got_buildconfig.spec
+
+  - name: Check reprovision BuildConfig
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_buildconfig }}"
+    register: reprovision_buildconfig
+
+  - fail:
+      msg: Reprovision indicated change to BuildConfig
+    when: reprovision_buildconfig.changed
+
+- name: Test Update
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    provision_buildconfig:
+      apiVersion: v1
+      kind: BuildConfig
+      metadata:
+        name: test-buildconfig
+      spec:
+        nodeSelector: null
+        output:
+          to:
+            kind: ImageStreamTag
+            name: testbuild:latest
+        postCommit: {}
+        resources: {}
+        runPolicy: Serial
+        source:
+          git:
+            uri: https://nosuch.example.com/blah.git
+          type: Git
+        strategy:
+          sourceStrategy:
+            from:
+              kind: ImageStreamTag
+              name: httpd:latest
+              namespace: openshift
+          type: Source
+        triggers: []
+
+  roles:
+  - role: openshift-provision
+
+  tasks:
+  - name: Apply update to BuildConfig
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_buildconfig }}"
+
+  - name: Get BuildConfig
+    command: >-
+      {{ test_oc_cmd }} export buildconfig
+      test-buildconfig -n provision-test -o json
+    register: get_buildconfig
+    changed_when: false
+
+  - name: Verify Update BuildConfig
+    fail:
+      msg: |
+        BuildConfig not defined as expected
+        >>>
+        {{ cmp_buildconfig | to_yaml }}
+        ===
+        {{ got_buildconfig | to_yaml }}
+        <<<
+    vars:
+      got_buildconfig: "{{ get_buildconfig.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_buildconfig: "{{ provision_buildconfig | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_buildconfig.metadata != got_buildconfig.metadata or
+      cmp_buildconfig.spec != got_buildconfig.spec
+
+- name: Test Delete
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    provision_buildconfig:
+      kind: BuildConfig
+      metadata:
+        name: test-buildconfig
+  roles:
+  - role: openshift-provision
+  tasks:
+  - name: Delete BuildConfig
+    openshift_provision:
+      action: delete
+      namespace: provision-test
+      openshift_connection: "{{ openshift_connection }}"
+      resource: "{{ provision_buildconfig }}"
+
+  - name: Verify BuildConfig Delete
+    command: >-
+      {{ test_oc_cmd }} export buildconfig
+      test-buildconfig -n provision-test -o json
+    register: get_buildconfig
+    failed_when: get_buildconfig.rc == 0
+    changed_when: false

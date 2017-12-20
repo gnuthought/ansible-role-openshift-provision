@@ -1,0 +1,180 @@
+---
+- name: Set Facts
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  tasks:
+  - set_fact:
+      test_oc_cmd: >-
+        oc
+        {% if openshift_connection_certificate_authority is defined %}
+        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
+        {% endif %}
+        {% if openshift_connection_insecure_skip_tls_verify is defined %}
+        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+        {% endif %}
+        {% if openshift_connection_server is defined %}
+        --server={{ openshift_connection_server | quote }}
+        {% endif %}
+        {% if openshift_connection_token is defined %}
+        --token={{ openshift_connection_token | quote }}
+        {% endif %}
+      openshift_connection:
+        server: "{{ openshift_connection_server }}"
+        insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify }}"
+        token: "{{ openshift_connection_token }}"
+      ignore_differences:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+
+- name: Test Provision
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    provision_clusterresourcequota:
+      apiVersion: v1
+      kind: ClusterResourceQuota
+      metadata:
+        name: test-clusterresourcequota
+      spec:
+        quota:
+          hard:
+            pods: "10"
+            secrets: "20"
+        selector:
+          annotations:
+            openshift.io/requester: testuser
+          labels: null
+      status:
+        namespaces: null
+        total: {}
+
+  roles:
+  - role: openshift-provision
+
+  tasks:
+  - name: Provision ClusterResourceQuota
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      resource: "{{ provision_clusterresourcequota }}"
+
+  - name: Get ClusterResourceQuota
+    command: >-
+      {{ test_oc_cmd }} export clusterresourcequota
+      test-clusterresourcequota -o json
+    register: get_clusterresourcequota
+    changed_when: false
+
+  - name: Verify ClusterResourceQuota
+    fail:
+      msg: |
+        ClusterResourceQuota not defined as expected
+        >>>
+        {{ cmp_clusterresourcequota | to_yaml }}
+        ===
+        {{ got_clusterresourcequota | to_yaml }}
+        <<<
+    vars:
+      got_clusterresourcequota: "{{ get_clusterresourcequota.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_clusterresourcequota: "{{ provision_clusterresourcequota | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_clusterresourcequota.metadata != got_clusterresourcequota.metadata or
+      cmp_clusterresourcequota.spec != got_clusterresourcequota.spec
+
+  - name: Check reprovision ClusterResourceQuota
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      resource: "{{ provision_clusterresourcequota }}"
+    register: reprovision_clusterresourcequota
+
+  - fail:
+      msg: Reprovision indicated change to ClusterResourceQuota
+    when: reprovision_clusterresourcequota.changed
+
+- name: Test Update
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    provision_clusterresourcequota:
+      apiVersion: v1
+      kind: ClusterResourceQuota
+      metadata:
+        name: test-clusterresourcequota
+      spec:
+        quota:
+          hard:
+            pods: "20"
+            secrets: "30"
+        selector:
+          annotations:
+            openshift.io/requester: testuser
+          labels: null
+      status:
+        namespaces: null
+        total: {}
+
+  roles:
+  - role: openshift-provision
+
+  tasks:
+  - name: Apply update to ClusterResourceQuota
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      resource: "{{ provision_clusterresourcequota }}"
+
+  - name: Get ClusterResourceQuota
+    command: >-
+      {{ test_oc_cmd }} export clusterresourcequota
+      test-clusterresourcequota -o json
+    register: get_clusterresourcequota
+    changed_when: false
+
+  - name: Verify Update ClusterResourceQuota
+    fail:
+      msg: |
+        ClusterResourceQuota not defined as expected
+        >>>
+        {{ cmp_clusterresourcequota | to_yaml }}
+        ===
+        {{ got_clusterresourcequota | to_yaml }}
+        <<<
+    vars:
+      got_clusterresourcequota: "{{ get_clusterresourcequota.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_clusterresourcequota: "{{ provision_clusterresourcequota | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_clusterresourcequota.metadata != got_clusterresourcequota.metadata or
+      cmp_clusterresourcequota.spec != got_clusterresourcequota.spec
+
+- name: Test Delete
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    provision_clusterresourcequota:
+      kind: ClusterResourceQuota
+      metadata:
+        name: test-clusterresourcequota
+  roles:
+  - role: openshift-provision
+  tasks:
+  - name: Delete ClusterResourceQuota
+    openshift_provision:
+      action: delete
+      openshift_connection: "{{ openshift_connection }}"
+      resource: "{{ provision_clusterresourcequota }}"
+
+  - name: Verify ClusterResourceQuota Delete
+    command: >-
+      {{ test_oc_cmd }} export clusterresourcequota
+      test-clusterresourcequota -o json
+    register: get_clusterresourcequota
+    failed_when: get_clusterresourcequota.rc == 0
+    changed_when: false

@@ -1,0 +1,180 @@
+---
+- name: Set Facts
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  tasks:
+  - set_fact:
+      test_oc_cmd: >-
+        oc
+        {% if openshift_connection_certificate_authority is defined %}
+        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
+        {% endif %}
+        {% if openshift_connection_insecure_skip_tls_verify is defined %}
+        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+        {% endif %}
+        {% if openshift_connection_server is defined %}
+        --server={{ openshift_connection_server | quote }}
+        {% endif %}
+        {% if openshift_connection_token is defined %}
+        --token={{ openshift_connection_token | quote }}
+        {% endif %}
+      ignore_differences:
+        metadata:
+          annotations:
+            deployment.kubernetes.io/revision: '0'
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+          generation: 0
+        spec:
+          template:
+            metadata:
+              creationTimestamp: null
+          templateGeneration: 0
+
+- name: Test Provision
+  hosts: localhost
+  connection: local
+  vars:
+    provision_deployment:
+      apiVersion: extensions/v1beta1
+      kind: Deployment
+      metadata:
+        labels:
+          app: nginx
+        name: test-deployment
+      spec:
+        replicas: 3
+        selector:
+          matchLabels:
+            app: nginx
+        strategy:
+          rollingUpdate:
+            maxSurge: 1
+            maxUnavailable: 1
+          type: RollingUpdate
+        template:
+          metadata:
+            labels:
+              app: nginx
+          spec:
+            containers:
+            - image: nginx:1.7.9
+              imagePullPolicy: IfNotPresent
+              name: nginx
+              ports:
+              - containerPort: 80
+                protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+            dnsPolicy: ClusterFirst
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: provision-test
+        resources:
+        - "{{ provision_deployment }}"
+
+  tasks:
+  - name: Get Deployment
+    command: >-
+      {{ test_oc_cmd }} export deployment test-deployment -n provision-test -o json
+    register: get_deployment
+    changed_when: false
+
+  - name: Verify Deployment
+    fail:
+      msg: |
+        Deployment not defined as expected
+        >>>
+        {{ cmp_deployment | to_yaml }}
+        ===
+        {{ got_deployment | to_yaml }}
+        <<<
+    vars:
+      got_deployment: "{{ get_deployment.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_deployment: "{{ provision_deployment | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_deployment.metadata != got_deployment.metadata or
+      cmp_deployment.spec != got_deployment.spec
+
+- name: Test Update
+  hosts: localhost
+  connection: local
+  vars:
+    provision_deployment:
+      apiVersion: extensions/v1beta1
+      kind: Deployment
+      metadata:
+        labels:
+          app: nginx-test
+        name: test-deployment
+      spec:
+        replicas: 2
+        selector:
+          matchLabels:
+            app: nginx-test
+        strategy:
+          rollingUpdate:
+            maxSurge: 1
+            maxUnavailable: 1
+          type: RollingUpdate
+        template:
+          metadata:
+            labels:
+              app: nginx-test
+          spec:
+            containers:
+            - image: nginx:1.7.9
+              imagePullPolicy: Always
+              name: nginx
+              ports:
+              - containerPort: 80
+                protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+            dnsPolicy: ClusterFirst
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: provision-test
+        resources:
+        - "{{ provision_deployment }}"
+
+  tasks:
+  - name: Get Deployment
+    command: >-
+      {{ test_oc_cmd }} export deployment test-deployment -n provision-test -o json
+    register: get_deployment
+    changed_when: false
+
+  - name: Verify Deployment Update
+    fail:
+      msg: |
+        Deployment not defined as expected
+        >>>
+        {{ cmp_deployment | to_yaml }}
+        ===
+        {{ got_deployment | to_yaml }}
+        <<<
+    vars:
+      got_deployment: "{{ get_deployment.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_deployment: "{{ provision_deployment | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_deployment.metadata != got_deployment.metadata or
+      cmp_deployment.spec != got_deployment.spec
