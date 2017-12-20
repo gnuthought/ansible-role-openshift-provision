@@ -26,41 +26,30 @@
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
           generation: 0
+        spec:
+          template:
+            metadata:
+              creationTimestamp: null
 
 - name: Test Provision
   hosts: localhost
   connection: local
   vars:
-    provision_deploymentconfig:
+    provision_replicationcontroller:
       apiVersion: v1
-      kind: DeploymentConfig
+      kind: ReplicationController
       metadata:
-        annotations:
-          kubectl.kubernetes.io/last-applied-configuration: ''
-        creationTimestamp: null
-        generation: 0
         labels:
           provision-test: openshift-provision
-        name: test-deploymentconfig
+        name: test-replicationcontroller
       spec:
         replicas: 1
         selector:
-          deploymentconfig: test-deploymentconfig
-        strategy:
-          activeDeadlineSeconds: 21600
-          resources: {}
-          rollingParams:
-            intervalSeconds: 1
-            maxSurge: 25%
-            maxUnavailable: 25%
-            timeoutSeconds: 600
-            updatePeriodSeconds: 1
-          type: Rolling
+          replicationcontroller: test-replicationcontroller
         template:
           metadata:
-            creationTimestamp: null
             labels:
-              deploymentconfig: test-deploymentconfig
+              replicationcontroller: test-replicationcontroller
           spec:
             containers:
             - image: registry.access.redhat.com/rhscl/httpd-24-rhel7:latest
@@ -99,9 +88,6 @@
             schedulerName: default-scheduler
             securityContext: {}
             terminationGracePeriodSeconds: 30
-        test: false
-        triggers:
-        - type: ConfigChange
 
   roles:
   - role: openshift-provision
@@ -109,66 +95,50 @@
     - projects:
       - name: provision-test
         resources:
-        - "{{ provision_deploymentconfig }}"
+        - "{{ provision_replicationcontroller }}"
 
   tasks:
-  - name: Get DeploymentConfig
+  - name: Get ReplicationController
     command: >-
-      {{ test_oc_cmd }} export deploymentconfig test-deploymentconfig -n provision-test -o json
-    register: get_deploymentconfig
+      {{ test_oc_cmd }} export replicationcontroller test-replicationcontroller -n provision-test -o json
+    register: get_replicationcontroller
     changed_when: false
 
-  - name: Verify DeploymentConfig
+  - name: Verify ReplicationController
     fail:
       msg: |
-        DeploymentConfig not defined as expected
+        ReplicationController not defined as expected
         >>>
-        {{ cmp_deploymentconfig | to_yaml }}
+        {{ cmp_replicationcontroller | to_yaml }}
         ===
-        {{ got_deploymentconfig | to_yaml }}
+        {{ got_replicationcontroller | to_yaml }}
         <<<
     vars:
-      got_deploymentconfig: "{{ get_deploymentconfig.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_deploymentconfig: "{{ provision_deploymentconfig | combine(ignore_differences, recursive=True) }}"
+      got_replicationcontroller: "{{ get_replicationcontroller.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_replicationcontroller: "{{ provision_replicationcontroller | combine(ignore_differences, recursive=True) }}"
     when: >-
-      cmp_deploymentconfig.metadata != got_deploymentconfig.metadata or
-      cmp_deploymentconfig.spec != got_deploymentconfig.spec
+      cmp_replicationcontroller.metadata != got_replicationcontroller.metadata or
+      cmp_replicationcontroller.spec != got_replicationcontroller.spec
 
 - name: Test Update
   hosts: localhost
   connection: local
   vars:
-    provision_deploymentconfig:
+    provision_replicationcontroller:
       apiVersion: v1
-      kind: DeploymentConfig
+      kind: ReplicationController
       metadata:
-        annotations:
-          kubectl.kubernetes.io/last-applied-configuration: ''
-        creationTimestamp: null
-        generation: 0
         labels:
           provision-test: openshift-provision
-          newlabel: foo
-        name: test-deploymentconfig
+        name: test-replicationcontroller
       spec:
         replicas: 1
         selector:
-          deploymentconfig: test-deploymentconfig
-        strategy:
-          activeDeadlineSeconds: 21600
-          resources: {}
-          rollingParams:
-            intervalSeconds: 1
-            maxSurge: 25%
-            maxUnavailable: 25%
-            timeoutSeconds: 600
-            updatePeriodSeconds: 1
-          type: Rolling
+          replicationcontroller: test-replicationcontroller
         template:
           metadata:
-            creationTimestamp: null
             labels:
-              deploymentconfig: test-deploymentconfig
+              replicationcontroller: test-replicationcontroller
           spec:
             containers:
             - image: registry.access.redhat.com/rhscl/httpd-24-rhel7:latest
@@ -207,9 +177,6 @@
             schedulerName: default-scheduler
             securityContext: {}
             terminationGracePeriodSeconds: 30
-        test: false
-        triggers:
-        - type: ConfigChange
 
   roles:
   - role: openshift-provision
@@ -217,27 +184,27 @@
     - projects:
       - name: provision-test
         resources:
-        - "{{ provision_deploymentconfig }}"
+        - "{{ provision_replicationcontroller }}"
 
   tasks:
-  - name: Get DeploymentConfig
+  - name: Get ReplicationController
     command: >-
-      {{ test_oc_cmd }} export deploymentconfig test-deploymentconfig -n provision-test -o json
-    register: get_deploymentconfig
+      {{ test_oc_cmd }} export replicationcontroller test-replicationcontroller -n provision-test -o json
+    register: get_replicationcontroller
     changed_when: false
 
-  - name: Verify DeploymentConfig Update
+  - name: Verify ReplicationController Update
     fail:
       msg: |
-        DeploymentConfig not defined as expected
+        ReplicationController not defined as expected
         >>>
-        {{ cmp_deploymentconfig | to_yaml }}
+        {{ cmp_replicationcontroller | to_yaml }}
         ===
-        {{ got_deploymentconfig | to_yaml }}
+        {{ got_replicationcontroller | to_yaml }}
         <<<
     vars:
-      got_deploymentconfig: "{{ get_deploymentconfig.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_deploymentconfig: "{{ provision_deploymentconfig | combine(ignore_differences, recursive=True) }}"
+      got_replicationcontroller: "{{ get_replicationcontroller.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_replicationcontroller: "{{ provision_replicationcontroller | combine(ignore_differences, recursive=True) }}"
     when: >-
-      cmp_deploymentconfig.metadata != got_deploymentconfig.metadata or
-      cmp_deploymentconfig.spec != got_deploymentconfig.spec
+      cmp_replicationcontroller.metadata != got_replicationcontroller.metadata or
+      cmp_replicationcontroller.spec != got_replicationcontroller.spec

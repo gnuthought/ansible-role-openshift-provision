@@ -1,0 +1,161 @@
+---
+- name: Set Facts
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  tasks:
+  - set_fact:
+      test_oc_cmd: >-
+        oc
+        {% if openshift_connection_certificate_authority is defined %}
+        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
+        {% endif %}
+        {% if openshift_connection_insecure_skip_tls_verify is defined %}
+        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+        {% endif %}
+        {% if openshift_connection_server is defined %}
+        --server={{ openshift_connection_server | quote }}
+        {% endif %}
+        {% if openshift_connection_token is defined %}
+        --token={{ openshift_connection_token | quote }}
+        {% endif %}
+      openshift_connection:
+        server: "{{ openshift_connection_server }}"
+        insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify }}"
+        token: "{{ openshift_connection_token }}"
+      ignore_differences:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+
+- name: Test Provision
+  hosts: localhost
+  connection: local
+  vars:
+    provision_configmap:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        creationTimestamp: null
+        name: test-configmap
+      data:
+        foo: bar
+
+  roles:
+  - role: openshift-provision
+
+  tasks:
+  - name: Provision ConfigMap
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_configmap }}"
+
+  - name: Get ConfigMap
+    command: >-
+      {{ test_oc_cmd }} export configmap
+      test-configmap -n provision-test -o json
+    register: get_configmap
+    changed_when: false
+
+  - name: Verify ConfigMap
+    fail:
+      msg: |
+        ConfigMap not defined as expected
+        >>>
+        {{ cmp_configmap | to_yaml }}
+        ===
+        {{ got_configmap | to_yaml }}
+        <<<
+    vars:
+      got_configmap: "{{ get_configmap.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_configmap: "{{ provision_configmap | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_configmap.metadata != got_configmap.metadata or
+      cmp_configmap.data != got_configmap.data
+
+  - name: Check reprovision ConfigMap
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_configmap }}"
+    register: reprovision_configmap
+
+  - fail:
+      msg: Reprovision indicated change to ConfigMap
+    when: reprovision_configmap.changed
+
+- name: Test Update
+  hosts: localhost
+  connection: local
+  vars:
+    provision_configmap:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        creationTimestamp: null
+        name: test-configmap
+      data:
+        foo: boop
+        bar: three
+
+  roles:
+  - role: openshift-provision
+
+  tasks:
+  - name: Apply update to ConfigMap
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_configmap }}"
+
+  - name: Get ConfigMap
+    command: >-
+      {{ test_oc_cmd }} export configmap
+      test-configmap -n provision-test -o json
+    register: get_configmap
+    changed_when: false
+
+  - name: Verify Update ConfigMap
+    fail:
+      msg: |
+        ConfigMap not defined as expected
+        >>>
+        {{ cmp_configmap | to_yaml }}
+        ===
+        {{ got_configmap | to_yaml }}
+        <<<
+    vars:
+      got_configmap: "{{ get_configmap.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_configmap: "{{ provision_configmap | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_configmap.metadata != got_configmap.metadata or
+      cmp_configmap.data != got_configmap.data
+
+- name: Test Delete
+  hosts: localhost
+  connection: local
+  vars:
+    provision_configmap:
+      kind: ConfigMap
+      metadata:
+        name: test-configmap
+  roles:
+  - role: openshift-provision
+  tasks:
+  - name: Delete ConfigMap
+    openshift_provision:
+      action: delete
+      namespace: provision-test
+      openshift_connection: "{{ openshift_connection }}"
+      resource: "{{ provision_configmap }}"
+
+  - name: Verify ConfigMap Delete
+    command: >-
+      {{ test_oc_cmd }} export configmap
+      test-configmap -n provision-test -o json
+    register: get_configmap
+    failed_when: get_configmap.rc == 0
+    changed_when: false

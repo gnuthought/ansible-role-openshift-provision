@@ -20,6 +20,10 @@
         {% if openshift_connection_token is defined %}
         --token={{ openshift_connection_token | quote }}
         {% endif %}
+      openshift_connection:
+        server: "{{ openshift_connection_server }}"
+        insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify }}"
+        token: "{{ openshift_connection_token }}"
       ignore_differences:
         metadata:
           annotations:
@@ -62,16 +66,18 @@
 
   roles:
   - role: openshift-provision
-    openshift_clusters:
-    - projects:
-      - name: testproj
-        resources:
-        - "{{ provision_limitrange }}"
 
   tasks:
+  - name: Provision LimitRange
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_limitrange }}"
+
   - name: Get LimitRange
     command: >-
-      {{ test_oc_cmd }} export limitrange test-limitrange -n testproj -o json
+      {{ test_oc_cmd }} export limitrange
+      test-limitrange -n provision-test -o json
     register: get_limitrange
     changed_when: false
 
@@ -90,6 +96,17 @@
     when: >-
       cmp_limitrange.metadata != got_limitrange.metadata or
       cmp_limitrange.spec != got_limitrange.spec
+
+  - name: Check reprovision LimitRange
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_limitrange }}"
+    register: reprovision_limitrange
+
+  - fail:
+      msg: Reprovision indicated change to LimitRange
+    when: reprovision_limitrange.changed
 
 - name: Test Update
   hosts: localhost
@@ -127,20 +144,22 @@
 
   roles:
   - role: openshift-provision
-    openshift_clusters:
-    - projects:
-      - name: testproj
-        resources:
-        - "{{ provision_limitrange }}"
 
   tasks:
+  - name: Apply update to LimitRange
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_limitrange }}"
+
   - name: Get LimitRange
     command: >-
-      {{ test_oc_cmd }} export limitrange test-limitrange -n testproj -o json
+      {{ test_oc_cmd }} export limitrange
+      test-limitrange -n provision-test -o json
     register: get_limitrange
     changed_when: false
 
-  - name: Verify LimitRange Update
+  - name: Verify Update LimitRange
     fail:
       msg: |
         LimitRange not defined as expected
@@ -155,3 +174,30 @@
     when: >-
       cmp_limitrange.metadata != got_limitrange.metadata or
       cmp_limitrange.spec != got_limitrange.spec
+
+- name: Test Delete
+  hosts: localhost
+  connection: local
+  vars:
+    provision_limitrange:
+      apiVersion: extensions/v1beta1
+      kind: LimitRange
+      metadata:
+        name: test-limitrange
+  roles:
+  - role: openshift-provision
+  tasks:
+  - name: Delete LimitRange
+    openshift_provision:
+      action: delete
+      namespace: provision-test
+      openshift_connection: "{{ openshift_connection }}"
+      resource: "{{ provision_limitrange }}"
+
+  - name: Verify LimitRange Delete
+    command: >-
+      {{ test_oc_cmd }} export limitrange
+      test-limitrange -n provision-test -o json
+    register: get_limitrange
+    failed_when: get_limitrange.rc == 0
+    changed_when: false

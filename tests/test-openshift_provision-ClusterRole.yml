@@ -20,6 +20,15 @@
         {% if openshift_connection_token is defined %}
         --token={{ openshift_connection_token | quote }}
         {% endif %}
+      openshift_connection:
+        server: "{{ openshift_connection_server }}"
+        insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify }}"
+        token: "{{ openshift_connection_token }}"
+      ignore_differences:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
 
 - name: Test Provision
   hosts: localhost
@@ -27,12 +36,12 @@
   vars_files:
   - login-creds.yml
   vars:
-    cluster_role:
+    provision_clusterrole:
       apiVersion: v1
       kind: ClusterRole
       metadata:
         creationTimestamp: null
-        name: network-joiner
+        name: test-clusterrole
       rules:
       - apiGroups:
         - ""
@@ -65,14 +74,17 @@
 
   roles:
   - role: openshift-provision
-    openshift_clusters:
-    - cluster_resources:
-      - "{{ cluster_role }}"
 
   tasks:
+  - name: Provision ClusterRole
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      resource: "{{ provision_clusterrole }}"
+
   - name: Get ClusterRole
     command: >-
-      {{ test_oc_cmd }} export clusterrole network-joiner -o yaml
+      {{ test_oc_cmd }} export clusterrole
+      test-clusterrole -o json
     register: get_clusterrole
     changed_when: false
 
@@ -81,31 +93,39 @@
       msg: |
         ClusterRole not defined as expected
         >>>
-        {{ cluster_role | to_yaml }}
+        {{ cmp_clusterrole | to_yaml }}
         ===
         {{ got_clusterrole | to_yaml }}
         <<<
     vars:
-      got_clusterrole: "{{ get_clusterrole.stdout | from_yaml }}"
-      blank_last_applied_configuration:
-        metadata:
-          annotations:
-            kubectl.kubernetes.io/last-applied-configuration: ''
+      got_clusterrole: "{{ get_clusterrole.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_clusterrole: "{{ provision_clusterrole | combine(ignore_differences, recursive=True) }}"
     when: >-
-      cluster_role | combine(blank_last_applied_configuration, recursive=True) !=
-      got_clusterrole | combine(blank_last_applied_configuration, recursive=True)
+      cmp_clusterrole.metadata != got_clusterrole.metadata or
+      cmp_clusterrole.rules != got_clusterrole.rules
 
-- hosts: localhost
+  - name: Check reprovision ClusterRole
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      resource: "{{ provision_clusterrole }}"
+    register: reprovision_clusterrole
+
+  - fail:
+      msg: Reprovision indicated change to ClusterRole
+    when: reprovision_clusterrole.changed
+
+- name: Test Update
+  hosts: localhost
   connection: local
   vars_files:
   - login-creds.yml
   vars:
-    cluster_role:
+    provision_clusterrole:
       apiVersion: v1
       kind: ClusterRole
       metadata:
         creationTimestamp: null
-        name: network-joiner
+        name: test-clusterrole
       rules:
       - apiGroups:
         - network.openshift.io
@@ -139,32 +159,59 @@
 
   roles:
   - role: openshift-provision
-    openshift_clusters:
-    - cluster_resources:
-      - "{{ cluster_role }}"
 
   tasks:
+  - name: Apply update to ClusterRole
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      resource: "{{ provision_clusterrole }}"
+
   - name: Get ClusterRole
     command: >-
-      {{ test_oc_cmd }} export clusterrole network-joiner -o yaml
+      {{ test_oc_cmd }} export clusterrole
+      test-clusterrole -o json
     register: get_clusterrole
     changed_when: false
 
-  - name: Verify ClusterRole Update
+  - name: Verify Update ClusterRole
     fail:
       msg: |
         ClusterRole not defined as expected
         >>>
-        {{ cluster_role | to_yaml }}
+        {{ cmp_clusterrole | to_yaml }}
         ===
         {{ got_clusterrole | to_yaml }}
         <<<
     vars:
-      got_clusterrole: "{{ get_clusterrole.stdout | from_yaml }}"
-      blank_last_applied_configuration:
-        metadata:
-          annotations:
-            kubectl.kubernetes.io/last-applied-configuration: ''
+      got_clusterrole: "{{ get_clusterrole.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_clusterrole: "{{ provision_clusterrole | combine(ignore_differences, recursive=True) }}"
     when: >-
-      cluster_role | combine(blank_last_applied_configuration, recursive=True) !=
-      got_clusterrole | combine(blank_last_applied_configuration, recursive=True)
+      cmp_clusterrole.metadata != got_clusterrole.metadata or
+      cmp_clusterrole.rules != got_clusterrole.rules
+
+- name: Test Delete
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    provision_clusterrole:
+      kind: ClusterRole
+      metadata:
+        name: test-clusterrole
+  roles:
+  - role: openshift-provision
+  tasks:
+  - name: Delete ClusterRole
+    openshift_provision:
+      action: delete
+      openshift_connection: "{{ openshift_connection }}"
+      resource: "{{ provision_clusterrole }}"
+
+  - name: Verify ClusterRole Delete
+    command: >-
+      {{ test_oc_cmd }} export clusterrole
+      test-clusterrole -o json
+    register: get_clusterrole
+    failed_when: get_clusterrole.rc == 0
+    changed_when: false

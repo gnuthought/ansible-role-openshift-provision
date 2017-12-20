@@ -3,17 +3,21 @@ openshift-provision
 
 An Ansible role for provisioning resources within OpenShift clusters.
 
+This role can provides comprehensive OpenShift cluster resource provisioning 
+using a single declarative variable structure as well as the
+`openshift_provision` Ansible module.
+
 Installation
 ------------
 
 ```
-ansible-galaxy install https://github.com/jkupferer/ansible-role-openshift-provision/archive/master.tar.gz#/openshift-provision
+ansible-galaxy install https://github.com/gnuthought/ansible-role-openshift-provision/archive/master.tar.gz#/openshift-provision
 ```
 
 Requirements
 ------------
 
-OCP 3.3+
+OCP 3.4+
 ansible 2.4+
 
 Role Variables
@@ -263,8 +267,8 @@ specified above for `openshift_clusters[*].projects[*].resources` with the
 addition that each entry here must specify `metadata.namespace` to specify
 the target project for the resource.
 
-Example Playbook
-----------------
+Example Playbook with Provisioning by Role Variables
+----------------------------------------------------
 
     - hosts: masters[0]
       roles:
@@ -431,6 +435,51 @@ Example resources file:
 
         service_accounts:
         - jenkins
+
+Example Playbook with Provisioning with `openshift_provision` Module
+--------------------------------------------------------------------
+
+    - hosts: localhost
+      connection: local
+      gather_facts: no
+      vars:
+        openshift_connection:
+          server: "{{ openshift_connection_server }}"
+          token: "{{ openshift_connection_token }}"
+      roles:
+      - role: openshift-logging-elasticsearch-hostmount
+
+      tasks:
+      - name: Provision BuildConfig
+        openshift_provision:
+          openshift_connection: "{{ openshift_connection }}"
+          namespace: example-project
+          resource:
+            apiVersion: v1
+            kind: BuildConfig
+            metadata:
+              name: test-buildconfig
+            spec:
+              nodeSelector: null
+              output:
+                to:
+                  kind: ImageStreamTag
+                  name: testbuild:latest
+              postCommit: {}
+              resources: {}
+              runPolicy: Serial
+              source:
+                git:
+                  uri: https://nosuch.example.com/blah.git
+                type: Git
+              strategy:
+                sourceStrategy:
+                  from:
+                    kind: ImageStreamTag
+                    name: httpd:2.4
+                    namespace: openshift
+                type: Source
+              triggers: []
 
 License
 -------

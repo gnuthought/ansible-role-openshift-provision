@@ -1,0 +1,592 @@
+#!/usr/bin/python
+
+import json
+import tempfile
+import re
+import traceback
+import copy
+
+
+DOCUMENTATION = '''
+---
+module: openshift_provision
+
+short_description: Provision OpenShift resources
+
+description:
+  - Manage OpenShift resources idempotently
+
+options:
+  action:
+    description:
+    - Action to perform on resource: apply, create, replace, delete
+    default: apply
+    required: false
+    aliases: []
+  namespace:
+    description:
+    - Namespace in which to provision resource
+    required: false
+    aliases: []
+  oc_cmd:
+    description:
+    - OpenShift oc command line
+    default: oc
+    required: false
+    aliases: []
+  resource:
+    description:
+    - Resource definition
+    required: true
+    default: None
+    aliases: []
+
+extends_documentation_fragment: []
+
+author:
+- Johnathan Kupferer <jkupfere@redhat.com>
+'''
+
+EXAMPLES = '''
+- name: Provision a PersistentVolume
+  openshift_provision:
+    action: replace
+    namespace: example-project
+    resource:
+      apiVersion: v1
+      kind: PersistentVolume
+      metadata:
+        creationTimestamp: null
+        labels:
+          foo: bar
+        name: nfs-foo
+      spec:
+        accessModes:
+        - ReadWriteMany
+        capacity:
+          storage: 10Gi
+        nfs:
+          path: /export/foo
+          server: nfsserver.example.com
+        persistentVolumeReclaimPolicy: Retain
+'''
+
+RETURN = '''
+resource:
+  description: Resource definition
+  type: dict
+'''
+
+from ansible.module_utils.basic import AnsibleModule
+
+class OpenShiftProvision:
+    def __init__(self, module):
+        self.module = module
+        self.changed = False
+        self.action = module.params['action']
+        self.resource = module.params['resource']
+        self.oc_cmd = [ module.params['oc_cmd'] ]
+
+        if not 'kind' in self.resource:
+            raise Exception('resource must define kind')
+        if not 'metadata' in self.resource:
+            raise Exception('resource must include metadata')
+        if not 'name' in self.resource['metadata']:
+            raise Exception('resource metadata must include name')
+
+        if 'namespace' in self.resource['metadata']:
+            self.namespace = self.resource['metadata']['namespace']
+        elif 'namespace' in module.params:
+            self.namespace = module.params['namespace']
+
+        openshift_connection = module.params['openshift_connection']
+        for opt in openshift_connection:
+            self.oc_cmd += ['--' + opt.replace('_', '-') + '=' + openshift_connection[opt]]
+
+    def merge_dict(self, merged, patch):
+        for k, v in patch.iteritems():
+            if type(v) is dict:
+                if not k in merged:
+                    merged[k] = copy.deepcopy(v)
+                elif type(merged[k]) is dict:
+                    self.merge_dict(merged[k], v)
+                else:
+                    raise "Unable to merge " + type(merged[key]) + " with dict"
+            else:
+                merged[k] = copy.deepcopy(v)
+    
+    def merge(self, source, patch):
+        merged = copy.deepcopy(source)
+        self.merge_dict(merged, patch)
+        return merged
+
+    def run_oc(self, args, **kwargs):
+        if self.module._verbosity < 3:
+            # Not running in debug mode, call module run_command which filters passwords
+            return self.module.run_command(self.oc_cmd + args, **kwargs)
+
+        check_rc = True
+        if 'check_rc' in kwargs:
+            check_rc = kwargs['check_rc']
+        kwargs['check_rc'] = False
+
+        (rc, stdout, stderr) = self.module.run_command(self.oc_cmd + args, **kwargs)
+
+        if rc != 0 and check_rc:
+            self.module.fail_json(cmd=args, rc=rc, stdout=stdout, stderr=stderr, msg=stderr)
+
+        return (rc, stdout, stderr)
+
+    def get_current_resource(self):
+        if self.resource['kind'] == 'ImageStream':
+            command = ['get']
+        else:
+            command = ['export']
+        command += [self.resource['kind'], self.resource['metadata']['name'], '-o', 'json']
+        if self.namespace:
+            command += ['-n', self.namespace]
+        (rc, stdout, stderr) = self.run_oc(command, check_rc=False)
+        if rc != 0:
+            return None
+        return json.loads(stdout)
+
+    def filter_differences(self, resource):
+
+        if resource['kind'] == 'DaemonSet':
+            filter = {
+                "metadata": {
+                    "annotations": {
+                        "kubectl.kubernetes.io/last-applied-configuration": ""
+                    },
+                    "creationTimestamp": "",
+                    "generation": 0,
+                    "namespace": ""
+                },
+                "spec": {
+                    "templateGeneration": 0
+                }
+            }
+        elif resource['kind'] == 'Deployment':
+            filter = {
+                "metadata": {
+                    "annotations": {
+                        "deployment.kubernetes.io/revision": "0",
+                        "kubectl.kubernetes.io/last-applied-configuration": ""
+                    },
+                    "creationTimestamp": "",
+                    "generation": 0,
+                    "namespace": ""
+                },
+                "spec": {
+                    "template": {
+                        "metadata": {
+                            "creationTimestamp": ""
+                        }
+                    },
+                    "templateGeneration": 0
+                }
+            }
+        elif resource['kind'] in ['ReplicationController', 'ReplicaSet', 'StatefulSet']:
+            filter = {
+                "metadata": {
+                    "annotations": {
+                        "kubectl.kubernetes.io/last-applied-configuration": ""
+                    },
+                    "creationTimestamp": "",
+                    "generation": 0,
+                    "namespace": ""
+                },
+                "spec": {
+                    "template": {
+                        "metadata": {
+                            "creationTimestamp": ""
+                        }
+                    }
+                }
+            }
+        elif resource['kind'] == 'ImageStream':
+            filter = {
+                "metadata": {
+                    "annotations": {
+                        "kubectl.kubernetes.io/last-applied-configuration": "",
+                        "openshift.io/image.dockerRepositoryCheck": "1970-01-01T00:00:00Z"
+                    },
+                    "creationTimestamp": "",
+                    "generation": 0,
+                    "namespace": "",
+                    "resourceVersion": "0",
+                    "selfLink": "",
+                    "uid": ""
+                }
+            }
+        else:
+            filter = {
+                "metadata": {
+                    "annotations": {
+                        "kubectl.kubernetes.io/last-applied-configuration": ""
+                    },
+                    "creationTimestamp": "",
+                    "generation": 0,
+                    "namespace": ""
+                }
+            }
+
+        ret = self.merge(resource, filter)
+
+        if ret['kind'] == 'ImageStream':
+            for tag in ret['spec']['tags']:
+                tag['generation'] = 0
+        elif ret['kind'] == 'StatefulSet':
+            for claimtemplate in ret['spec']['volumeClaimTemplates']:
+                claimtemplate['metadata']['creationTimestamp'] = ""
+                claimtemplate['status'] = {}
+
+        return ret
+ 
+    def comparison_fields(self):
+        if self.resource['kind'] == 'ClusterRole':
+          return ['metadata', 'rules']
+        elif self.resource['kind'] in ['ConfigMap', 'Secret']:
+          return ['metadata', 'data']
+        elif self.resource['kind'] == 'ServiceAccount':
+          return ['metadata', 'imagePullSecrets', 'secrets']
+        elif self.resource['kind'] == 'Template':
+          return ['metadata', 'labels', 'objects', 'parameters']
+        else:
+          return ['metadata', 'spec']
+
+    def compare_resource(self, resource):
+        if resource == None:
+            return False
+
+        a = self.filter_differences(self.resource)
+        b = self.filter_differences(resource)
+        for field in self.comparison_fields():
+            if field in a and not field in b:
+                return False
+            if field in b and not field in a:
+                return False
+            if field in a and field in b and a[field] != b[field]:
+                return False
+        return True
+
+    def provision(self):
+        current_resource = self.get_current_resource()
+
+        if self.action == 'create':
+            if current_resource:
+                self.resource = current_resource
+                return
+        elif self.action == 'apply' or self.action == 'replace':
+            if self.compare_resource(current_resource):
+                self.resource = current_resource
+                return
+        elif self.action == 'delete':
+            if current_resource == None:
+                return
+
+        if self.action == 'delete':
+            command = ['delete', self.resource['kind'], self.resource['metadata']['name']]
+            if self.namespace:
+                command += ['-n', self.namespace]
+            (rc, stdout, stderr) = self.run_oc(command, check_rc=True)
+        else:
+            command = [self.action, '-f', '-']
+            if self.namespace:
+                command += ['-n', self.namespace]
+            (rc, stdout, stderr) = self.run_oc(command, data=json.dumps(self.resource), check_rc=True)
+
+        self.changed = True
+
+def run_module():
+    module_args = {
+        'action': {
+            'type': 'str',
+            'required': False,
+            'default': 'apply'
+        },
+        'namespace': {
+            'type': 'str',
+            'required': False,
+        },
+        'oc_cmd': {
+            'type': 'str',
+            'required': False,
+            'default': 'oc'
+        },
+        'openshift_connection': {
+            'type': 'dict',
+            'required': False,
+            'default': {}
+        },
+        'resource': {
+            'type': 'dict',
+            'required': True
+        }
+    }
+
+    module = AnsibleModule(
+        argument_spec=module_args,
+        supports_check_mode=True
+    )
+
+    provisioner = OpenShiftProvision(module)
+
+    try:
+        provisioner.provision()
+    except Exception as e:
+        module.fail_json(
+            msg=e.message,
+            traceback=traceback.format_exc().split('\n'),
+            resource=provisioner.resource
+        )
+
+    module.exit_json(changed=provisioner.changed, resource=provisioner.resource)
+
+    if module.check_mode:
+        return 
+
+def main():
+    run_module()
+
+if __name__ == "__main__":
+    main()
+
+###
+#
+#
+#class ResourceModule:
+#  def __init__(self, module):
+#    self.module = module
+#
+#    self.changed = False
+#    self.msg = []
+#    self.log = []
+#    self.arguments = []
+#
+#    for key in module.params:
+#      setattr(self, key, module.params[key])
+#
+#
+#  def debug(self, msg, *args):
+#    if self.module._verbosity >= 3:
+#      self.log.append(msg % args)
+#
+#
+#  def trace(self, msg, *args):
+#    if self.module._verbosity >= 4:
+#      self.log.append(msg % args)
+#
+#
+#  def run_command(self, args, **kwargs):
+#    if self.module._verbosity < 3 or not kwargs['check_rc']:  # Not running in debug mode, call module run_command which filters passwords
+#      return self.module.run_command(args, **kwargs)
+#
+#    kwargs['check_rc'] = False
+#    (rc, stdout, stderr) = self.module.run_command(args, **kwargs)
+#
+#    if rc != 0:
+#      self.module.fail_json(cmd=args, rc=rc, stdout=stdout, stderr=stderr, msg=stderr, debug=self.log)
+#
+#    return (rc, stdout, stderr)
+#
+#
+#  def remove_omitted_keys(self, object, parent = None, object_key = None):
+#    if isinstance(object, dict):
+#      for k, v in object.items():
+#        self.remove_omitted_keys(v, object, k)
+#    elif isinstance(object, list):
+#      for i, v in enumerate(object[:]):
+#        self.remove_omitted_keys(v, object, i)
+#    elif isinstance(object, basestring):
+#      if isinstance(object, basestring) and object.startswith('__omit_place_holder__'):
+#        del parent[object_key]
+#
+#
+#  def exemption(self, kind, current, patch, path):
+#    if patch is None or isinstance(patch, (dict, list)) and not patch:
+#      return True
+#    elif re.match('\.status\..*', path):
+#      return True
+#    elif kind == 'DeploymentConfig' and re.match('.spec.template.spec.containers\[[0-9]+\].image', path):
+#      return "@" in current
+#
+#    return False
+#
+#
+#  def patch_applied(self, kind, name, current, patch, path = ""):
+#    self.trace("patch_applied %s", path)
+#
+#    if current is None:
+#      if not patch is None and not patch is False and not self.exemption(kind, current, patch, path):
+#        self.msg.append(self.namespace + "::" + kind + "/" + name + "{" + path + "}(" + str(patch) + " != " + str(current) + ")")
+#        return False
+#    elif isinstance(patch, dict):
+#      for key, val in patch.iteritems():
+#        if not self.patch_applied(kind, name, current.get(key), val, path + "." + key):
+#          return False
+#    elif isinstance(patch, list):
+#      if not self.strategic_list_compare(kind, name, current, patch, path):
+#        return False
+#    else:
+#      if current != patch and not self.exemption(kind, current, patch, path):
+#        self.msg.append(self.namespace + "::" + kind + "/" + name + "{" + path + "}(" + str(patch) + " != " + str(current) + ")")
+#        return False
+#
+#    return True
+#
+#
+#  def equalList(self, kind, resource, current, patch, path):
+#    """Compare two lists recursively."""
+#    if len(current) != len(patch):
+#      self.msg.append(self.namespace + "::" + kind + "/" + resource + "{" + path + "}(length mismatch)")
+#      return False
+#
+#    for i, val in enumerate(patch):
+#        if not self.patch_applied(kind, resource, current[i], val, path + "[" + str(i) + "]"):
+#          return False
+#
+#    return True
+#
+#
+#  def strategic_list_compare(self, kind, name, current, patch, path):
+#    if not current and not patch:
+#      return True
+#    elif not current:
+#      self.msg.append(self.namespace + "::" + kind + "/" + name + "{" + path + "}(new)")
+#      return False
+#    elif isinstance(current[0], dict) and 'name' in current[0]:
+#      for i, patchVal in enumerate(patch):
+#        elementName = patchVal.get('name')
+#        if elementName is None:  # Patch contains element without name attribute => fall back to plain list comparison.
+#          self.debug("Patch contains element without name attribute => fall back to plain list comparison.")
+#          return self.equalList(kind, name, current, patch, path)
+#        curVals = [curVal for curVal in current if curVal.get('name') == elementName]
+#        if len(curVals) == 0:
+#           self.msg.append(self.namespace + "::" + kind + "/" + name + "{" + path + '[' + str(len(current)) + ']' + "}(new)")
+#           return False
+#        elif len(curVals) == 1:
+#          if not self.patch_applied(kind, name, curVals[0], patchVal, path + '[' + str(i) + ']'):
+#            return False
+#        else:
+#          self.module.fail_json(msg="Patch contains multiple attributes with name '" + elementName + "' under path: " + path, debug=self.log)
+#    else:
+#        return self.equalList(kind, name, current, patch, path)
+#
+#    return True
+#
+#
+#  def export_resource(self, kind, name = None, label = None):
+#    if label:
+#      name = '-l ' + label
+#
+#    (rc, stdout, stderr) = self.module.run_command(['oc', 'get', '-n', self.namespace, kind + '/' + name, '-o', 'json'])
+#
+#    if rc == 0:
+#      result = json.loads(stdout)
+#    else:
+#      result = {}
+#
+#    return result
+#
+#
+#  def create_resource(self, kind, name, object):
+#    if not self.module.check_mode:
+#      file = tempfile.NamedTemporaryFile(prefix=kind + '_' + name, delete=True)
+#      json.dump(object, file)
+#      file.flush()
+#      (rc, stdout, stderr) = self.run_command(['oc', 'create', '-n', self.namespace, '-f', file.name], check_rc=True)
+#      file.close()
+#
+#
+#  def patch_resource(self, kind, name, patch):
+#    if not self.module.check_mode:
+#      (rc, stdout, stderr) = self.run_command(['oc', 'patch', '-n', self.namespace, kind + '/' + name, '-p', json.dumps(patch)], check_rc=True)
+#
+#
+#  def update_resource(self, object, path = ""):
+#    kind = object.get('kind')
+#    name = object.get('metadata', {}).get('name')
+#    self.debug("update_resource %s %s", kind, name)
+#    if not kind:
+#      self.module.fail_json(msg=path + ".kind is undefined!", debug=self.log)
+#    if not name:
+#      self.module.fail_json(msg=path + ".metadata.name is undefined!", debug=self.log)
+#
+#    self.remove_omitted_keys(object)
+#
+#    current = self.export_resource(kind, name)
+#
+#    if not current:
+#      self.changed = True
+#      self.msg.append(self.namespace + "::" + kind + "/" + name + "(new)")
+#      self.create_resource(kind, name, object)
+#    elif not self.patch_applied(kind, name, current, object):
+#      self.changed = True
+#      self.patch_resource(kind, name, object)
+#
+#    return self.changed
+#
+#
+#  def process_template(self, template_name, arguments):
+#    self.debug("process_template")
+#
+#    if arguments:
+#      args = [_ for arg in arguments.items() for _ in ('-v', "=".join(arg))]
+#    else:
+#      args = []
+#
+#    if "\n" in template_name:
+#      (rc, stdout, stderr) = self.run_command(['oc', 'process', '-o', 'json', '-f', '-'] + args, data=template_name, check_rc=True)
+#    else:
+#      (rc, stdout, stderr) = self.run_command(['oc', 'process', '-o', 'json', '-f', template_name] + args, check_rc=True)
+#
+#    if rc != 0:
+#      self.module.fail_json(msg=stderr, debug=self.log)
+#
+#    template = json.loads(stdout)
+#
+#    if self.app_name:
+#      for item in template['items']:
+#        item.setdefault('metadata', {}).setdefault('labels', {})['app'] = self.app_name
+#
+#    return template
+#
+#
+#  def apply_template(self, template_name, arguments):
+#    template = self.process_template(template_name, arguments)
+#
+#    self.remove_omitted_keys(template)
+#
+#    for i, object in enumerate(template['items']):
+#      self.update_resource(object, ".items[" + str(i) + "]")
+#
+#
+#def main():
+#    module = AnsibleModule(
+#        argument_spec=dict(
+#            namespace = dict(type='str'),
+#            template = dict(type='str'),
+#            app_name = dict(type='str'),
+#            arguments = dict(type='dict'),
+#            patch = dict(type='dict'),
+#        ),
+#        supports_check_mode=True
+#    )
+#
+#    resource = ResourceModule(module)
+#
+#    try:
+#      if resource.template:
+#        resource.apply_template(resource.template, resource.arguments)
+#      else:
+#        resource.update_resource(resource.patch)
+#    except Exception as e:
+#      module.fail_json(msg=e.message, traceback=traceback.format_exc().split('\n'), debug=resource.log)
+#
+#    if module._verbosity >= 3:
+#      module.exit_json(changed=resource.changed, msg=resource.msg, debug=resource.log)
+#    else:
+#      module.exit_json(changed=resource.changed, msg=resource.msg)
+#
+#from ansible.module_utils.basic import *

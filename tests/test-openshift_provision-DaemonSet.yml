@@ -20,6 +20,19 @@
         {% if openshift_connection_token is defined %}
         --token={{ openshift_connection_token | quote }}
         {% endif %}
+      openshift_connection:
+        server: "{{ openshift_connection_server }}"
+        insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify }}"
+        token: "{{ openshift_connection_token }}"
+      ignore_differences:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+          generation: 0
+        spec:
+          templateGeneration: 0
+          
 
 - name: Test Provision
   hosts: localhost
@@ -27,7 +40,7 @@
   vars_files:
   - login-creds.yml
   vars:
-    daemonset:
+    provision_daemonset:
       apiVersion: extensions/v1beta1
       kind: DaemonSet
       metadata:
@@ -73,16 +86,18 @@
 
   roles:
   - role: openshift-provision
-    openshift_clusters:
-    - projects:
-      - name: testproj
-        resources:
-        - "{{ daemonset }}"
 
   tasks:
+  - name: Provision DaemonSet
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_daemonset }}"
+
   - name: Get DaemonSet
     command: >-
-      {{ test_oc_cmd }} export daemonset test-daemonset -n testproj -o yaml
+      {{ test_oc_cmd }} export daemonset
+      test-daemonset -n provision-test -o json
     register: get_daemonset
     changed_when: false
 
@@ -91,30 +106,35 @@
       msg: |
         DaemonSet not defined as expected
         >>>
-        {{ daemonset | to_yaml }}
+        {{ cmp_daemonset | to_yaml }}
         ===
-        {{ got_daemonset | combine(ignore_changes, recursive=True) | to_yaml }}
+        {{ got_daemonset | to_yaml }}
         <<<
     vars:
-      got_daemonset: "{{ get_daemonset.stdout | from_yaml | combine(ignore_changes, recursive=True) }}"
-      ignore_changes:
-        metadata:
-          annotations:
-            kubectl.kubernetes.io/last-applied-configuration: ''
-          creationTimestamp: null
-          generation: 0
-        spec:
-          templateGeneration: 0
+      got_daemonset: "{{ get_daemonset.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_daemonset: "{{ provision_daemonset | combine(ignore_differences, recursive=True) }}"
     when: >-
-      daemonset.metadata != got_daemonset.metadata or
-      daemonset.spec != got_daemonset.spec
+      cmp_daemonset.metadata != got_daemonset.metadata or
+      cmp_daemonset.spec != got_daemonset.spec
 
-- hosts: localhost
+  - name: Check reprovision DaemonSet
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_daemonset }}"
+    register: reprovision_daemonset
+
+  - fail:
+      msg: Reprovision indicated change to DaemonSet
+    when: reprovision_daemonset.changed
+
+- name: Test Update
+  hosts: localhost
   connection: local
   vars_files:
   - login-creds.yml
   vars:
-    daemonset:
+    provision_daemonset:
       apiVersion: extensions/v1beta1
       kind: DaemonSet
       metadata:
@@ -160,38 +180,61 @@
 
   roles:
   - role: openshift-provision
-    openshift_clusters:
-    - projects:
-      - name: testproj
-        resources:
-        - "{{ daemonset }}"
 
   tasks:
+  - name: Apply update to DaemonSet
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_daemonset }}"
+
   - name: Get DaemonSet
     command: >-
-      {{ test_oc_cmd }} export daemonset test-daemonset -n testproj -o yaml
+      {{ test_oc_cmd }} export daemonset
+      test-daemonset -n provision-test -o json
     register: get_daemonset
     changed_when: false
 
-  - name: Verify DaemonSet Update
+  - name: Verify Update DaemonSet
     fail:
       msg: |
         DaemonSet not defined as expected
         >>>
-        {{ daemonset | to_yaml }}
+        {{ cmp_daemonset | to_yaml }}
         ===
-        {{ got_daemonset | combine(ignore_changes, recursive=True) | to_yaml }}
+        {{ got_daemonset | to_yaml }}
         <<<
     vars:
-      got_daemonset: "{{ get_daemonset.stdout | from_yaml | combine(ignore_changes, recursive=True) }}"
-      ignore_changes:
-        metadata:
-          annotations:
-            kubectl.kubernetes.io/last-applied-configuration: ''
-          creationTimestamp: null
-          generation: 0
-        spec:
-          templateGeneration: 0
+      got_daemonset: "{{ get_daemonset.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_daemonset: "{{ provision_daemonset | combine(ignore_differences, recursive=True) }}"
     when: >-
-      daemonset.metadata != got_daemonset.metadata or
-      daemonset.spec != got_daemonset.spec
+      cmp_daemonset.metadata != got_daemonset.metadata or
+      cmp_daemonset.spec != got_daemonset.spec
+
+- name: Test Delete
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    provision_daemonset:
+      kind: DaemonSet
+      metadata:
+        name: test-daemonset
+  roles:
+  - role: openshift-provision
+  tasks:
+  - name: Delete DaemonSet
+    openshift_provision:
+      action: delete
+      namespace: provision-test
+      openshift_connection: "{{ openshift_connection }}"
+      resource: "{{ provision_daemonset }}"
+
+  - name: Verify DaemonSet Delete
+    command: >-
+      {{ test_oc_cmd }} export daemonset
+      test-daemonset -n provision-test -o json
+    register: get_daemonset
+    failed_when: get_daemonset.rc == 0
+    changed_when: false

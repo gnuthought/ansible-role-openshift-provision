@@ -20,6 +20,10 @@
         {% if openshift_connection_token is defined %}
         --token={{ openshift_connection_token | quote }}
         {% endif %}
+      openshift_connection:
+        server: "{{ openshift_connection_server }}"
+        insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify }}"
+        token: "{{ openshift_connection_token }}"
       ignore_differences:
         metadata:
           annotations:
@@ -105,16 +109,18 @@
 
   roles:
   - role: openshift-provision
-    openshift_clusters:
-    - projects:
-      - name: provision-test
-        resources:
-        - "{{ provision_deploymentconfig }}"
 
   tasks:
+  - name: Provision DeploymentConfig
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_deploymentconfig }}"
+
   - name: Get DeploymentConfig
     command: >-
-      {{ test_oc_cmd }} export deploymentconfig test-deploymentconfig -n provision-test -o json
+      {{ test_oc_cmd }} export deploymentconfig
+      test-deploymentconfig -n provision-test -o json
     register: get_deploymentconfig
     changed_when: false
 
@@ -133,6 +139,17 @@
     when: >-
       cmp_deploymentconfig.metadata != got_deploymentconfig.metadata or
       cmp_deploymentconfig.spec != got_deploymentconfig.spec
+
+  - name: Check reprovision DeploymentConfig
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_deploymentconfig }}"
+    register: reprovision_deploymentconfig
+
+  - fail:
+      msg: Reprovision indicated change to DeploymentConfig
+    when: reprovision_deploymentconfig.changed
 
 - name: Test Update
   hosts: localhost
@@ -213,20 +230,22 @@
 
   roles:
   - role: openshift-provision
-    openshift_clusters:
-    - projects:
-      - name: provision-test
-        resources:
-        - "{{ provision_deploymentconfig }}"
 
   tasks:
+  - name: Apply update to DeploymentConfig
+    openshift_provision:
+      openshift_connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_deploymentconfig }}"
+
   - name: Get DeploymentConfig
     command: >-
-      {{ test_oc_cmd }} export deploymentconfig test-deploymentconfig -n provision-test -o json
+      {{ test_oc_cmd }} export deploymentconfig
+      test-deploymentconfig -n provision-test -o json
     register: get_deploymentconfig
     changed_when: false
 
-  - name: Verify DeploymentConfig Update
+  - name: Verify Update DeploymentConfig
     fail:
       msg: |
         DeploymentConfig not defined as expected
@@ -241,3 +260,30 @@
     when: >-
       cmp_deploymentconfig.metadata != got_deploymentconfig.metadata or
       cmp_deploymentconfig.spec != got_deploymentconfig.spec
+
+- name: Test Delete
+  hosts: localhost
+  connection: local
+  vars:
+    provision_deploymentconfig:
+      apiVersion: extensions/v1beta1
+      kind: DeploymentConfig
+      metadata:
+        name: test-deploymentconfig
+  roles:
+  - role: openshift-provision
+  tasks:
+  - name: Delete DeploymentConfig
+    openshift_provision:
+      action: delete
+      namespace: provision-test
+      openshift_connection: "{{ openshift_connection }}"
+      resource: "{{ provision_deploymentconfig }}"
+
+  - name: Verify DeploymentConfig Delete
+    command: >-
+      {{ test_oc_cmd }} export deploymentconfig
+      test-deploymentconfig -n provision-test -o json
+    register: get_deploymentconfig
+    failed_when: get_deploymentconfig.rc == 0
+    changed_when: false
