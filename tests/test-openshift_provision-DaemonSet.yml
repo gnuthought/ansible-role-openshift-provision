@@ -90,7 +90,7 @@
   tasks:
   - name: Provision DaemonSet
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_daemonset }}"
 
@@ -119,7 +119,7 @@
 
   - name: Check reprovision DaemonSet
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_daemonset }}"
     register: reprovision_daemonset
@@ -184,7 +184,7 @@
   tasks:
   - name: Apply update to DaemonSet
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_daemonset }}"
 
@@ -228,7 +228,7 @@
     openshift_provision:
       action: delete
       namespace: provision-test
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_daemonset }}"
 
   - name: Verify DaemonSet Delete

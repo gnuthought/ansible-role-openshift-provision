@@ -59,7 +59,7 @@
   tasks:
   - name: Provision PersistentVolume
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_persistentvolume }}"
 
   - name: Get PersistentVolume
@@ -87,7 +87,7 @@
 
   - name: Check reprovision PersistentVolume
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_persistentvolume }}"
     register: reprovision_persistentvolume
 
@@ -124,7 +124,7 @@
   tasks:
   - name: Apply update to PersistentVolume
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_persistentvolume }}"
 
   - name: Get PersistentVolume
@@ -166,7 +166,7 @@
   - name: Delete PersistentVolume
     openshift_provision:
       action: delete
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_persistentvolume }}"
 
   - name: Verify PersistentVolume Delete

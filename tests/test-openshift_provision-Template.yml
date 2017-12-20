@@ -54,7 +54,7 @@
   tasks:
   - name: Provision Template
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_template }}"
 
@@ -85,7 +85,7 @@
 
   - name: Check reprovision Template
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_template }}"
     register: reprovision_template
@@ -124,7 +124,7 @@
   tasks:
   - name: Apply update to Template
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_template }}"
 
@@ -169,7 +169,7 @@
     openshift_provision:
       action: delete
       namespace: provision-test
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_template }}"
 
   - name: Verify Template Delete

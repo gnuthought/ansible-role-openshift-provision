@@ -69,7 +69,7 @@
   tasks:
   - name: Provision BuildConfig
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_buildconfig }}"
 
@@ -98,7 +98,7 @@
 
   - name: Check reprovision BuildConfig
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_buildconfig }}"
     register: reprovision_buildconfig
@@ -146,7 +146,7 @@
   tasks:
   - name: Apply update to BuildConfig
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_buildconfig }}"
 
@@ -190,7 +190,7 @@
     openshift_provision:
       action: delete
       namespace: provision-test
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_buildconfig }}"
 
   - name: Verify BuildConfig Delete

@@ -9,35 +9,44 @@ import copy
 
 DOCUMENTATION = '''
 ---
-module: openshift_provision
+module: openshift_login
 
-short_description: Provision OpenShift resources
+short_description: Login to OpenShift Cluster
 
 description:
-  - Manage OpenShift resources idempotently
+  - Login to OpenShift Cluster with return value suitable to pass to openshift_provision
 
 options:
-  resource:
+  username:
     description:
-    - Resource definition
+    - Username
     required: true
-    default: None
     aliases: []
-  namespace:
+  password:
     description:
-    - Namespace in which to provision resource
+    - Password
+    required: true
+    aliases: []
+  server:
+    description:
+    - OpenShift cluster URL
+    required: true
+    aliases: []
+  certificate_authority:
+    description:
+    - Path to cluster certificate authority on remote system
     required: false
     aliases: []
-  action:
+  insecure_skip_tls_verify:
     description:
-    - Action to perform on resource: apply, create, replace, delete
-    default: apply
+    - Boolean flag to disable TLS verification
+    default: false
     required: false
     aliases: []
-  connection:
+  oc_cmd:
     description:
-    - Dictionary of connection options, may include 'token', 'server', 'certificate_authority', 'insecure_skip_tls_verify', and 'oc_cmd'
-    default: {}
+    - OpenShift oc command line
+    default: oc
     required: false
     aliases: []
 
@@ -48,9 +57,18 @@ author:
 '''
 
 EXAMPLES = '''
-- name: Provision a PersistentVolume
+- name: Login to Cluster
+  openshift_login:
+    username: userone
+    password: password
+    server: https://master.ocp.example.com
+    certificate_authority: /path/to/openshift-cluster-ca.crt
+  register: openshift_login
+
+- name: Provision Resource
   openshift_provision:
     action: replace
+    connection: "{{ openshift_login.session }}"
     namespace: example-project
     resource:
       apiVersion: v1
@@ -72,9 +90,10 @@ EXAMPLES = '''
 '''
 
 RETURN = '''
-resource:
-  description: Resource definition
+session:
+  description: OpenShift session settings
   type: dict
+token:
 '''
 
 from ansible.module_utils.basic import AnsibleModule
@@ -85,6 +104,7 @@ class OpenShiftProvision:
         self.changed = False
         self.action = module.params['action']
         self.resource = module.params['resource']
+        self.oc_cmd = [ module.params['oc_cmd'] ]
 
         if not 'kind' in self.resource:
             raise Exception('resource must define kind')
@@ -99,13 +119,8 @@ class OpenShiftProvision:
             self.namespace = module.params['namespace']
 
         connection = module.params['connection']
-        if 'oc_cmd' in connection:
-            self.oc_cmd = [ connection['oc_cmd'] ]
-        else:
-            self.oc_cmd = ['oc']
-        for opt in ['server','certificate_authority','insecure_skip_tls_verify','token']:
-            if opt in connection:
-                self.oc_cmd += ['--' + opt.replace('_', '-') + '=' + connection[opt]]
+        for opt in connection:
+            self.oc_cmd += ['--' + opt.replace('_', '-') + '=' + connection[opt]]
 
     def merge_dict(self, merged, patch):
         for k, v in patch.iteritems():
@@ -304,23 +319,31 @@ class OpenShiftProvision:
 
 def run_module():
     module_args = {
-        'action': {
+        'username': {
             'type': 'str',
-            'required': False,
-            'default': 'apply'
-        },
-        'namespace': {
-            'type': 'str',
-            'required': False,
-        },
-        'connection': {
-            'type': 'dict',
-            'required': False,
-            'default': {}
-        },
-        'resource': {
-            'type': 'dict',
             'required': True
+        },
+        'password': {
+            'type': 'str',
+            'required': True,
+            'no_log': True
+        },
+        'server': {
+            'type': 'str',
+            'required': True
+        },
+        'certificate_authority': {
+            'type': 'str',
+            'required': False
+        },
+        'insecure_skip_tls_verify': {
+            'type': 'str',
+            'required': False
+        },
+        'oc_cmd': {
+            'type': 'str',
+            'required': False,
+            'default': 'oc'
         }
     }
 
@@ -329,18 +352,35 @@ def run_module():
         supports_check_mode=True
     )
 
-    provisioner = OpenShiftProvision(module)
+    session = {
+        "server": module.params['server']
+    }
 
     try:
-        provisioner.provision()
+        oc_cmd = [
+            module.params['oc_cmd'], 'login',
+            '--username='+module.params['username'],
+            '--password='+module.params['password']
+        ]
+        if module.params['certificate_authority'] != None:
+            session['certificate_authority'] = module.params['certificate_authority']
+            oc_cmd += ['--certificate-authority=' + session['certificate_authority']]
+        if module.params['insecure_skip_tls_verify'] != None:
+            session['insecure_skip_tls_verify'] = module.params['insecure_skip_tls_verify']
+            oc_cmd += ['--insecure-skip-tls-verify=' + session['insecure_skip_tls_verify']]
+        oc_cmd += [session['server']]
+
+        module.run_command(oc_cmd, check_rc=True)
+        (rc, stdout, stderr) = module.run_command(['oc','whoami','-t'], check_rc=True)
+        session['token'] = stdout.strip()
+        
     except Exception as e:
         module.fail_json(
             msg=e.message,
-            traceback=traceback.format_exc().split('\n'),
-            resource=provisioner.resource
+            traceback=traceback.format_exc().split('\n')
         )
 
-    module.exit_json(changed=provisioner.changed, resource=provisioner.resource)
+    module.exit_json(changed=True, session=session)
 
     if module.check_mode:
         return 

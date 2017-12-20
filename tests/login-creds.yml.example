@@ -1,3 +1,5 @@
 openshift_connection_server: https://openshift.example.com:8443
-openshift_login_username: adminuser
-openshift_login_password: password
+openshift_connection_insecure_skip_tls_verify: "true"
+openshift_connection_token: ...
+openshift_test_login_username: adminuser
+openshift_test_login_password: password

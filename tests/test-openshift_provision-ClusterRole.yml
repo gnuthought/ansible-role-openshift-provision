@@ -78,7 +78,7 @@
   tasks:
   - name: Provision ClusterRole
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_clusterrole }}"
 
   - name: Get ClusterRole
@@ -106,7 +106,7 @@
 
   - name: Check reprovision ClusterRole
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_clusterrole }}"
     register: reprovision_clusterrole
 
@@ -163,7 +163,7 @@
   tasks:
   - name: Apply update to ClusterRole
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_clusterrole }}"
 
   - name: Get ClusterRole
@@ -205,7 +205,7 @@
   - name: Delete ClusterRole
     openshift_provision:
       action: delete
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_clusterrole }}"
 
   - name: Verify ClusterRole Delete

@@ -60,7 +60,7 @@
   tasks:
   - name: Provision ClusterResourceQuota
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_clusterresourcequota }}"
 
   - name: Get ClusterResourceQuota
@@ -88,7 +88,7 @@
 
   - name: Check reprovision ClusterResourceQuota
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_clusterresourcequota }}"
     register: reprovision_clusterresourcequota
 
@@ -126,7 +126,7 @@
   tasks:
   - name: Apply update to ClusterResourceQuota
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_clusterresourcequota }}"
 
   - name: Get ClusterResourceQuota
@@ -168,7 +168,7 @@
   - name: Delete ClusterResourceQuota
     openshift_provision:
       action: delete
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_clusterresourcequota }}"
 
   - name: Verify ClusterResourceQuota Delete

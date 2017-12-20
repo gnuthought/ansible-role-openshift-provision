@@ -7,3 +7,7 @@
   - Job
 
   - CronJob
+
+* Fully modularize ansible role, removing calls to direct commands
+
+* Support check mode

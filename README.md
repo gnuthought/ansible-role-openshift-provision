@@ -3,9 +3,9 @@ openshift-provision
 
 An Ansible role for provisioning resources within OpenShift clusters.
 
-This role can provides comprehensive OpenShift cluster resource provisioning 
-using a single declarative variable structure as well as the
-`openshift_provision` Ansible module.
+This role provides comprehensive OpenShift cluster resource provisioning 
+using a single declarative variable structure or using the
+`openshift_provision` Ansible module provided.
 
 Installation
 ------------
@@ -19,6 +19,25 @@ Requirements
 
 OCP 3.4+
 ansible 2.4+
+
+A host with the `oc` command to run from.
+
+Usage
+-----
+
+The `openshift_provision` role may be run from any host with the `oc` command
+and access to the cluster with appropriate privileges to provision the
+resources specified in the calling playbook. For provisioning base cluster
+configuration it is recommended to run `openshift_provision` from a master node
+immediately following OpenShift cluster installation. For provisioning
+application projects and resources it is recommended to use another host,
+authenticating with a service account token. Username with password login is
+supported with the `openshift_login` module. The host processing the
+`openshift_provision` role must have the `oc` command and the Python JMESPath
+module for supporting the `json_query` ansible filter.
+
+If this role is called with a `resource_definition` file variable, it will read
+variables from the file specified.
 
 Role Variables
 --------------
@@ -452,7 +471,7 @@ Example Playbook with Provisioning with `openshift_provision` Module
       tasks:
       - name: Provision BuildConfig
         openshift_provision:
-          openshift_connection: "{{ openshift_connection }}"
+          connection: "{{ openshift_connection }}"
           namespace: example-project
           resource:
             apiVersion: v1
@@ -480,6 +499,45 @@ Example Playbook with Provisioning with `openshift_provision` Module
                     namespace: openshift
                 type: Source
               triggers: []
+
+Example with Provisioning with `openshift_provision` Module and Login
+---------------------------------------------------------------------
+
+    - hosts: localhost
+      connection: local
+      gather_facts: no
+      vars:
+        openshift_connection:
+          server: "{{ openshift_connection_server }}"
+          token: "{{ openshift_connection_token }}"
+      roles:
+      - role: openshift-logging-elasticsearch-hostmount
+
+      tasks:
+      - name: Login to OpenShift Cluster
+        openshift_login:
+          username: username
+          password: password
+          server: https://openshift-master.libvirt
+          insecure_skip_tls_verify: "true"
+        register: openshift_login
+
+      - name: Provision Resource
+        openshift_provision:
+          connection: "{{ openshift_login.session }}"
+          resource:
+            apiVersion: v1
+            kind: PersistentVolumeClaim
+            metadata:
+              name: test-persistentvolumeclaim
+              labels:
+                testlabel: bar
+            spec:
+              accessModes:
+              - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 1Gi
 
 License
 -------

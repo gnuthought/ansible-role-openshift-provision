@@ -56,7 +56,7 @@
   tasks:
   - name: Provision PersistentVolumeClaim
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_persistentvolumeclaim }}"
 
@@ -85,7 +85,7 @@
 
   - name: Check reprovision PersistentVolumeClaim
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_persistentvolumeclaim }}"
     register: reprovision_persistentvolumeclaim
@@ -119,7 +119,7 @@
   tasks:
   - name: Apply update to PersistentVolumeClaim
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_persistentvolumeclaim }}"
 
@@ -163,7 +163,7 @@
     openshift_provision:
       action: delete
       namespace: provision-test
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_persistentvolumeclaim }}"
 
   - name: Verify PersistentVolumeClaim Delete
