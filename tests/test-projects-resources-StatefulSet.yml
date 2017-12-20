@@ -161,8 +161,11 @@
               image: gcr.io/google_containers/nginx-slim:0.8
               imagePullPolicy: IfNotPresent
               ports:
-              - containerPort: 8080
+              - containerPort: 80
                 name: web
+                protocol: TCP
+              - containerPort: 8080
+                name: web8080
                 protocol: TCP
               resources: {}
               terminationMessagePath: /dev/termination-log

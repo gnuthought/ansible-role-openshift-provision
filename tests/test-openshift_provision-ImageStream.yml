@@ -110,7 +110,7 @@
   tasks:
   - name: Provision ImageStream
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_imagestream }}"
 
@@ -139,7 +139,7 @@
 
   - name: Check reprovision ImageStream
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_imagestream }}"
     register: reprovision_imagestream
@@ -225,7 +225,7 @@
   tasks:
   - name: Apply update to ImageStream
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_imagestream }}"
 
@@ -269,7 +269,7 @@
     openshift_provision:
       action: delete
       namespace: provision-test
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_imagestream }}"
 
   - name: Verify ImageStream Delete

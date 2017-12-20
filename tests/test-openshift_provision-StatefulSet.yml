@@ -98,7 +98,7 @@
   tasks:
   - name: Provision StatefulSet
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_statefulset }}"
 
@@ -127,7 +127,7 @@
 
   - name: Check reprovision StatefulSet
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_statefulset }}"
     register: reprovision_statefulset
@@ -193,7 +193,7 @@
   tasks:
   - name: Apply update to StatefulSet
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_statefulset }}"
 
@@ -235,7 +235,7 @@
     openshift_provision:
       action: delete
       namespace: provision-test
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_statefulset }}"
 
   - name: Verify StatefulSet Delete

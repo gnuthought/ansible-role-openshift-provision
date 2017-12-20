@@ -1,0 +1,32 @@
+---
+- hosts: localhost
+  connection: local
+  roles:
+  - role: openshift-provision
+  vars_files:
+  - login-creds.yml
+  tasks:
+  - name: Login to OpenShift Cluster
+    openshift_login:
+      username: "{{ openshift_test_login_username }}"
+      password: "{{ openshift_test_login_password }}"
+      server: https://openshift-master.libvirt
+      insecure_skip_tls_verify: "true"
+    register: openshift_login
+
+  - name: Test Provision
+    openshift_provision:
+      connection: "{{ openshift_login.session }}"
+      resource:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: test-persistentvolumeclaim
+          labels:
+            testlabel: bar
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi

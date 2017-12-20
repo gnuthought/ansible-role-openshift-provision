@@ -54,7 +54,7 @@
   tasks:
   - name: Provision HorizontalPodAutoscaler
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_horizontalpodautoscaler }}"
 
@@ -83,7 +83,7 @@
 
   - name: Check reprovision HorizontalPodAutoscaler
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_horizontalpodautoscaler }}"
     register: reprovision_horizontalpodautoscaler
@@ -116,7 +116,7 @@
   tasks:
   - name: Apply update to HorizontalPodAutoscaler
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_horizontalpodautoscaler }}"
 
@@ -158,7 +158,7 @@
     openshift_provision:
       action: delete
       namespace: provision-test
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_horizontalpodautoscaler }}"
 
   - name: Verify HorizontalPodAutoscaler Delete

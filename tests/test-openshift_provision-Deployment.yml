@@ -87,7 +87,7 @@
   tasks:
   - name: Provision Deployment
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_deployment }}"
 
@@ -116,7 +116,7 @@
 
   - name: Check reprovision Deployment
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_deployment }}"
     register: reprovision_deployment
@@ -175,7 +175,7 @@
   tasks:
   - name: Apply update to Deployment
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_deployment }}"
 
@@ -219,7 +219,7 @@
     openshift_provision:
       action: delete
       namespace: provision-test
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_deployment }}"
 
   - name: Verify Deployment Delete

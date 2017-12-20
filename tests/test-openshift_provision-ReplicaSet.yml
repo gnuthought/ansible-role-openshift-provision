@@ -80,7 +80,7 @@
   tasks:
   - name: Provision ReplicaSet
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_replicaset }}"
 
@@ -109,7 +109,7 @@
 
   - name: Check reprovision ReplicaSet
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_replicaset }}"
     register: reprovision_replicaset
@@ -163,7 +163,7 @@
   tasks:
   - name: Apply update to ReplicaSet
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_replicaset }}"
 
@@ -207,7 +207,7 @@
     openshift_provision:
       action: delete
       namespace: provision-test
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_replicaset }}"
 
   - name: Verify ReplicaSet Delete

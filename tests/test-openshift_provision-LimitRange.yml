@@ -70,7 +70,7 @@
   tasks:
   - name: Provision LimitRange
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_limitrange }}"
 
@@ -99,7 +99,7 @@
 
   - name: Check reprovision LimitRange
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_limitrange }}"
     register: reprovision_limitrange
@@ -148,7 +148,7 @@
   tasks:
   - name: Apply update to LimitRange
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_limitrange }}"
 
@@ -191,7 +191,7 @@
     openshift_provision:
       action: delete
       namespace: provision-test
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_limitrange }}"
 
   - name: Verify LimitRange Delete

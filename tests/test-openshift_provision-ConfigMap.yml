@@ -49,7 +49,7 @@
   tasks:
   - name: Provision ConfigMap
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_configmap }}"
 
@@ -78,7 +78,7 @@
 
   - name: Check reprovision ConfigMap
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_configmap }}"
     register: reprovision_configmap
@@ -107,7 +107,7 @@
   tasks:
   - name: Apply update to ConfigMap
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_configmap }}"
 
@@ -149,7 +149,7 @@
     openshift_provision:
       action: delete
       namespace: provision-test
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_configmap }}"
 
   - name: Verify ConfigMap Delete

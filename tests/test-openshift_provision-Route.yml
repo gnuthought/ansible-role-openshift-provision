@@ -58,7 +58,7 @@
   tasks:
   - name: Provision Route
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_route }}"
 
@@ -87,7 +87,7 @@
 
   - name: Check reprovision Route
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_route }}"
     register: reprovision_route
@@ -124,7 +124,7 @@
   tasks:
   - name: Apply update to Route
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_route }}"
 
@@ -166,7 +166,7 @@
     openshift_provision:
       action: delete
       namespace: provision-test
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_route }}"
 
   - name: Verify Route Delete

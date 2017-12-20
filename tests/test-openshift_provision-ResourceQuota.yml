@@ -53,7 +53,7 @@
   tasks:
   - name: Provision ResourceQuota
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_resourcequota }}"
 
@@ -82,7 +82,7 @@
 
   - name: Check reprovision ResourceQuota
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_resourcequota }}"
     register: reprovision_resourcequota
@@ -114,7 +114,7 @@
   tasks:
   - name: Apply update to ResourceQuota
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_resourcequota }}"
 
@@ -156,7 +156,7 @@
     openshift_provision:
       action: delete
       namespace: provision-test
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_resourcequota }}"
 
   - name: Verify ResourceQuota Delete

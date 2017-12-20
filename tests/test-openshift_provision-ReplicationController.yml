@@ -100,7 +100,7 @@
   tasks:
   - name: Provision ReplicationController
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_replicationcontroller }}"
 
@@ -129,7 +129,7 @@
 
   - name: Check reprovision ReplicationController
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_replicationcontroller }}"
     register: reprovision_replicationcontroller
@@ -202,7 +202,7 @@
   tasks:
   - name: Apply update to ReplicationController
     openshift_provision:
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_replicationcontroller }}"
 
@@ -245,7 +245,7 @@
     openshift_provision:
       action: delete
       namespace: provision-test
-      openshift_connection: "{{ openshift_connection }}"
+      connection: "{{ openshift_connection }}"
       resource: "{{ provision_replicationcontroller }}"
 
   - name: Verify ReplicationController Delete
