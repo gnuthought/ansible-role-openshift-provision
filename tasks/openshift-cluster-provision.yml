@@ -3,8 +3,11 @@
 - include: resource.yml
   static: false
   with_items: "{{ openshift_cluster.cluster_resources | default([]) }}"
+  vars:
+    resource: >-
+      {% if resource_item is mapping %}{{ resource_item }}{% else %}{{ lookup('file', resource_item) | from_yaml }}{% endif %}
   loop_control:
-    loop_var: resource
+    loop_var: resource_item
 
 - include: persistent-volume.yml
   with_items: "{{ openshift_cluster.persistent_volumes | default([]) }}"
@@ -35,5 +38,8 @@
 - include: resource.yml
   static: false
   with_items: "{{ openshift_cluster.resources | default([]) }}"
+  vars:
+    resource: >-
+      {% if resource_item is mapping %}{{ resource_item }}{% else %}{{ lookup('file', resource_item) | from_yaml }}{% endif %}
   loop_control:
-    loop_var: resource
+    loop_var: resource_item
