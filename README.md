@@ -36,13 +36,13 @@ supported with the `openshift_login` module. The host processing the
 `openshift_provision` role must have the `oc` command and the Python JMESPath
 module for supporting the `json_query` ansible filter.
 
-If this role is called with a `resource_definition` file variable, it will read
+If this role is called with a `openshift_resource_definition` file variable, it will read
 variables from the file specified.
 
 Role Variables
 --------------
 
-* `resource_definition` - Ansible variables file definining resources to
+* `openshift_resource_definition` - Ansible variables file definining resources to
   create by use of `include_vars`
 
 * `openshift_clusters` - List of openshift cluster definitions as defined

@@ -165,8 +165,11 @@
 - include: project-resource.yml
   static: false
   with_items: "{{ project.resources | default([]) }}"
+  vars:
+    resource: >-
+      {% if resource_item is mapping %}{{ resource_item }}{% else %}{{ lookup('file', resource_item) | from_yaml }}{% endif %}
   loop_control:
-    loop_var: resource
+    loop_var: resource_item
 
 - include: process-template.yml
   static: false

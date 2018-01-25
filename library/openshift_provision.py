@@ -118,7 +118,7 @@ class OpenShiftProvision:
                     raise "Unable to merge " + type(merged[key]) + " with dict"
             else:
                 merged[k] = copy.deepcopy(v)
-    
+
     def merge(self, source, patch):
         merged = copy.deepcopy(source)
         self.merge_dict(merged, patch)
@@ -223,6 +223,21 @@ class OpenShiftProvision:
                     "uid": ""
                 }
             }
+        elif resource['kind'] == 'PersistentVolume':
+            filter = {
+                "metadata": {
+                    "annotations": {
+                        "kubectl.kubernetes.io/last-applied-configuration": "",
+                        "pv.kubernetes.io/bound-by-controller": ""
+                    },
+                    "creationTimestamp": "",
+                    "generation": 0,
+                    "namespace": ""
+                },
+                "spec": {
+                    "claimRef": ""
+                }
+            }
         else:
             filter = {
                 "metadata": {
@@ -246,7 +261,7 @@ class OpenShiftProvision:
                 claimtemplate['status'] = {}
 
         return ret
- 
+
     def comparison_fields(self):
         if self.resource['kind'] == 'ClusterRole':
           return ['metadata', 'rules']
@@ -343,7 +358,7 @@ def run_module():
     module.exit_json(changed=provisioner.changed, resource=provisioner.resource)
 
     if module.check_mode:
-        return 
+        return
 
 def main():
     run_module()
