@@ -223,6 +223,21 @@ class OpenShiftProvision:
                     "uid": ""
                 }
             }
+        elif resource['kind'] == 'PersistentVolume':
+            filter = {
+                "metadata": {
+                    "annotations": {
+                        "kubectl.kubernetes.io/last-applied-configuration": "",
+                        "pv.kubernetes.io/bound-by-controller": ""
+                    },
+                    "creationTimestamp": "",
+                    "generation": 0,
+                    "namespace": ""
+                },
+                "spec": {
+                    "claimRef": ""
+                }
+            }
         else:
             filter = {
                 "metadata": {
