@@ -21,10 +21,11 @@
     register: oc_get_token
     changed_when: false
 
-- include: openshift-cluster-provision.yml
-  vars:
+- set_fact:
     oc_cmd: >-
       {{ oc_cmd_base }}
       {% if not oc_get_token.skipped | default(False) %}
       --token={{ oc_get_token.stdout }}
       {% endif %}
+
+- include: openshift-cluster-provision.yml
