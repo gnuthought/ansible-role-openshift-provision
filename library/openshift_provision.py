@@ -100,7 +100,7 @@ class OpenShiftProvision:
 
         connection = module.params['connection']
         if 'oc_cmd' in connection:
-            self.oc_cmd = [ connection['oc_cmd'] ]
+            self.oc_cmd = connection['oc_cmd'].split()
         else:
             self.oc_cmd = ['oc']
         for opt in ['server','certificate_authority','insecure_skip_tls_verify','token']:

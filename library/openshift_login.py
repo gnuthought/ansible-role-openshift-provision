@@ -104,7 +104,7 @@ class OpenShiftProvision:
         self.changed = False
         self.action = module.params['action']
         self.resource = module.params['resource']
-        self.oc_cmd = [ module.params['oc_cmd'] ]
+        self.oc_cmd = module.params['oc_cmd'].split()
 
         if not 'kind' in self.resource:
             raise Exception('resource must define kind')
