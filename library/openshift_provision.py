@@ -255,6 +255,10 @@ class OpenShiftProvision:
         if ret['kind'] == 'ImageStream':
             for tag in ret['spec']['tags']:
                 tag['generation'] = 0
+                if not 'referencePolicy' in tag:
+                    tag['referencePolicy'] = {'type': 'Source'}
+            if not 'lookupPolicy' in ret['spec']:
+                ret['spec']['lookupPolicy'] = {'local': False}
         elif ret['kind'] == 'StatefulSet':
             for claimtemplate in ret['spec']['volumeClaimTemplates']:
                 claimtemplate['metadata']['creationTimestamp'] = ""
