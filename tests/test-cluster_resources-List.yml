@@ -1,0 +1,114 @@
+---
+- name: Set Facts
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  tasks:
+  - set_fact:
+      test_oc_cmd: >-
+        oc
+        {% if openshift_connection_certificate_authority is defined %}
+        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
+        {% endif %}
+        {% if openshift_connection_insecure_skip_tls_verify is defined %}
+        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+        {% endif %}
+        {% if openshift_connection_server is defined %}
+        --server={{ openshift_connection_server | quote }}
+        {% endif %}
+        {% if openshift_connection_token is defined %}
+        --token={{ openshift_connection_token | quote }}
+        {% endif %}
+      ignore_differences:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+
+- name: Test Provision
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  vars:
+    sc1:
+      apiVersion: storage.k8s.io/v1
+      kind: StorageClass
+      metadata:
+        labels:
+          performance: fast
+          zone: zone1
+        name: pd-std-zone1
+      parameters:
+        type: pd-standard
+        zone: us-east1-a
+      provisioner: kubernetes.io/gce-pd
+    sc2:
+      apiVersion: storage.k8s.io/v1
+      kind: StorageClass
+      metadata:
+        labels:
+          performance: fast
+          zone: zone2
+        name: pd-std-zone2
+      parameters:
+        type: pd-standard
+        zone: us-east1-b
+      provisioner: kubernetes.io/gce-pd
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - cluster_resources:
+      - kind: List
+        items:
+        - "{{ sc1 }}"
+        - "{{ sc2 }}"
+
+  tasks:
+  - name: Get First StorageClass
+    command: >-
+      {{ test_oc_cmd }} export sc pd-std-zone1 -o json
+    register: get_sc1
+    changed_when: false
+
+  - name: Get Second StorageClass
+    command: >-
+      {{ test_oc_cmd }} export sc pd-std-zone2 -o json
+    register: get_sc2
+    changed_when: false
+
+  - name: Verify First StorageClass
+    fail:
+      msg: |
+        StorageClass not defined as expected
+        >>>
+        {{ cmp_sc | to_yaml }}
+        ===
+        {{ got_sc | to_yaml }}
+        <<<
+    vars:
+      got_sc: "{{ get_sc1.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_sc: "{{ sc1 | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_sc.metadata != got_sc.metadata or
+      cmp_sc.parameters != got_sc.parameters or
+      cmp_sc.provisioner != got_sc.provisioner
+
+  - name: Verify Second StorageClass
+    fail:
+      msg: |
+        StorageClass not defined as expected
+        >>>
+        {{ cmp_sc | to_yaml }}
+        ===
+        {{ got_sc | to_yaml }}
+        <<<
+    vars:
+      got_sc: "{{ get_sc2.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_sc: "{{ sc2 | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_sc.metadata != got_sc.metadata or
+      cmp_sc.parameters != got_sc.parameters or
+      cmp_sc.provisioner != got_sc.provisioner

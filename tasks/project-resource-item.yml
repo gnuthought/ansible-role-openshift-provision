@@ -1,0 +1,86 @@
+- name: Fail kind not specified for resource in {{ project.name }}
+  fail:
+    msg: >
+      Kind not specified for resource in project {{ project.name }}.
+      {{ resource | to_yaml }}
+  when: >
+    resource.kind is not defined or
+    resource.kind == ''
+
+- name: Fail unsupported kind for resource, {{ resource.kind }}
+  fail:
+    msg: >
+      Resource kind {{ resource.kind }} is not supported for project.
+      {{ resource | to_yaml }}
+  when: >
+    resource.kind not in openshift_provision_supported_project_resource_types
+
+- name: Fail for missing name on resource in {{ project.name }}
+  fail:
+    msg: >
+      Resources must specify name.
+      {{ resource | to_yaml }}
+  when: >
+    resource.metadata.name is not defined or
+    resource.metadata.name == ''
+
+- name: Get {{ resource.kind }} {{ resource.metadata.name }} in {{ project.name }}
+  command: >
+    {{ oc_cmd }} {% if resource.kind == 'ImageStream' %}get{% else %}export{% endif %}
+    -n {{ project.name | quote }} -o json
+    {{ resource.kind | quote }}
+    {{ resource.metadata.name | quote }}
+  changed_when: false
+  failed_when: false
+  register: get_resource
+
+- name: Create {{ resource.kind }} {{ resource.metadata.name }} in {{ project.name }}
+  shell:
+    echo {{ resource | to_json | quote }}
+    | {{ oc_cmd }} create -n {{ project.name }} -f -
+  when: get_resource.rc != 0
+
+- name: Update {{ resource.kind }} {{ resource.metadata.name }} in {{ project.name }}
+  shell: >
+    echo {{ resource | to_json | quote }}
+    | {{ oc_cmd }} {{ resource_action }} -n {{ project.name }} -f -
+  vars:
+    curr_resource: >
+      {{
+        (get_resource.stdout if get_resource.rc == 0 else '{}') | from_json
+      }}
+    resource_action: "{{ resource.action | default('apply') }}"
+  # FIXME - There must be a more elegant solution for this logic
+  when: >
+    not( resource.no_update | default(False) | bool ) and
+    not( resource_action == 'create' ) and
+    get_resource.rc == 0 and (
+      curr_resource | json_query('spec') !=
+        resource | json_query('spec')
+      or
+      curr_resource | json_query('data') !=
+        resource | json_query('data')
+      or
+      curr_resource | json_query('labels') !=
+        resource | json_query('labels')
+      or
+      curr_resource | json_query('objects') !=
+        resource | json_query('objects')
+      or
+      curr_resource | json_query('parameters') !=
+        resource | json_query('parameters')
+      or
+      curr_resource | json_query('secrets') !=
+        resource | json_query('secrets')
+      or
+      curr_resource | json_query('imagePullSecrets') !=
+        resource | json_query('imagePullSecrets')
+      or
+      ( curr_resource | json_query('metadata.labels') or {} ) !=
+      ( curr_resource | json_query('metadata.labels') or {} )
+        | combine(resource | json_query('metadata.labels') or {}, recursive=True)
+      or
+      ( curr_resource | json_query('metadata.annotations') or {} ) !=
+      ( curr_resource | json_query('metadata.annotations') or {} )
+        | combine(resource | json_query('metadata.annotations') or {}, recursive=True)
+    )
