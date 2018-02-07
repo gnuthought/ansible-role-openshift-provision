@@ -166,7 +166,7 @@
   static: false
   with_items: "{{ project.resources | default([]) }}"
   vars:
-    resource: >-
+    resource_entry: >-
       {% if resource_item is mapping %}{{ resource_item }}{% else %}{{ lookup('file', resource_item) | from_yaml }}{% endif %}
   loop_control:
     loop_var: resource_item

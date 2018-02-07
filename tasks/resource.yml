@@ -1,11 +1,13 @@
 ---
-- when: resource.metadata.namespace is defined
-  include: project-resource.yml
-  vars:
-    project:
-      name: "{{ resource.metadata.namespace }}"
-  static: false
+- name: Resource list
+  when: resource_entry.kind is defined and resource_entry.kind == 'List'
+  include_tasks: resource-item.yml
+  with_items: "{{ resource_entry['items'] }}"
+  loop_control:
+    loop_var: resource
 
-- when: resource.metadata.namespace is not defined
-  include: cluster-resource.yml
-  static: false
+- name: Resource item
+  when: resource_entry.kind is not defined or resource_entry.kind != 'List'
+  include_tasks: resource-item.yml
+  vars:
+    resource: "{{ resource_entry }}"

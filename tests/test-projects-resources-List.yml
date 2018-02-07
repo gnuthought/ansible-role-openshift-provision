@@ -1,0 +1,293 @@
+---
+- name: Set Facts
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  tasks:
+  - set_fact:
+      test_oc_cmd: >-
+        oc
+        {% if openshift_connection_certificate_authority is defined %}
+        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
+        {% endif %}
+        {% if openshift_connection_insecure_skip_tls_verify is defined %}
+        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+        {% endif %}
+        {% if openshift_connection_server is defined %}
+        --server={{ openshift_connection_server | quote }}
+        {% endif %}
+        {% if openshift_connection_token is defined %}
+        --token={{ openshift_connection_token | quote }}
+        {% endif %}
+      ignore_statefulset_differences:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+          generation: 0
+        spec:
+          template:
+            metadata:
+              creationTimestamp: null
+          volumeClaimTemplates:
+          - metadata:
+              name: www
+              creationTimestamp: null
+            status:
+              phase: ""
+      ignore_service_differences:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+
+- name: Test Provision
+  hosts: localhost
+  connection: local
+  vars:
+    provision_service:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: test-list-statefulset
+        labels:
+          app: test-list-statefulset
+      spec:
+        ports:
+        - name: web
+          port: 80
+          protocol: TCP
+          targetPort: 80
+        clusterIP: None
+        selector:
+          app: test-list-statefulset
+        sessionAffinity: None
+        type: ClusterIP
+    provision_statefulset:
+      apiVersion: apps/v1beta1
+      kind: StatefulSet
+      metadata:
+        name: test-list-statefulset
+        labels:
+          app: test-list-statefulset
+      spec:
+        serviceName: test-list-statefulset
+        replicas: 2
+        selector:
+          matchLabels:
+            app: test-list-statefulset
+        template:
+          metadata:
+            labels:
+              app: test-list-statefulset
+          spec:
+            containers:
+            - name: nginx
+              image: gcr.io/google_containers/nginx-slim:0.8
+              imagePullPolicy: IfNotPresent
+              ports:
+              - containerPort: 80
+                name: web
+                protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+              - name: www
+                mountPath: /usr/share/nginx/html
+            dnsPolicy: ClusterFirst
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+        volumeClaimTemplates:
+        - metadata:
+            name: www
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: provision-test
+        resources:
+        - kind: List
+          items:
+          - "{{ provision_service }}"
+          - "{{ provision_statefulset }}"
+
+  tasks:
+  - name: Get Service
+    command: >-
+      {{ test_oc_cmd }} export service test-list-statefulset -n provision-test -o json
+    register: get_service
+    changed_when: false
+
+  - name: Get StatefulSet
+    command: >-
+      {{ test_oc_cmd }} export statefulset test-list-statefulset -n provision-test -o json
+    register: get_statefulset
+    changed_when: false
+
+  - name: Verify Service
+    fail:
+      msg: |
+        Service not defined as expected
+        >>>
+        {{ cmp_service | to_yaml }}
+        ===
+        {{ got_service | to_yaml }}
+        <<<
+    vars:
+      got_service: "{{ get_service.stdout | from_json | combine(ignore_service_differences, recursive=True) }}"
+      cmp_service: "{{ provision_service | combine(ignore_service_differences, recursive=True) }}"
+    when: >-
+      cmp_service.metadata != got_service.metadata or
+      cmp_service.spec != got_service.spec
+
+  - name: Verify StatefulSet
+    fail:
+      msg: |
+        StatefulSet not defined as expected
+        >>>
+        {{ cmp_statefulset | to_yaml }}
+        ===
+        {{ got_statefulset | to_yaml }}
+        <<<
+    vars:
+      got_statefulset: "{{ get_statefulset.stdout | from_json | combine(ignore_statefulset_differences, recursive=True) }}"
+      cmp_statefulset: "{{ provision_statefulset | combine(ignore_statefulset_differences, recursive=True) }}"
+    when: >-
+      cmp_statefulset.metadata != got_statefulset.metadata or
+      cmp_statefulset.spec != got_statefulset.spec
+
+- name: Test Update
+  hosts: localhost
+  connection: local
+  vars:
+    provision_service:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: test-list-statefulset
+        labels:
+          app: test-list-statefulset
+      spec:
+        ports:
+        - name: web
+          port: 80
+          protocol: TCP
+          targetPort: 80
+        clusterIP: None
+        selector:
+          app: test-list-statefulset
+        sessionAffinity: None
+        type: ClusterIP
+    provision_statefulset:
+      apiVersion: apps/v1beta1
+      kind: StatefulSet
+      metadata:
+        name: test-list-statefulset
+        labels:
+          app: test-list-statefulset
+      spec:
+        serviceName: test-list-statefulset
+        replicas: 3
+        selector:
+          matchLabels:
+            app: test-list-statefulset
+        template:
+          metadata:
+            labels:
+              app: test-list-statefulset
+          spec:
+            containers:
+            - name: nginx
+              image: gcr.io/google_containers/nginx-slim:0.8
+              imagePullPolicy: IfNotPresent
+              ports:
+              - containerPort: 80
+                name: web
+                protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+              - name: www
+                mountPath: /usr/share/nginx/html
+            dnsPolicy: ClusterFirst
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+        volumeClaimTemplates:
+        - metadata:
+            name: www
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: provision-test
+        resources:
+        - kind: List
+          items:
+          - "{{ provision_service }}"
+          - "{{ provision_statefulset }}"
+
+  tasks:
+  - name: Get Service
+    command: >-
+      {{ test_oc_cmd }} export service test-list-statefulset -n provision-test -o json
+    register: get_service
+    changed_when: false
+
+  - name: Get StatefulSet
+    command: >-
+      {{ test_oc_cmd }} export statefulset test-list-statefulset -n provision-test -o json
+    register: get_statefulset
+    changed_when: false
+
+  - name: Verify Service Update
+    fail:
+      msg: |
+        Service not defined as expected
+        >>>
+        {{ cmp_service | to_yaml }}
+        ===
+        {{ got_service | to_yaml }}
+        <<<
+    vars:
+      got_service: "{{ get_service.stdout | from_json | combine(ignore_service_differences, recursive=True) }}"
+      cmp_service: "{{ provision_service | combine(ignore_service_differences, recursive=True) }}"
+    when: >-
+      cmp_service.metadata != got_service.metadata or
+      cmp_service.spec != got_service.spec
+
+  - name: Verify StatefulSet Update
+    fail:
+      msg: |
+        StatefulSet not defined as expected
+        >>>
+        {{ cmp_statefulset | to_yaml }}
+        ===
+        {{ got_statefulset | to_yaml }}
+        <<<
+    vars:
+      got_statefulset: "{{ get_statefulset.stdout | from_json | combine(ignore_statefulset_differences, recursive=True) }}"
+      cmp_statefulset: "{{ provision_statefulset | combine(ignore_statefulset_differences, recursive=True) }}"
+    when: >-
+      cmp_statefulset.metadata != got_statefulset.metadata or
+      cmp_statefulset.spec != got_statefulset.spec

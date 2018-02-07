@@ -25,3 +25,4 @@ openshift_provision_supported_cluster_resource_types:
 - ClusterResourceQuota
 - ClusterRole
 - PersistentVolume
+- StorageClass
