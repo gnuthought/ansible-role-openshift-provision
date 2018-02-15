@@ -17,7 +17,8 @@
       {{ current_role_bindings | json_query(current_role_groups_query) }}
   when: ocp_group_name not in current_role_groups
 
-- include: project-remove-unlisted-group-role-bindings.yml
+- name: Handle remove unlisted group role bindings
+  include_tasks: project-remove-unlisted-group-role-bindings.yml
   static: false
   with_items: "{{ group_role.roles | default([group_role.role]) }}"
   loop_control:

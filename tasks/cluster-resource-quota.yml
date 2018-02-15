@@ -1,3 +1,8 @@
+- name: Deprecation Warning
+  fail:
+    msg: USING DEPRECATED FEATURE openshift_clusters[*].cluster_resource_quota
+  ignore_errors: true
+
 - name: Get ClusterResourceQuota {{ cluster_resource_quota.name }}
   command: >
     {{ oc_cmd }} get clusterresourcequota {{ cluster_resource_quota.name | quote }} -o json

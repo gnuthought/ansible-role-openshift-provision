@@ -1,3 +1,4 @@
+---
 - name: Remove role {{ ocp_role_name }} from user in project {{ project.name }}
   command: >-
     {{ oc_cmd }} adm policy -n {{ project.name }} remove-role-from-user

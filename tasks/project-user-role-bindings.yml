@@ -17,7 +17,8 @@
       {{ current_role_bindings | json_query(current_role_users_query) }}
   when: ocp_user_name not in current_role_users
 
-- include: project-remove-unlisted-user-role-bindings.yml
+- name: Handle remove unlisted users from role bindings
+  include_tasks: project-remove-unlisted-user-role-bindings.yml
   static: false
   with_items: "{{ user_role.roles | default([user_role.role]) }}"
   loop_control:

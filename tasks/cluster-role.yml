@@ -1,3 +1,8 @@
+- name: Deprecation Warning
+  fail:
+    msg: USING DEPRECATED FEATURE openshift_clusters[*].cluster_roles
+  ignore_errors: true
+
 - name: Get ClusterRole {{ cluster_role.metadata.name }}
   command: >
     {{ oc_cmd }} get clusterrole {{ cluster_role.metadata.name | quote }} -o json

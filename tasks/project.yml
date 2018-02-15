@@ -121,48 +121,57 @@
       current_labels != project.labels
     )
 
-- include: project-pod-network.yml
+- name: Handle project join_pod_network
+  include_tasks: project-pod-network.yml
   static: no
   when:
   - project.join_pod_network is defined
   - project.join_pod_network != ''
 
-- include: project-multicast.yml
+- name: Handle project multicast_enabled
+  include_tasks: project-multicast.yml
   static: no
   when:
   - project.multicast_enabled is defined
   - project.multicast_enabled != ''
 
-- include: project-limit-range.yml
+- name: Handle project limit_ranges
+  include_tasks: project-limit-range.yml
   with_items: "{{ project.limit_ranges | default([]) }}"
   loop_control:
     loop_var: limit_range
 
-- include: project-quota.yml
+- name: Handle deprecated project quotas
+  include_tasks: project-quota.yml
   with_items: "{{ project.quotas | default([]) }}"
   loop_control:
     loop_var: quota
 
-- include: persistent-volume-claim.yml
+- name: Handle deprecated project persistent_volume_claims
+  include_tasks: persistent-volume-claim.yml
   with_items: "{{ project.persistent_volume_claims | default([]) }}"
   loop_control:
     loop_var: persistent_volume_claim
 
-- include: service-accounts.yml
+- name: Handle project service_accounts
+  include_tasks: service-accounts.yml
   when: >-
     project.service_accounts is defined
 
-- include: project-role-bindings.yml
+- name: Handle project role bindings
+  include_tasks: project-role-bindings.yml
   when: >-
     project.role_bindings is defined or
     project.user_to_role is defined or
     project.group_to_role is defined
 
-- include: project-imagestreams.yml
+- name: Handle project imagestreams
+  include_tasks: project-imagestreams.yml
   when: >-
     project.imagestreams is defined
 
-- include: project-resource.yml
+- name: Handle project resources
+  include_tasks: project-resource.yml
   static: false
   with_items: "{{ project.resources | default([]) }}"
   vars:
@@ -172,7 +181,8 @@
   loop_control:
     loop_var: resource_item
 
-- include: process-template.yml
+- name: Handle project templates
+  include_tasks: process-template.yml
   static: false
   # Allow "process_templates" to also be specified as "templates" for
   # compatibility with ansible-stacks.

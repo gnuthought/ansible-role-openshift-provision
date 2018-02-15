@@ -1,3 +1,8 @@
+- name: Deprecation Warning
+  fail:
+    msg: USING DEPRECATED FEATURE openshift_clusters[*].projects[*].persistent_volume_claims
+  ignore_errors: true
+
 - name: Fail for missing persistent volume claim parameters
   fail: msg="This role requires persistent_volumes_claim.{{ item }} be set and non empty"
   when: persistent_volume_claim.{{ item }} is not defined or persistent_volume_claim.{{ item }} == ''

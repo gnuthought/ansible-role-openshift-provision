@@ -1,3 +1,8 @@
+- name: Deprecation Warning
+  fail:
+    msg: USING DEPRECATED FEATURE openshift_clusters[*].persistent_volumes
+  ignore_errors: true
+
 - name: Fail for missing persistent volume parameters
   fail: msg="This role requires persistent_volumes.{{ item }} be set and non empty"
   when: persistent_volume.{{ item }} is not defined or persistent_volume.{{ item }} == ''
@@ -7,8 +12,8 @@
   - access_modes
 
 # At present only NFS is supported
-- when: >
+- include_tasks: persistent-volume-nfs.yml
+  when: >
     persistent_volume.nfs_path is defined or
     persistent_volume.nfs_server is defined or
     persistent_volume.nfs is defined
-  include: persistent-volume-nfs.yml

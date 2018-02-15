@@ -1,5 +1,6 @@
 ---
-- include: cluster-role.yml
+- name: Handle deprecated openshift_cluster[*].cluster_roles
+  include_tasks: cluster-role.yml
   with_items: "{{ openshift_cluster.cluster_roles | default([]) }}"
   loop_control:
     loop_var: cluster_role
@@ -9,7 +10,8 @@
   changed_when: false
   register: get_cluster_role_bindings
 
-- include: cluster-role-binding.yml
+- name: Handle cluster_role_bindings
+  include_tasks: cluster-role-binding.yml
   with_items: "{{ openshift_cluster.cluster_role_bindings | default([]) }}"
   loop_control:
     loop_var: cluster_role_binding
