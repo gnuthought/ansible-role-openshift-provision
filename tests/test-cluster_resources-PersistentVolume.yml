@@ -6,6 +6,9 @@
   - login-creds.yml
   tasks:
   - set_fact:
+      openshift_connection_server: "{{ openshift_connection_server }}"
+      openshift_connection_insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify | default('false') }}"
+      openshift_connection_token: "{{ openshift_connection_token }}"
       test_oc_cmd: >-
         oc
         {% if openshift_connection_certificate_authority is defined %}
@@ -20,42 +23,31 @@
         {% if openshift_connection_token is defined %}
         --token={{ openshift_connection_token | quote }}
         {% endif %}
+      ignore_differences:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
 
 - name: Test Provision
   hosts: localhost
   connection: local
-  vars_files:
-  - login-creds.yml
   vars:
-    persistent_volume:
-      apiVersion: v1
-      kind: PersistentVolume
-      metadata:
-        creationTimestamp: null
-        labels:
-          foo: bar
-        name: nfs-foo
-      spec:
-        accessModes:
-        - ReadWriteMany
-        capacity:
-          storage: 10Gi
-        nfs:
-          path: /export/foo
-          server: nfsserver.example.com
-        persistentVolumeReclaimPolicy: Retain
-      status: {}
+    provision_persistentvolume: test-persistentvolume.yml
+    provision_persistentvolume_def: "{{ lookup('file', 'resources/' ~ provision_persistentvolume) | from_yaml }}"
 
   roles:
   - role: openshift-provision
     openshift_clusters:
-    - cluster_resources:
-      - "{{ persistent_volume }}"
+    - resource_path:
+      - resources
+      cluster_resources:
+      - "{{ provision_persistentvolume }}"
 
   tasks:
   - name: Get PersistentVolume
     command: >-
-      {{ test_oc_cmd }} export persistentvolume nfs-foo -o yaml
+      {{ test_oc_cmd }} export persistentvolume test-persistentvolume -o json
     register: get_persistentvolume
     changed_when: false
 
@@ -64,54 +56,38 @@
       msg: |
         PersistentVolume not defined as expected
         >>>
-        {{ persistent_volume | to_yaml }}
+        {{ cmp_persistentvolume | to_yaml }}
         ===
         {{ got_persistentvolume | to_yaml }}
         <<<
     vars:
-      got_persistentvolume: "{{ get_persistentvolume.stdout | from_yaml }}"
-      blank_last_applied_configuration:
-        metadata:
-          annotations:
-            kubectl.kubernetes.io/last-applied-configuration: ''
+      got_persistentvolume: "{{ get_persistentvolume.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_persistentvolume: "{{ provision_persistentvolume_def | combine(ignore_differences, recursive=True) }}"
     when: >-
-      persistent_volume | combine(blank_last_applied_configuration, recursive=True) !=
-      got_persistentvolume | combine(blank_last_applied_configuration, recursive=True)
+      cmp_persistentvolume.metadata != got_persistentvolume.metadata or
+      cmp_persistentvolume.spec != got_persistentvolume.spec
 
-- hosts: localhost
+- name: Test Update
+  hosts: localhost
   connection: local
   vars_files:
   - login-creds.yml
   vars:
-    persistent_volume:
-      apiVersion: v1
-      kind: PersistentVolume
-      metadata:
-        creationTimestamp: null
-        labels:
-          foo: bartest
-        name: nfs-foo
-      spec:
-        accessModes:
-        - ReadWriteMany
-        capacity:
-          storage: 10Gi
-        nfs:
-          path: /export/foo
-          server: nfsserver.example.com
-        persistentVolumeReclaimPolicy: Retain
-      status: {}
+    provision_persistentvolume: test-persistentvolume.update.yml
+    provision_persistentvolume_def: "{{ lookup('file', 'resources/' ~ provision_persistentvolume) | from_yaml }}"
 
   roles:
   - role: openshift-provision
     openshift_clusters:
-    - cluster_resources:
-      - "{{ persistent_volume }}"
+    - resource_path:
+      - resources
+      cluster_resources:
+      - "{{ provision_persistentvolume }}"
 
   tasks:
   - name: Get PersistentVolume
     command: >-
-      {{ test_oc_cmd }} export persistentvolume nfs-foo -o yaml
+      {{ test_oc_cmd }} export persistentvolume test-persistentvolume -o json
     register: get_persistentvolume
     changed_when: false
 
@@ -120,16 +96,13 @@
       msg: |
         PersistentVolume not defined as expected
         >>>
-        {{ persistent_volume | to_yaml }}
+        {{ cmp_persistentvolume | to_yaml }}
         ===
         {{ got_persistentvolume | to_yaml }}
         <<<
     vars:
-      got_persistentvolume: "{{ get_persistentvolume.stdout | from_yaml }}"
-      blank_last_applied_configuration:
-        metadata:
-          annotations:
-            kubectl.kubernetes.io/last-applied-configuration: ''
+      got_persistentvolume: "{{ get_persistentvolume.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_persistentvolume: "{{ provision_persistentvolume_def | combine(ignore_differences, recursive=True) }}"
     when: >-
-      persistent_volume | combine(blank_last_applied_configuration, recursive=True) !=
-      got_persistentvolume | combine(blank_last_applied_configuration, recursive=True)
+      cmp_persistentvolume.metadata != got_persistentvolume.metadata or
+      cmp_persistentvolume.spec != got_persistentvolume.spec

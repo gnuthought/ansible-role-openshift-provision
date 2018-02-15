@@ -6,13 +6,16 @@
   - login-creds.yml
   tasks:
   - set_fact:
+      openshift_connection_server: "{{ openshift_connection_server }}"
+      openshift_connection_insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify | default('false') }}"
+      openshift_connection_token: "{{ openshift_connection_token }}"
       test_oc_cmd: >-
         oc
         {% if openshift_connection_certificate_authority is defined %}
         --certificate-authority={{ openshift_connection_certificate_authority | quote }}
         {% endif %}
-        {% if openshift_connection_insecure_skip_tls_verify is defined %}
-        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+        {% if openshift_connection_insecure_skip_tls_verify | default('false') | bool %}
+        --insecure-skip-tls-verify
         {% endif %}
         {% if openshift_connection_server is defined %}
         --server={{ openshift_connection_server | quote }}
@@ -29,53 +32,30 @@
 - name: Test Provision
   hosts: localhost
   connection: local
-  vars_files:
-  - login-creds.yml
   vars:
-    sc1:
-      apiVersion: storage.k8s.io/v1
-      kind: StorageClass
-      metadata:
-        labels:
-          performance: fast
-          zone: zone1
-        name: pd-std-zone1
-      parameters:
-        type: pd-standard
-        zone: us-east1-a
-      provisioner: kubernetes.io/gce-pd
-    sc2:
-      apiVersion: storage.k8s.io/v1
-      kind: StorageClass
-      metadata:
-        labels:
-          performance: fast
-          zone: zone2
-        name: pd-std-zone2
-      parameters:
-        type: pd-standard
-        zone: us-east1-b
-      provisioner: kubernetes.io/gce-pd
+    provision_storageclass_list: test-storageclass-list.yml
+    provision_storageclass_list_def: "{{ lookup('file', 'resources/' ~ provision_storageclass_list) | from_yaml }}"
+    provision_storageclass_sc1_def: "{{ provision_storageclass_list_def['items'][0] }}"
+    provision_storageclass_sc2_def: "{{ provision_storageclass_list_def['items'][1] }}"
 
   roles:
   - role: openshift-provision
     openshift_clusters:
-    - cluster_resources:
-      - kind: List
-        items:
-        - "{{ sc1 }}"
-        - "{{ sc2 }}"
+    - resource_path:
+      - resources
+      cluster_resources:
+      - "{{ provision_storageclass_list }}"
 
   tasks:
   - name: Get First StorageClass
     command: >-
-      {{ test_oc_cmd }} export sc pd-std-zone1 -o json
+      {{ test_oc_cmd }} export sc test-storageclass-sc1 -o json
     register: get_sc1
     changed_when: false
 
   - name: Get Second StorageClass
     command: >-
-      {{ test_oc_cmd }} export sc pd-std-zone2 -o json
+      {{ test_oc_cmd }} export sc test-storageclass-sc2 -o json
     register: get_sc2
     changed_when: false
 
@@ -90,7 +70,7 @@
         <<<
     vars:
       got_sc: "{{ get_sc1.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_sc: "{{ sc1 | combine(ignore_differences, recursive=True) }}"
+      cmp_sc: "{{ provision_storageclass_sc1_def | combine(ignore_differences, recursive=True) }}"
     when: >-
       cmp_sc.metadata != got_sc.metadata or
       cmp_sc.parameters != got_sc.parameters or
@@ -107,7 +87,7 @@
         <<<
     vars:
       got_sc: "{{ get_sc2.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_sc: "{{ sc2 | combine(ignore_differences, recursive=True) }}"
+      cmp_sc: "{{ provision_storageclass_sc2_def | combine(ignore_differences, recursive=True) }}"
     when: >-
       cmp_sc.metadata != got_sc.metadata or
       cmp_sc.parameters != got_sc.parameters or
