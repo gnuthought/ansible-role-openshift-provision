@@ -1,12 +1,12 @@
 ---
-- name: Resource list
+- name: Cluster resource list
   when: resource_entry.kind is defined and resource_entry.kind == 'List'
   include_tasks: resource-item.yml
   with_items: "{{ resource_entry['items'] }}"
   loop_control:
     loop_var: resource
 
-- name: Resource item
+- name: Cluster resource item
   when: resource_entry.kind is not defined or resource_entry.kind != 'List'
   include_tasks: resource-item.yml
   vars:

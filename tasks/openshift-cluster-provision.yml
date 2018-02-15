@@ -40,7 +40,7 @@
   loop_control:
     loop_var: project
   vars:
-    cluster_resource_path: "{{ openshift_cluster.resource_path | default(playbook_dir) }}"
+    cluster_resource_path: "{{ openshift_cluster.resource_path | default(openshift_resource_path) }}"
 
 # Process resources after processing other items such as projects. This
 # allows creation of resources in multiple projects in a specific order by
@@ -50,7 +50,7 @@
   static: false
   with_items: "{{ openshift_cluster.resources | default([]) }}"
   vars:
-    resource_path: "{{ openshift_cluster.resource_path | default(playbook_dir) }}"
+    resource_path: "{{ openshift_cluster.resource_path | default(openshift_resource_path) }}"
     resource_entry: >-
       {% if resource_item is mapping %}{{ resource_item }}{% else %}{{ lookup('file', lookup('first_found', {'files':resource_item, 'paths': resource_path})) | from_yaml }}{% endif %}
   loop_control:
