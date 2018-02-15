@@ -103,6 +103,10 @@ List of OpenShift cluster definitions
 
 * `projects` - List of projects to manage, described below:
 
+* `resource_path` - List of paths to search for resource definitons specified
+  by relative file path under `cluster_resources` and `resources`, defaults
+  to lookup relative to playbook location
+
 * `resources` - List of OpenShift resource definitions, these should be
   project level resources that define the namespace. Normally project resources
   should appear within `projects`, but sometimes specific ordering of resource
@@ -190,6 +194,10 @@ List of OpenShift groups to manage
 
 * `process_templates` - Templates to process to create resources within this
   project, described below
+
+* `resource_path` - List of paths to search for resource definitons specified
+  by relative file path under `resources`, defaults to `resource_path` value at
+  cluster level
 
 * `resources` - Definitions of OpenShift resources to create in project,
   described below
