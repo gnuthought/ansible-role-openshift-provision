@@ -9,6 +9,8 @@
       openshift_connection_server: "{{ openshift_connection_server }}"
       openshift_connection_insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify | default('false') }}"
       openshift_connection_token: "{{ openshift_connection_token }}"
+      openshift_resource_path:
+      - resources
       test_oc_cmd: >-
         oc
         {% if openshift_connection_certificate_authority is defined %}
@@ -41,9 +43,7 @@
   roles:
   - role: openshift-provision
     openshift_clusters:
-    - resource_path:
-      - resources
-      cluster_resources:
+    - cluster_resources:
       - "{{ provision_storageclass_list }}"
 
   tasks:

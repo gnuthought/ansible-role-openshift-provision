@@ -1,10 +1,17 @@
 ---
 # Read in application definition
+- name: Deprecation Warning
+  fail:
+    msg: USING DEPRECATED FEATURE openshift_resource_definition
+  ignore_errors: true
+  when: openshift_resource_definition is defined
+
 - include_vars: "{{ openshift_resource_definition }}"
   when: openshift_resource_definition is defined
 
 # Process openshift resources
-- include: openshift-cluster.yml
+- name: Handle openshift_clusters
+  include_tasks: openshift-cluster.yml
   static: false
   with_items: "{{ openshift_clusters | default([]) }}"
   loop_control:

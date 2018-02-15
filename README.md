@@ -42,9 +42,6 @@ variables from the file specified.
 Role Variables
 --------------
 
-* `openshift_resource_definition` - Ansible variables file definining resources to
-  create by use of `include_vars`
-
 * `openshift_clusters` - List of openshift cluster definitions as defined
   below
 
@@ -71,6 +68,14 @@ Role Variables
 * `openshift_login_password` - Login password. Use of a connection token is
   preferred to providing a username and password. This option may also be
   set within `openshift_clusters` as `login.password`
+
+* `openshift_resource_path` - Default list of directories to search for file
+  paths in cluster and project `cluster_resources` and `resources` definitions.
+  Default to playbook directory
+
+* `openshift_resource_definition` (DEPRECATED) - Path to variable definitons
+  to dynamically load with `include_vars`. Use of standard Ansible variable
+  mechanisms is recommended
 
 * `user_groups` (DEPRECATED) - List of groups to create across all clusters,
   use of `groups` under `openshift_clusters` is preferred
@@ -105,7 +110,7 @@ List of OpenShift cluster definitions
 
 * `resource_path` - List of paths to search for resource definitons specified
   by relative file path under `cluster_resources` and `resources`, defaults
-  to lookup relative to playbook location
+  to value of `openshift_resource_path`
 
 * `resources` - List of OpenShift resource definitions, these should be
   project level resources that define the namespace. Normally project resources

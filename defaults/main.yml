@@ -1,2 +1,5 @@
 ---
 # defaults file for openshift-application
+
+openshift_resource_path:
+- "{{ playbook_dir }}"

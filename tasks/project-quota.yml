@@ -1,3 +1,9 @@
+---
+- name: Deprecation Warning
+  fail:
+    msg: USING DEPRECATED FEATURE openshift_clusters[*].projects[*].quotas
+  ignore_errors: true
+
 - name: Get current {{ quota.name }} quota on {{ project.name }}
   command: >
     {{ oc_cmd }} get quota {{ quota.name }} -n {{ project.name }} -o json

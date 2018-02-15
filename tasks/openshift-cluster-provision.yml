@@ -1,34 +1,41 @@
 # Process cluster_resources before processing other items, including projects.
 # This allows items like cluster roles to be defined within cluster_resources.
-- include: resource.yml
+
+- name: Handle cluster_resources
+  include_tasks: resource.yml
   static: false
   with_items: "{{ openshift_cluster.cluster_resources | default([]) }}"
   vars:
-    resource_path: "{{ openshift_cluster.resource_path | default(playbook_dir) }}"
+    resource_path: "{{ openshift_cluster.resource_path | default(openshift_resource_path) }}"
     resource_entry: >-
       {% if resource_item is mapping %}{{ resource_item }}{% else %}{{ lookup('file', lookup('first_found', {'files':resource_item, 'paths': resource_path})) | from_yaml }}{% endif %}
   loop_control:
     loop_var: resource_item
 
-- include: persistent-volume.yml
+- name: Handle persistent_volumes
+  include_tasks: persistent-volume.yml
   with_items: "{{ openshift_cluster.persistent_volumes | default([]) }}"
   loop_control:
     loop_var: persistent_volume
 
-- include: group.yml
+- name: Handle groups
+  include_tasks: group.yml
   with_items: "{{ openshift_cluster.groups | default([]) | union(user_groups | default([])) }}"
   loop_control:
     loop_var: group
 
-- include: provision-cluster-roles.yml
+- name: Handle cluster_role_bindings
+  include_tasks: provision-cluster-roles.yml
   when: openshift_cluster.cluster_role_bindings is defined
 
-- include: cluster-resource-quota.yml
+- name: Handle deprecated cluster_resource_quotas
+  include_tasks: cluster-resource-quota.yml
   with_items: "{{ openshift_cluster.cluster_resource_quotas | default([]) }}"
   loop_control:
     loop_var: cluster_resource_quota
 
-- include: project.yml
+- name: Handle projects
+  include_tasks: project.yml
   with_items: "{{ openshift_cluster.projects | default([]) }}"
   loop_control:
     loop_var: project
@@ -38,7 +45,8 @@
 # Process resources after processing other items such as projects. This
 # allows creation of resources in multiple projects in a specific order by
 # specifying the namespace in the resource metadata.
-- include: resource.yml
+- name: Handle cluster level resources
+  include_tasks: resource.yml
   static: false
   with_items: "{{ openshift_cluster.resources | default([]) }}"
   vars:

@@ -1,5 +1,10 @@
 # DEPRECATED - LimitRange resources should be created through `resources`
 ---
+- name: Deprecation Warning
+  fail:
+    msg: USING DEPRECATED FEATURE openshift_clusters[*].projects[*].limit_ranges
+  ignore_errors: true
+
 - name: Get current {{ limit_range.name }} limit range on {{ project.name }}
   command: >
     {{ oc_cmd }} get limitrange {{ limit_range.name }} -n {{ project.name }} -o json
