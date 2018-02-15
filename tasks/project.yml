@@ -166,8 +166,9 @@
   static: false
   with_items: "{{ project.resources | default([]) }}"
   vars:
+    resource_path: "{{ project.resource_path | default(cluster_resource_path) }}"
     resource_entry: >-
-      {% if resource_item is mapping %}{{ resource_item }}{% else %}{{ lookup('file', resource_item) | from_yaml }}{% endif %}
+      {% if resource_item is mapping %}{{ resource_item }}{% else %}{{ lookup('file', lookup('first_found', {'files':resource_item, 'paths':resource_path})) | from_yaml }}{% endif %}
   loop_control:
     loop_var: resource_item
 

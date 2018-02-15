@@ -15,8 +15,8 @@
       {% if openshift_connection_certificate_authority is defined %}
       --certificate-authority={{ openshift_connection_certificate_authority | quote }}
       {% endif %}
-      {% if openshift_connection_insecure_skip_tls_verify is defined %}
-      --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
+      {% if openshift_connection_insecure_skip_tls_verify | default('false') | bool %}
+      --insecure-skip-tls-verify
       {% endif %}
       {% if openshift_connection_server is defined %}
       --server={{ openshift_connection_server | quote }}

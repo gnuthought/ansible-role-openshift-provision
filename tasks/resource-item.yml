@@ -1,11 +1,8 @@
 ---
-- when: resource.metadata.namespace is defined
-  include: project-resource-item.yml
-  vars:
-    project:
-      name: "{{ resource.metadata.namespace }}"
-  static: false
-
-- when: resource.metadata.namespace is not defined
-  include: cluster-resource-item.yml
-  static: false
+- name: >-
+    Provision {{ resource.kind }} {{ resource.metadata.name }}
+    {{ resource.metadata.namespace|default('')|regex_replace('^(.)','in \1') }}
+  openshift_provision:
+    connection:
+      oc_cmd: "{{ oc_cmd }}"
+    resource: "{{ resource }}"
