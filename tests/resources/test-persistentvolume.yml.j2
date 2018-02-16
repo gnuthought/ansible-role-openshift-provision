@@ -2,7 +2,7 @@ apiVersion: v1
 kind: PersistentVolume
 metadata:
   labels:
-    foo: bartest
+    foo: "{{ test_label }}"
   name: test-persistentvolume
 spec:
   accessModes:

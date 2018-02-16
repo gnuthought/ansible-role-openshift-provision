@@ -5,8 +5,8 @@ metadata:
 spec:
   quota:
     hard:
-      pods: "10"
-      secrets: "20"
+      pods: "{{ quota_pods }}"
+      secrets: "{{ quota_secrets }}"
   selector:
     annotations:
       openshift.io/requester: testuser

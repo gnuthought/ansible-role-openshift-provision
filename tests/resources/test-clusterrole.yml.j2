@@ -31,4 +31,6 @@ rules:
   resources:
   - clusternetworks
   verbs:
-  - get
+{% for verb in clusternetwork_verbs %}
+  - {{ verb }}
+{% endfor %}
