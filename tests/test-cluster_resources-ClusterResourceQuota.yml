@@ -2,6 +2,7 @@
 - name: Set Facts
   hosts: localhost
   connection: local
+  gather_facts: no
   vars_files:
   - login-creds.yml
   tasks:
@@ -34,6 +35,7 @@
 - name: Test Provision
   hosts: localhost
   connection: local
+  gather_facts: no
   vars:
     provision_clusterresourcequota: test-clusterresourcequota.yml.j2
     provision_clusterresourcequota_def: "{{ lookup('template', 'resources/' ~ provision_clusterresourcequota) | from_yaml }}"

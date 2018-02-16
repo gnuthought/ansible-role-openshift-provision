@@ -253,6 +253,10 @@ class OpenShiftProvision:
         ret = self.merge(resource, filter)
 
         if ret['kind'] == 'ImageStream':
+            if 'spec' not in ret:
+                ret['spec'] = {}
+            if not 'spec' in ret['spec']:
+                ret['spec']['tags'] = []
             for tag in ret['spec']['tags']:
                 tag['generation'] = 0
                 if not 'referencePolicy' in tag:
@@ -317,6 +321,8 @@ class OpenShiftProvision:
             command = [self.action, '-f', '-']
             if self.namespace:
                 command += ['-n', self.namespace]
+            # FIXME - Support other options such as
+            # --cascade, --force, --overwrite, --prune, --prune-whitelist
             (rc, stdout, stderr) = self.run_oc(command, data=json.dumps(self.resource), check_rc=True)
 
         self.changed = True

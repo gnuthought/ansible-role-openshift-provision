@@ -18,39 +18,30 @@
 
 # FIXME - Add support for template files
 
-# FIXME - Figure out a way to detect if apply actually changed anything and
-#         set changed_when to match.
-
-- name: Check if template is deployed
-  command: >
-    {{ oc_cmd }} get all -l template={{ template.name }}
-  failed_when: false
-  changed_when: false
-  register: check_template_deployed
-  when: >-
-    template.no_update | default(False) | bool or
-    'create' == template.action | default('apply')
-
-- name: Process and apply template
-  shell: >-
-    {{ oc_cmd }} process {{ template.name }}
-    -n {{ template.namespace | default(project.name) }}
+- name: Process template
+  command: >-
+    {{ oc_cmd }} process {{ template.name }} -o json
+    -n {{ template.namespace | default(project.name if project is defined else 'openshift') }}
     {% if template.parameters is defined %}
     {% for key, value in template.parameters.iteritems() %}
     -p {{ (key ~ '=' ~ value) | quote }}
     {% endfor %}
     {% endif %}
-    | {{ oc_cmd }} {{ template.action | default('apply') }} -f -
-    -n {{ project.name | quote }}
-    {% if template.cascade | default(False) | bool %}--cascade{% endif %}
-    {% if template.force | default(False) | bool %}--force{% endif %}
-    {% if template.overwrite | default(False) | bool %}--overwrite{% endif %}
-    {% if template.prune | default(False) | bool %}--prune{% endif %}
-    {% for prune_whitelist in template.prune_whitelist | default([]) %}
-     --prune-whitelist={{ prune_whitelist }}
-    {% endfor %}
+  changed_when: false
   register: process_template
-  when: >-
-    not( 'create' == template.action | default('apply') ) or
-    not( template.no_update | default(False) | bool ) or
-    'No resources found' in check_template_deployed.stdout
+
+- name: Template resources
+  openshift_provision:
+    action: >-
+      {{
+      item | json_query('metadata.annotations."openshift-provision/action"')
+      | default(item.action, true)
+      | default(template.action, true)
+      | default('apply', true)
+      }}
+    connection:
+      oc_cmd: "{{ oc_cmd }}"
+    namespace: "{{ project.name if project is defined else '' }}"
+    resource: "{{ item }}"
+  with_items: >-
+    {{ process_template.stdout | from_json | json_query('items') }}

@@ -2,6 +2,12 @@
 - name: >-
     Provision {{ resource.kind }} {{ resource.metadata.name }} in {{ project.name }}
   openshift_provision:
+    action: >-
+      {{
+      resource | json_query('metadata.annotations."openshift-provision/action"')
+      | default(resource.action, true)
+      | default('apply', true)
+      }}
     connection:
       oc_cmd: "{{ oc_cmd }}"
     namespace: "{{ project.name }}"

@@ -18,6 +18,13 @@
   loop_control:
     loop_var: resource_item
 
+- name: Handle cluster process_templates
+  include_tasks: process-template.yml
+  static: false
+  with_items: "{{ project.process_templates | default([]) }}"
+  loop_control:
+    loop_var: template
+
 - name: Handle persistent_volumes
   include_tasks: persistent-volume.yml
   with_items: "{{ openshift_cluster.persistent_volumes | default([]) }}"
