@@ -21,7 +21,7 @@
 - name: Handle cluster process_templates
   include_tasks: process-template.yml
   static: false
-  with_items: "{{ project.process_templates | default([]) }}"
+  with_items: "{{ openshift_cluster.process_templates | default([]) }}"
   loop_control:
     loop_var: template
 
