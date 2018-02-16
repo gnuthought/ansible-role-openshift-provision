@@ -35,8 +35,10 @@
   hosts: localhost
   connection: local
   vars:
-    provision_clusterrole: test-clusterrole.yml
-    provision_clusterrole_def: "{{ lookup('file', 'resources/' ~ provision_clusterrole) | from_yaml }}"
+    provision_clusterrole: test-clusterrole.yml.j2
+    provision_clusterrole_def: "{{ lookup('template', 'resources/' ~ provision_clusterrole) | from_yaml }}"
+    clusternetwork_verbs:
+    - get
 
   roles:
   - role: openshift-provision
@@ -71,8 +73,12 @@
   hosts: localhost
   connection: local
   vars:
-    provision_clusterrole: test-clusterrole.update.yml
-    provision_clusterrole_def: "{{ lookup('file', 'resources/' ~ provision_clusterrole) | from_yaml }}"
+    provision_clusterrole: test-clusterrole.yml.j2
+    provision_clusterrole_def: "{{ lookup('template', 'resources/' ~ provision_clusterrole) | from_yaml }}"
+    clusternetwork_verbs:
+    - get
+    - list
+    - watch
 
   roles:
   - role: openshift-provision

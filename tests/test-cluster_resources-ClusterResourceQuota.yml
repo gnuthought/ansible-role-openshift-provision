@@ -35,8 +35,10 @@
   hosts: localhost
   connection: local
   vars:
-    provision_clusterresourcequota: test-clusterresourcequota.yml
-    provision_clusterresourcequota_def: "{{ lookup('file', 'resources/' ~ provision_clusterresourcequota) | from_yaml }}"
+    provision_clusterresourcequota: test-clusterresourcequota.yml.j2
+    provision_clusterresourcequota_def: "{{ lookup('template', 'resources/' ~ provision_clusterresourcequota) | from_yaml }}"
+    quota_pods: 6
+    quota_secrets: 2
 
   roles:
   - role: openshift-provision
@@ -71,8 +73,10 @@
   hosts: localhost
   connection: local
   vars:
-    provision_clusterresourcequota: test-clusterresourcequota.update.yml
-    provision_clusterresourcequota_def: "{{ lookup('file', 'resources/' ~ provision_clusterresourcequota) | from_yaml }}"
+    provision_clusterresourcequota: test-clusterresourcequota.yml.j2
+    provision_clusterresourcequota_def: "{{ lookup('template', 'resources/' ~ provision_clusterresourcequota) | from_yaml }}"
+    quota_pods: 8
+    quota_secrets: 3
 
   roles:
   - role: openshift-provision

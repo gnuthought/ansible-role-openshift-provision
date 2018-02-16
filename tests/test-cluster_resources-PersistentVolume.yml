@@ -35,8 +35,9 @@
   hosts: localhost
   connection: local
   vars:
-    provision_persistentvolume: test-persistentvolume.yml
-    provision_persistentvolume_def: "{{ lookup('file', 'resources/' ~ provision_persistentvolume) | from_yaml }}"
+    provision_persistentvolume: test-persistentvolume.yml.j2
+    provision_persistentvolume_def: "{{ lookup('template', 'resources/' ~ provision_persistentvolume) | from_yaml }}"
+    test_label: foo
 
   roles:
   - role: openshift-provision
@@ -73,8 +74,9 @@
   vars_files:
   - login-creds.yml
   vars:
-    provision_persistentvolume: test-persistentvolume.update.yml
-    provision_persistentvolume_def: "{{ lookup('file', 'resources/' ~ provision_persistentvolume) | from_yaml }}"
+    provision_persistentvolume: test-persistentvolume.yml.j2
+    provision_persistentvolume_def: "{{ lookup('template', 'resources/' ~ provision_persistentvolume) | from_yaml }}"
+    test_label: bar
 
   roles:
   - role: openshift-provision
