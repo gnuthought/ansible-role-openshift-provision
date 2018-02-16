@@ -3,6 +3,12 @@
     Provision {{ resource.kind }} {{ resource.metadata.name }}
     {{ resource.metadata.namespace|default('')|regex_replace('^(.)','in \1') }}
   openshift_provision:
+    action: >-
+      {{
+      resource | json_query('metadata.annotations."openshift-provision/action"')
+      | default(resource.action, true)
+      | default('apply', true)
+      }}
     connection:
       oc_cmd: "{{ oc_cmd }}"
     resource: "{{ resource }}"

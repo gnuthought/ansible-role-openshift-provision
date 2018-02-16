@@ -174,7 +174,7 @@
               - name: www
                 mountPath: /usr/share/nginx/html
             dnsPolicy: ClusterFirst
-            restartPolicy: Always                                                                              
+            restartPolicy: Always
             schedulerName: default-scheduler
             securityContext: {}
             terminationGracePeriodSeconds: 30

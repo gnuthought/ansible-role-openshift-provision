@@ -98,13 +98,19 @@ List of OpenShift cluster definitions
   `openshift_host_env`
 
 * `cluster_resources` - List of OpenShift resource definitions, these should
-  be cluster level resources
+  be cluster level resources. Resources may be specified by a file path
+  or inline OpenShift resource definition. If a file path is used it will be
+  found using the value of `resource_path`. If the filename ends in ".j2"
+  then it will be processed as a Jinja2 template.
 
 * `cluster_role_bindings` - List of roles and assigned users and groups,
   described below
 
 * `groups` - List of OpenShift groups to create along with group membership,
   described below
+
+* `process_templates` - Templates to process to create resources at the
+  cluster level, described below
 
 * `projects` - List of projects to manage, described below:
 
@@ -115,7 +121,8 @@ List of OpenShift cluster definitions
 * `resources` - List of OpenShift resource definitions, these should be
   project level resources that define the namespace. Normally project resources
   should appear within `projects`, but sometimes specific ordering of resource
-  creation may be desired
+  creation may be desired. Resources are defined in the same manner as
+  `cluster_resources`
 
 * `persistent_volumes` (DEPRECATED) - List of persistent volumes. Use of
   `cluster_resources` is preferred
@@ -172,6 +179,23 @@ List of OpenShift groups to manage
 * `remove_unlisted_members` - Boolean to indicate whether unlisted users should
   be removed from this group. Optional, default "false"
 
+### `openshift_clusters[*].process_templates`
+
+List of templates to process to manage resources for the cluster. The result
+items list from the processed template is then parsed and each resource in
+that list is processed by `openshift_provision`.
+
+* `name` - Template name to process
+
+* `namespace` - Namespace in which the template is found, default is this
+  project
+
+* `parameters` - Dictionary of parameters to pass to the template. Optional
+
+* `action` - Action to process template output, values may be "create",
+  "apply", or "replace". Default "apply". Individual resources may override
+  this value with the annotation "openshift-provision/action".
+
 ### `openshift_clusters[*].projects`
 
 * `name` - Project name string
@@ -204,8 +228,11 @@ List of OpenShift groups to manage
   by relative file path under `resources`, defaults to `resource_path` value at
   cluster level
 
-* `resources` - Definitions of OpenShift resources to create in project,
-  described below
+* `resources` - Definitions of OpenShift resources to create in project.
+  Resources may be specified by a file path or inline OpenShift resource
+  definition. If a file path is used it will be found using the value of
+  `resource_path`. If the filename ends in ".j2" then it will be processed as a
+  Jinja2 template.
 
 * `role_bindings` - Role bindings to apply to project to grant or revoke user
   and group access to roles, described below
@@ -227,14 +254,9 @@ List of OpenShift groups to manage
 
 ### `openshift_clusters[*].projects[*].process_templates`
 
-List of templates to process to manage resources within project. Resources
-within the project are managed with `oc apply` command by default. An alternate
-action may be specified with the `action` parameter on the `process_templates`
-entry, which may be set to `create` or `replace`. If `create` is specified then
-the the template will only be processed if no resources created by the template
-are found. Template resources are determined by label, `template` which should
-be set to the template name, so all templates processed in this way should
-define a `template` label on resources the template creates.
+List of templates to process to manage resources within project. The result
+items list from the processed template is then parsed and each resource in
+that list is processed by `openshift_provision`.
 
 * `name` - Template name to process
 
@@ -244,26 +266,16 @@ define a `template` label on resources the template creates.
 * `parameters` - Dictionary of parameters to pass to the template. Optional
 
 * `action` - Action to process template output, values may be "create",
-  "apply", or "replace". Default "apply"
-
-* `cascade` - Boolean flag to activate `--cascade` option to `oc apply` or
-  `oc replace`
-
-* `force` - Boolean flag to activate `--force` option to `oc apply` or
-  `oc replace`
-
-* `overwrite` - Boolean flag to activate `--overwrite` option to `oc apply`
-
-* `prune` - Boolean flag to activate `--prune` option to `oc apply`
-
-* `prune_whitelist` - List of arguments to pass to `--prune-whitelist` for use with `oc apply`
+  "apply", or "replace". Default "apply". Individual resources may override
+  this value with the annotation "openshift-provision/action".
 
 ### `openshift_clusters[*].projects[*].resources`
 
 This is a list of OpenShift resource definitions that are created/updated in
 a project using the `oc` command. The default action is `oc apply`, but may be
-overridden by setting `action` on the resource to `create` or `replace`. If
-`action` is set to `create` and the project resource already exists then no
+overridden by setting the annotation "openshift-provision/action" within the
+resource. The action may be "create", "apply", "replace", or "delete".
+If the action is set to `create` and the resource already exists then no
 action is taken. Besides the field `action` all other fields follow OpenShift
 standards. All resources must define `metadata.name`.
 

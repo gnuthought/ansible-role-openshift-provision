@@ -32,7 +32,6 @@
           generation: 0
         spec:
           templateGeneration: 0
-          
 
 - name: Test Provision
   hosts: localhost
