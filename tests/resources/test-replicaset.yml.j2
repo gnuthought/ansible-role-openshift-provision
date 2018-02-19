@@ -1,0 +1,31 @@
+apiVersion: extensions/v1beta1
+kind: ReplicaSet
+metadata:
+  labels:
+    app: {{ replicaset_app_label }}
+  name: test-replicaset
+spec:
+  replicas: {{ replicaset_replicas }}
+  selector:
+    matchLabels:
+      app: test-replicaset
+  template:
+    metadata:
+      labels:
+        app: test-replicaset
+    spec:
+      containers:
+      - image: nginx:1.7.9
+        imagePullPolicy: Always
+        name: nginx
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30

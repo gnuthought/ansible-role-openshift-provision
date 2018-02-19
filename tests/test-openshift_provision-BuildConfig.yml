@@ -5,25 +5,8 @@
   vars_files:
   - login-creds.yml
   tasks:
+  - include_tasks: setup-test.yml
   - set_fact:
-      test_oc_cmd: >-
-        oc
-        {% if openshift_connection_certificate_authority is defined %}
-        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
-        {% endif %}
-        {% if openshift_connection_insecure_skip_tls_verify is defined %}
-        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
-        {% endif %}
-        {% if openshift_connection_server is defined %}
-        --server={{ openshift_connection_server | quote }}
-        {% endif %}
-        {% if openshift_connection_token is defined %}
-        --token={{ openshift_connection_token | quote }}
-        {% endif %}
-      openshift_connection:
-        server: "{{ openshift_connection_server }}"
-        insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify }}"
-        token: "{{ openshift_connection_token }}"
       ignore_differences:
         metadata:
           annotations:
@@ -33,35 +16,9 @@
 - name: Test Provision
   hosts: localhost
   connection: local
-  vars_files:
-  - login-creds.yml
   vars:
-    provision_buildconfig:
-      apiVersion: v1
-      kind: BuildConfig
-      metadata:
-        name: test-buildconfig
-      spec:
-        nodeSelector: null
-        output:
-          to:
-            kind: ImageStreamTag
-            name: testbuild:latest
-        postCommit: {}
-        resources: {}
-        runPolicy: Serial
-        source:
-          git:
-            uri: https://nosuch.example.com/blah.git
-          type: Git
-        strategy:
-          sourceStrategy:
-            from:
-              kind: ImageStreamTag
-              name: httpd:2.4
-              namespace: openshift
-          type: Source
-        triggers: []
+    provision_buildconfig: "{{ lookup('template', 'resources/test-buildconfig.yml.j2') | from_yaml }}"
+    from_source_name: httpd:2.4
 
   roles:
   - role: openshift-provision
@@ -110,38 +67,9 @@
 - name: Test Update
   hosts: localhost
   connection: local
-  vars_files:
-  - login-creds.yml
   vars:
-    provision_buildconfig:
-      apiVersion: v1
-      kind: BuildConfig
-      metadata:
-        name: test-buildconfig
-      spec:
-        nodeSelector: null
-        output:
-          to:
-            kind: ImageStreamTag
-            name: testbuild:latest
-        postCommit: {}
-        resources: {}
-        runPolicy: Serial
-        source:
-          git:
-            uri: https://nosuch.example.com/blah.git
-          type: Git
-        strategy:
-          sourceStrategy:
-            from:
-              kind: ImageStreamTag
-              name: httpd:latest
-              namespace: openshift
-          type: Source
-        triggers: []
-
-  roles:
-  - role: openshift-provision
+    provision_buildconfig: "{{ lookup('template', 'resources/test-buildconfig.yml.j2') | from_yaml }}"
+    from_source_name: httpd:latest
 
   tasks:
   - name: Apply update to BuildConfig
@@ -176,22 +104,16 @@
 - name: Test Delete
   hosts: localhost
   connection: local
-  vars_files:
-  - login-creds.yml
-  vars:
-    provision_buildconfig:
-      kind: BuildConfig
-      metadata:
-        name: test-buildconfig
-  roles:
-  - role: openshift-provision
   tasks:
   - name: Delete BuildConfig
     openshift_provision:
       action: delete
       namespace: provision-test
       connection: "{{ openshift_connection }}"
-      resource: "{{ provision_buildconfig }}"
+      resource:
+        kind: BuildConfig
+        metadata:
+          name: test-buildconfig
 
   - name: Verify BuildConfig Delete
     command: >-

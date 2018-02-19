@@ -5,48 +5,26 @@
   vars_files:
   - login-creds.yml
   tasks:
+  - include_tasks: setup-test.yml
   - set_fact:
-      test_oc_cmd: >-
-        oc
-        {% if openshift_connection_certificate_authority is defined %}
-        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
-        {% endif %}
-        {% if openshift_connection_insecure_skip_tls_verify is defined %}
-        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
-        {% endif %}
-        {% if openshift_connection_server is defined %}
-        --server={{ openshift_connection_server | quote }}
-        {% endif %}
-        {% if openshift_connection_token is defined %}
-        --token={{ openshift_connection_token | quote }}
-        {% endif %}
-      openshift_connection:
-        server: "{{ openshift_connection_server }}"
-        insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify }}"
-        token: "{{ openshift_connection_token }}"
       ignore_differences:
         metadata:
           annotations:
+            autoscaling.alpha.kubernetes.io/conditions: ''
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
+          namespace: ''
+          resourceVersion: 0
+          selfLink: ''
+          uid: ''
 
 - name: Test Provision
   hosts: localhost
   connection: local
   vars:
-    provision_horizontalpodautoscaler:
-      apiVersion: autoscaling/v1
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: test-horizontalpodautoscaler
-      spec:
-        maxReplicas: 10
-        minReplicas: 1
-        scaleTargetRef:
-          apiVersion: v1
-          kind: DeploymentConfig
-          name: test-deploymentconfig
-        targetCPUUtilizationPercentage: 80
+    provision_horizontalpodautoscaler: "{{ lookup('template', 'resources/test-horizontalpodautoscaler.yml.j2') | from_yaml }}"
+    max_replicas: 10
+    target_cpu_utilization: 70
 
   roles:
   - role: openshift-provision
@@ -60,7 +38,7 @@
 
   - name: Get HorizontalPodAutoscaler
     command: >-
-      {{ test_oc_cmd }} export horizontalpodautoscaler
+      {{ test_oc_cmd }} get horizontalpodautoscaler
       test-horizontalpodautoscaler -n provision-test -o json
     register: get_horizontalpodautoscaler
     changed_when: false
@@ -96,22 +74,9 @@
   hosts: localhost
   connection: local
   vars:
-    provision_horizontalpodautoscaler:
-      apiVersion: autoscaling/v1
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: test-horizontalpodautoscaler
-      spec:
-        maxReplicas: 8
-        minReplicas: 1
-        scaleTargetRef:
-          apiVersion: v1
-          kind: DeploymentConfig
-          name: test-deploymentconfig
-        targetCPUUtilizationPercentage: 70
-
-  roles:
-  - role: openshift-provision
+    provision_horizontalpodautoscaler: "{{ lookup('template', 'resources/test-horizontalpodautoscaler.yml.j2') | from_yaml }}"
+    max_replicas: 8
+    target_cpu_utilization: 80
 
   tasks:
   - name: Apply update to HorizontalPodAutoscaler
@@ -122,7 +87,7 @@
 
   - name: Get HorizontalPodAutoscaler
     command: >-
-      {{ test_oc_cmd }} export horizontalpodautoscaler
+      {{ test_oc_cmd }} get horizontalpodautoscaler
       test-horizontalpodautoscaler -n provision-test -o json
     register: get_horizontalpodautoscaler
     changed_when: false
@@ -146,24 +111,20 @@
 - name: Test Delete
   hosts: localhost
   connection: local
-  vars:
-    provision_horizontalpodautoscaler:
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: test-horizontalpodautoscaler
-  roles:
-  - role: openshift-provision
   tasks:
   - name: Delete HorizontalPodAutoscaler
     openshift_provision:
       action: delete
       namespace: provision-test
       connection: "{{ openshift_connection }}"
-      resource: "{{ provision_horizontalpodautoscaler }}"
+      resource:
+        kind: HorizontalPodAutoscaler
+        metadata:
+          name: test-horizontalpodautoscaler
 
   - name: Verify HorizontalPodAutoscaler Delete
     command: >-
-      {{ test_oc_cmd }} export horizontalpodautoscaler
+      {{ test_oc_cmd }} get horizontalpodautoscaler
       test-horizontalpodautoscaler -n provision-test -o json
     register: get_horizontalpodautoscaler
     failed_when: get_horizontalpodautoscaler.rc == 0

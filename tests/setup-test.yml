@@ -1,0 +1,37 @@
+- name: Set test facts
+  set_fact:
+    openshift_connection_server: "{{ openshift_connection_server }}"
+    openshift_connection_insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify | default('false') }}"
+    openshift_connection_token: "{{ openshift_connection_token }}"
+    openshift_connection:
+      server: "{{ openshift_connection_server }}"
+      insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify }}"
+      token: "{{ openshift_connection_token }}"
+    openshift_resource_path:
+    - resources
+    test_oc_cmd: >-
+      oc
+      {% if openshift_connection_certificate_authority is defined %}
+      --certificate-authority={{ openshift_connection_certificate_authority | quote }}
+      {% endif %}
+      {% if openshift_connection_insecure_skip_tls_verify | default('false') | bool %}
+      --insecure-skip-tls-verify
+      {% endif %}
+      {% if openshift_connection_server is defined %}
+      --server={{ openshift_connection_server | quote }}
+      {% endif %}
+      {% if openshift_connection_token is defined %}
+      --token={{ openshift_connection_token | quote }}
+      {% endif %}
+
+- name: Get OpenShift version
+  command: "{{ test_oc_cmd }} version" 
+  register: get_version
+  changed_when: false
+
+- name: Set version facts
+  set_fact:
+    oc_version: >-
+      {{ get_version.stdout | regex_replace('(.|\s)*oc (\S+)(.|\s)*', '\2') }}
+    openshift_version: >-
+      {{ get_version.stdout | regex_replace('(.|\s)*openshift (\S+)(.|\s)*', '\2') }}
