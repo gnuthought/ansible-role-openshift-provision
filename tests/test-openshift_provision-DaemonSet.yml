@@ -5,83 +5,30 @@
   vars_files:
   - login-creds.yml
   tasks:
+  - include_tasks: setup-test.yml
   - set_fact:
-      test_oc_cmd: >-
-        oc
-        {% if openshift_connection_certificate_authority is defined %}
-        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
-        {% endif %}
-        {% if openshift_connection_insecure_skip_tls_verify is defined %}
-        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
-        {% endif %}
-        {% if openshift_connection_server is defined %}
-        --server={{ openshift_connection_server | quote }}
-        {% endif %}
-        {% if openshift_connection_token is defined %}
-        --token={{ openshift_connection_token | quote }}
-        {% endif %}
-      openshift_connection:
-        server: "{{ openshift_connection_server }}"
-        insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify }}"
-        token: "{{ openshift_connection_token }}"
       ignore_differences:
         metadata:
           annotations:
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
           generation: 0
+          namespace: ''
+          resourceVersion: 0
+          selfLink: ''
+          uid: ''
         spec:
+          template:
+            metadata:
+              creationTimestamp: null
           templateGeneration: 0
 
 - name: Test Provision
   hosts: localhost
   connection: local
-  vars_files:
-  - login-creds.yml
   vars:
-    provision_daemonset:
-      apiVersion: extensions/v1beta1
-      kind: DaemonSet
-      metadata:
-        annotations:
-          kubectl.kubernetes.io/last-applied-configuration: ''
-        creationTimestamp: null
-        generation: 0
-        labels:
-          name: test-daemonset
-        name: test-daemonset
-      spec:
-        selector:
-          matchLabels:
-            name: test-daemonset
-        template:
-          metadata:
-            creationTimestamp: null
-            labels:
-              name: test-daemonset
-          spec:
-            containers:
-            - image: openshift/hello-openshift
-              imagePullPolicy: IfNotPresent
-              name: registry
-              ports:
-              - containerPort: 80
-                protocol: TCP
-              resources: {}
-              terminationMessagePath: /dev/termination-log
-              terminationMessagePolicy: File
-            dnsPolicy: ClusterFirst
-            nodeSelector:
-              type: infra
-            restartPolicy: Always
-            schedulerName: default-scheduler
-            securityContext: {}
-            serviceAccount: default
-            serviceAccountName: default
-            terminationGracePeriodSeconds: 10
-        templateGeneration: 0
-        updateStrategy:
-          type: OnDelete
+    provision_daemonset: "{{ lookup('template', 'resources/test-daemonset.yml.j2') | from_yaml }}"
+    image_pull_policy: IfNotPresent
 
   roles:
   - role: openshift-provision
@@ -95,7 +42,7 @@
 
   - name: Get DaemonSet
     command: >-
-      {{ test_oc_cmd }} export daemonset
+      {{ test_oc_cmd }} get daemonset
       test-daemonset -n provision-test -o json
     register: get_daemonset
     changed_when: false
@@ -130,55 +77,9 @@
 - name: Test Update
   hosts: localhost
   connection: local
-  vars_files:
-  - login-creds.yml
   vars:
-    provision_daemonset:
-      apiVersion: extensions/v1beta1
-      kind: DaemonSet
-      metadata:
-        annotations:
-          kubectl.kubernetes.io/last-applied-configuration: ''
-        creationTimestamp: null
-        generation: 0
-        labels:
-          name: test-daemonset
-        name: test-daemonset
-      spec:
-        selector:
-          matchLabels:
-            name: test-daemonset
-        template:
-          metadata:
-            creationTimestamp: null
-            labels:
-              name: test-daemonset
-          spec:
-            containers:
-            - image: openshift/hello-openshift
-              imagePullPolicy: Always
-              name: registry
-              ports:
-              - containerPort: 80
-                protocol: TCP
-              resources: {}
-              terminationMessagePath: /dev/termination-log
-              terminationMessagePolicy: File
-            dnsPolicy: ClusterFirst
-            nodeSelector:
-              type: infra
-            restartPolicy: Always
-            schedulerName: default-scheduler
-            securityContext: {}
-            serviceAccount: default
-            serviceAccountName: default
-            terminationGracePeriodSeconds: 10
-        templateGeneration: 0
-        updateStrategy:
-          type: OnDelete
-
-  roles:
-  - role: openshift-provision
+    provision_daemonset: "{{ lookup('template', 'resources/test-daemonset.yml.j2') | from_yaml }}"
+    image_pull_policy: Always
 
   tasks:
   - name: Apply update to DaemonSet
@@ -189,7 +90,7 @@
 
   - name: Get DaemonSet
     command: >-
-      {{ test_oc_cmd }} export daemonset
+      {{ test_oc_cmd }} get daemonset
       test-daemonset -n provision-test -o json
     register: get_daemonset
     changed_when: false
@@ -213,26 +114,20 @@
 - name: Test Delete
   hosts: localhost
   connection: local
-  vars_files:
-  - login-creds.yml
-  vars:
-    provision_daemonset:
-      kind: DaemonSet
-      metadata:
-        name: test-daemonset
-  roles:
-  - role: openshift-provision
   tasks:
   - name: Delete DaemonSet
     openshift_provision:
       action: delete
       namespace: provision-test
       connection: "{{ openshift_connection }}"
-      resource: "{{ provision_daemonset }}"
+      resource:
+        kind: DaemonSet
+        metadata:
+          name: test-daemonset
 
   - name: Verify DaemonSet Delete
     command: >-
-      {{ test_oc_cmd }} export daemonset
+      {{ test_oc_cmd }} get daemonset
       test-daemonset -n provision-test -o json
     register: get_daemonset
     failed_when: get_daemonset.rc == 0

@@ -1,0 +1,12 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: test-storageclass
+{% if storageclass_default %}
+  annotations:
+    storageclass.beta.kubernetes.io/is-default-class: "true" 
+{% endif %}
+parameters:
+  type: pd-standard
+  zone: us-central1-a
+provisioner: kubernetes.io/gce-pd

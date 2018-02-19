@@ -5,6 +5,7 @@ import tempfile
 import re
 import traceback
 import copy
+import types
 
 
 DOCUMENTATION = '''
@@ -103,9 +104,14 @@ class OpenShiftProvision:
             self.oc_cmd = connection['oc_cmd'].split()
         else:
             self.oc_cmd = ['oc']
-        for opt in ['server','certificate_authority','insecure_skip_tls_verify','token']:
+        for opt in ['server','certificate_authority','token']:
             if opt in connection:
                 self.oc_cmd += ['--' + opt.replace('_', '-') + '=' + connection[opt]]
+        if 'insecure_skip_tls_verify' in connection:
+            if type(connection['insecure_skip_tls_verify']) == types.BooleanType:
+                self.oc_cmd += ['--insecure-skip-tls-verify']
+            elif connection['insecure_skip_tls_verify']:
+                self.oc_cmd += ['--insecure-skip-tls-verify='+connection['insecure_skip_tls_verify']]
 
     def merge_dict(self, merged, patch):
         for k, v in patch.iteritems():
@@ -142,7 +148,9 @@ class OpenShiftProvision:
         return (rc, stdout, stderr)
 
     def get_current_resource(self):
-        if self.resource['kind'] == 'ImageStream':
+        if self.resource['kind'] in [
+            'DaemonSet', 'Deployment', 'HorizontalPodAutoscaler', 'ImageStream', 'ReplicaSet', 'StatefulSet', 'StorageClass'
+        ]:
             command = ['get']
         else:
             command = ['export']
@@ -155,8 +163,7 @@ class OpenShiftProvision:
         return json.loads(stdout)
 
     def filter_differences(self, resource):
-
-        if resource['kind'] == 'DaemonSet':
+        if resource['kind'] in ['DaemonSet', 'Deployment', 'ReplicationController', 'ReplicaSet', 'StatefulSet']:
             filter = {
                 "metadata": {
                     "annotations": {
@@ -164,22 +171,10 @@ class OpenShiftProvision:
                     },
                     "creationTimestamp": "",
                     "generation": 0,
-                    "namespace": ""
-                },
-                "spec": {
-                    "templateGeneration": 0
-                }
-            }
-        elif resource['kind'] == 'Deployment':
-            filter = {
-                "metadata": {
-                    "annotations": {
-                        "deployment.kubernetes.io/revision": "0",
-                        "kubectl.kubernetes.io/last-applied-configuration": ""
-                    },
-                    "creationTimestamp": "",
-                    "generation": 0,
-                    "namespace": ""
+                    "namespace": "",
+                    "resourceVersion": 0,
+                    "selfLink": "",
+                    "uid": ""
                 },
                 "spec": {
                     "template": {
@@ -190,22 +185,19 @@ class OpenShiftProvision:
                     "templateGeneration": 0
                 }
             }
-        elif resource['kind'] in ['ReplicationController', 'ReplicaSet', 'StatefulSet']:
+        elif resource['kind'] == 'HorizontalPodAutoscaler':
             filter = {
                 "metadata": {
                     "annotations": {
+                        "autoscaling.alpha.kubernetes.io/conditions": "",
                         "kubectl.kubernetes.io/last-applied-configuration": ""
                     },
                     "creationTimestamp": "",
                     "generation": 0,
-                    "namespace": ""
-                },
-                "spec": {
-                    "template": {
-                        "metadata": {
-                            "creationTimestamp": ""
-                        }
-                    }
+                    "namespace": "",
+                    "resourceVersion": 0,
+                    "selfLink": "",
+                    "uid": ""
                 }
             }
         elif resource['kind'] == 'ImageStream':
@@ -246,9 +238,15 @@ class OpenShiftProvision:
                     },
                     "creationTimestamp": "",
                     "generation": 0,
-                    "namespace": ""
+                    "namespace": "",
+                    "resourceVersion": 0,
+                    "selfLink": "",
+                    "uid": ""
                 }
             }
+
+        if resource['kind'] == 'Deployment':
+            filter['metadata']['annotations']['deployment.kubernetes.io/revision'] = 0
 
         ret = self.merge(resource, filter)
 
@@ -290,10 +288,13 @@ class OpenShiftProvision:
         b = self.filter_differences(resource)
         for field in self.comparison_fields():
             if field in a and not field in b:
+                #raise Exception(field + ' not in b')
                 return False
             if field in b and not field in a:
+                #raise Exception(field + ' not in a')
                 return False
             if field in a and field in b and a[field] != b[field]:
+                #raise Exception('a != b ' + field + json.dumps(a[field]) + json.dumps(b[field]))
                 return False
         return True
 
