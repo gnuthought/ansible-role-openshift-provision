@@ -253,7 +253,7 @@ class OpenShiftProvision:
         if ret['kind'] == 'ImageStream':
             if 'spec' not in ret:
                 ret['spec'] = {}
-            if not 'spec' in ret['spec']:
+            if not 'tags' in ret['spec']:
                 ret['spec']['tags'] = []
             for tag in ret['spec']['tags']:
                 tag['generation'] = 0
@@ -261,6 +261,8 @@ class OpenShiftProvision:
                     tag['referencePolicy'] = {'type': 'Source'}
             if not 'lookupPolicy' in ret['spec']:
                 ret['spec']['lookupPolicy'] = {'local': False}
+            if not 'dockerImageRepository' in ret['spec']:
+                ret['spec']['dockerImageRepository'] = ''
         elif ret['kind'] == 'StatefulSet':
             for claimtemplate in ret['spec']['volumeClaimTemplates']:
                 claimtemplate['metadata']['creationTimestamp'] = ""
