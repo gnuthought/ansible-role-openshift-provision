@@ -2,6 +2,7 @@
 - name: Check if project {{ project.name }} exists
   command: >
     {{ oc_cmd }} get project {{ project.name }} -o json
+  check_mode: false
   changed_when: false
   failed_when: false
   register: get_project

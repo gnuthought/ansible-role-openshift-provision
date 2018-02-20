@@ -2,7 +2,9 @@
 - name: Get netnamespace {{ project.name }}
   command: >-
     {{ oc_cmd }} get netnamespace {{ project.name }} -o json
+  check_mode: false
   changed_when: false
+  failed_when: false
   register: get_netnamespace
 
 - name: Set mulitcast-enabled for {{ project.name }}
@@ -12,6 +14,8 @@
   vars:
     got_netnamespace: "{{ get_netnamespace.stdout | from_json }}"
   when: >-
+    get_netnamespace.rc == 0 and (
     got_netnamespace.metadata.annotations is undefined or
     got_netnamespace.metadata.annotations['netnamespace.network.openshift.io/multicast-enabled'] is undefined or
     project.multicast_enabled | bool != got_netnamespace.metadata.annotations['netnamespace.network.openshift.io/multicast-enabled'] | bool
+    )

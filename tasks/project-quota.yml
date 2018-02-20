@@ -7,6 +7,7 @@
 - name: Get current {{ quota.name }} quota on {{ project.name }}
   command: >
     {{ oc_cmd }} get quota {{ quota.name }} -n {{ project.name }} -o json
+  check_mode: false
   changed_when: false
   failed_when: false
   register: get_quota

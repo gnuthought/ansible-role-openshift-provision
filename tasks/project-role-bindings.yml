@@ -2,6 +2,7 @@
 - name: Get role bindings for project {{ project.name }}
   command: >-
     {{ oc_cmd }} get rolebinding -n {{ project.name }} -o json
+  check_mode: false
   changed_when: false
   failed_when: false
   register: get_role_bindings

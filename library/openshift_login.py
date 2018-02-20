@@ -382,9 +382,6 @@ def run_module():
 
     module.exit_json(changed=True, session=session)
 
-    if module.check_mode:
-        return
-
 def main():
     run_module()
 

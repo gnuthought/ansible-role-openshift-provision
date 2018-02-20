@@ -27,6 +27,7 @@
     -p {{ (key ~ '=' ~ value) | quote }}
     {% endfor %}
     {% endif %}
+  check_mode: false
   changed_when: false
   register: process_template
 

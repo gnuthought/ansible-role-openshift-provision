@@ -16,6 +16,7 @@
      {{ oc_cmd }} get pvc -n {{ project.name }} {{ persistent_volume_claim.name }} -o json
   register: get_pvc
   failed_when: false
+  check_mode: false
   changed_when: false
 
 - name: Create persistent volume claim {{ persistent_volume_claim.name }} in project {{ project.name }}

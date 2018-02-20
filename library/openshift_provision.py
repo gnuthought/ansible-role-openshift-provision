@@ -313,6 +313,10 @@ class OpenShiftProvision:
             if current_resource == None:
                 return
 
+        self.changed = True
+        if self.module.check_mode:
+            return
+
         if self.action == 'delete':
             command = ['delete', self.resource['kind'], self.resource['metadata']['name']]
             if self.namespace:
@@ -325,8 +329,6 @@ class OpenShiftProvision:
             # FIXME - Support other options such as
             # --cascade, --force, --overwrite, --prune, --prune-whitelist
             (rc, stdout, stderr) = self.run_oc(command, data=json.dumps(self.resource), check_rc=True)
-
-        self.changed = True
 
 def run_module():
     module_args = {
@@ -367,9 +369,6 @@ def run_module():
         )
 
     module.exit_json(changed=provisioner.changed, resource=provisioner.resource)
-
-    if module.check_mode:
-        return
 
 def main():
     run_module()
