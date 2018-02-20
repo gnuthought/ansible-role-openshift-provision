@@ -113,7 +113,7 @@ class OpenShiftProvision:
             elif connection['insecure_skip_tls_verify']:
                 self.oc_cmd += ['--insecure-skip-tls-verify='+connection['insecure_skip_tls_verify']]
 
-    def merge_dict(self, merged, patch):
+    def merge_dict(self, merged, patch, overwrite=True):
         for k, v in patch.iteritems():
             if type(v) is dict:
                 if not k in merged:
@@ -122,7 +122,7 @@ class OpenShiftProvision:
                     self.merge_dict(merged[k], v)
                 else:
                     raise "Unable to merge " + type(merged[key]) + " with dict"
-            else:
+            elif overwrite:
                 merged[k] = copy.deepcopy(v)
 
     def merge(self, source, patch):
@@ -163,18 +163,37 @@ class OpenShiftProvision:
         return json.loads(stdout)
 
     def filter_differences(self, resource):
-        if resource['kind'] in ['DaemonSet', 'Deployment', 'ReplicationController', 'ReplicaSet', 'StatefulSet']:
-            filter = {
+        filter = {
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": ""
+                },
+                "creationTimestamp": "",
+                "generation": 0,
+                "namespace": "",
+                "resourceVersion": 0,
+                "selfLink": "",
+                "uid": ""
+            }
+        }
+
+        if resource['kind'] in ['DaemonSet', 'ReplicationController', 'ReplicaSet', 'StatefulSet']:
+            self.merge_dict(filter, {
+                "spec": {
+                    "template": {
+                        "metadata": {
+                            "creationTimestamp": ""
+                        }
+                    },
+                    "templateGeneration": 0
+                }
+            })
+        elif resource['kind'] == 'Deployment':
+            self.merge_dict(filter, {
                 "metadata": {
                     "annotations": {
-                        "kubectl.kubernetes.io/last-applied-configuration": ""
-                    },
-                    "creationTimestamp": "",
-                    "generation": 0,
-                    "namespace": "",
-                    "resourceVersion": 0,
-                    "selfLink": "",
-                    "uid": ""
+                        "deployment.kubernetes.io/revision": 0
+                    }
                 },
                 "spec": {
                     "template": {
@@ -184,85 +203,51 @@ class OpenShiftProvision:
                     },
                     "templateGeneration": 0
                 }
-            }
+            })
         elif resource['kind'] == 'HorizontalPodAutoscaler':
-            filter = {
+            self.merge_dict(filter, {
                 "metadata": {
                     "annotations": {
-                        "autoscaling.alpha.kubernetes.io/conditions": "",
-                        "kubectl.kubernetes.io/last-applied-configuration": ""
-                    },
-                    "creationTimestamp": "",
-                    "generation": 0,
-                    "namespace": "",
-                    "resourceVersion": 0,
-                    "selfLink": "",
-                    "uid": ""
+                        "autoscaling.alpha.kubernetes.io/conditions": ""
+                    }
                 }
-            }
+            })
         elif resource['kind'] == 'ImageStream':
-            filter = {
+            self.merge_dict(filter, {
                 "metadata": {
                     "annotations": {
-                        "kubectl.kubernetes.io/last-applied-configuration": "",
                         "openshift.io/image.dockerRepositoryCheck": "1970-01-01T00:00:00Z"
-                    },
-                    "creationTimestamp": "",
-                    "generation": 0,
-                    "namespace": "",
-                    "resourceVersion": "0",
-                    "selfLink": "",
-                    "uid": ""
+                    }
                 }
-            }
+            })
         elif resource['kind'] == 'PersistentVolume':
-            filter = {
+            self.merge_dict(filter, {
                 "metadata": {
                     "annotations": {
-                        "kubectl.kubernetes.io/last-applied-configuration": "",
                         "pv.kubernetes.io/bound-by-controller": ""
-                    },
-                    "creationTimestamp": "",
-                    "generation": 0,
-                    "namespace": ""
+                    }
                 },
                 "spec": {
                     "claimRef": ""
                 }
-            }
-        else:
-            filter = {
-                "metadata": {
-                    "annotations": {
-                        "kubectl.kubernetes.io/last-applied-configuration": ""
-                    },
-                    "creationTimestamp": "",
-                    "generation": 0,
-                    "namespace": "",
-                    "resourceVersion": 0,
-                    "selfLink": "",
-                    "uid": ""
-                }
-            }
-
-        if resource['kind'] == 'Deployment':
-            filter['metadata']['annotations']['deployment.kubernetes.io/revision'] = 0
+            })
 
         ret = self.merge(resource, filter)
 
         if ret['kind'] == 'ImageStream':
-            if 'spec' not in ret:
-                ret['spec'] = {}
-            if not 'tags' in ret['spec']:
-                ret['spec']['tags'] = []
+            self.merge_dict(ret, {
+                "spec": {
+                    "dockerImageRepository": '',
+                    "lookupPolicy": {
+                        "local": False
+                    },
+                    "tags": []
+                }
+            }, False)
             for tag in ret['spec']['tags']:
                 tag['generation'] = 0
                 if not 'referencePolicy' in tag:
                     tag['referencePolicy'] = {'type': 'Source'}
-            if not 'lookupPolicy' in ret['spec']:
-                ret['spec']['lookupPolicy'] = {'local': False}
-            if not 'dockerImageRepository' in ret['spec']:
-                ret['spec']['dockerImageRepository'] = ''
         elif ret['kind'] == 'StatefulSet':
             for claimtemplate in ret['spec']['volumeClaimTemplates']:
                 claimtemplate['metadata']['creationTimestamp'] = ""
