@@ -21,6 +21,7 @@
      {{ oc_cmd }} get pv {{ persistent_volume.name }} -o json
   register: get_pv
   failed_when: false
+  check_mode: false
   changed_when: false
 
 - name: Create persistent volume {{ persistent_volume.name }}

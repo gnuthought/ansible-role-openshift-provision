@@ -7,6 +7,7 @@
 
 - name: Get cluster role bindings
   command: "{{ oc_cmd }} get clusterrolebinding -o json"
+  check_mode: false
   changed_when: false
   register: get_cluster_role_bindings
 

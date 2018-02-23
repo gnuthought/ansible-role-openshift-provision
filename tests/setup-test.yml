@@ -27,6 +27,7 @@
 - name: Get OpenShift version
   command: "{{ test_oc_cmd }} version" 
   register: get_version
+  check_mode: false
   changed_when: false
 
 - name: Set version facts

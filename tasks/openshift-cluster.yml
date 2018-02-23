@@ -13,12 +13,14 @@
       --username={{ openshift_login_username | quote }}
       --password={{ openshift_login_password | quote }}
       {% endif %}
+    check_mode: false
     changed_when: false
 
   - name: Get login session token
     command: >-
       oc whoami -t
     register: oc_get_token
+    check_mode: false
     changed_when: false
 
 - name: Set fact for oc_cmd

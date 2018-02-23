@@ -3,6 +3,7 @@
   command: >
     {{ oc_cmd }} get netnamespace {{ project.name | quote }}
     -o 'jsonpath={.netid}'
+  check_mode: false
   changed_when: false
   register: get_pod_network
 
@@ -10,6 +11,7 @@
   command: >
     {{ oc_cmd }} get netnamespace {{ project.join_pod_network | quote }}
     -o 'jsonpath={.netid}'
+  check_mode: false
   changed_when: false
   register: get_join_pod_network
 

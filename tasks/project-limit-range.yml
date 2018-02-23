@@ -8,6 +8,7 @@
 - name: Get current {{ limit_range.name }} limit range on {{ project.name }}
   command: >
     {{ oc_cmd }} get limitrange {{ limit_range.name }} -n {{ project.name }} -o json
+  check_mode: false
   changed_when: false
   failed_when: false
   register: get_limit_range

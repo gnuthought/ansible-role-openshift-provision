@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Route
+metadata:
+  name: {{ app_name |to_json}}
+spec:
+  host: {{ app_domain |default('')|to_json}}
+  to:
+    kind: Service
+    name: {{ app_name |to_json}}

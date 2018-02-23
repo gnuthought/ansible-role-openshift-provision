@@ -10,23 +10,58 @@
 #   `name` - project name
 #
 # `template` - template information with keys:
-#   `name` - template name
+#   `action` - provision action (optional, default: 'apply')
+#   `name` - template name (optional)
 #   `namespace` - template namespace (optional)
+#   `file` - template source file (optional)
 #   `parameters` - parameters to pass to template (optional)
-#   `no_update` - boolean flag (optional)
+#   `url` - template source URL (optional)
 #
 
-# FIXME - Add support for template files
+- name: Create temporary directory for template
+  tempfile:
+    state: directory
+  register: tempfile
+  when: template.file is defined and template.file != ''
+  check_mode: false
+  changed_when: false
+
+- name: Copy template
+  copy:
+    src: "{{ template.file }}"
+    dest: "{{ tempfile.path }}"
+  when: >-
+    template.file is defined and
+    template.file != '' and
+    not template.file|match('(https?|ftp)://.*')
+  check_mode: false
+  changed_when: false
+
+- name: Download template
+  get_url:
+    url: "{{ template.file }}"
+    dest: "{{ tempfile.path }}"
+  when: >-
+    template.file is defined and
+    template.file|match('(https?|ftp)://.*')
+  check_mode: false
+  changed_when: false
 
 - name: Process template
   command: >-
-    {{ oc_cmd }} process {{ template.name }} -o json
+    {{ oc_cmd }} process -o json
+    {% if template.file is defined %}
+    -f {{ tempfile.path }}
+    {% else %}
     -n {{ template.namespace | default(project.name if project is defined else 'openshift') }}
+    {{ template.name }} 
+    {% endif %}
     {% if template.parameters is defined %}
     {% for key, value in template.parameters.iteritems() %}
     -p {{ (key ~ '=' ~ value) | quote }}
     {% endfor %}
     {% endif %}
+  check_mode: false
   changed_when: false
   register: process_template
 
@@ -45,3 +80,12 @@
     resource: "{{ item }}"
   with_items: >-
     {{ process_template.stdout | from_json | json_query('items') }}
+
+- name: Cleanup temporary directory for template
+  file:
+    path: "{{ tempfile.path }}"
+    state: absent
+  register: tempfile
+  when: template.file is defined
+  check_mode: false
+  changed_when: false

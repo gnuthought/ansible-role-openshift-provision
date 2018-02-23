@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Route
+metadata:
+  annotations:
+    openshift.io/host.generated: "true"
+  creationTimestamp: null
+  name: test-route
+spec:
+  host: test-route.example.com
+  tls:
+    termination: passthrough
+  to:
+    kind: Service
+    name: {{ route_service_name }}
+    weight: 100
+  wildcardPolicy: None

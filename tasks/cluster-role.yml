@@ -6,6 +6,7 @@
 - name: Get ClusterRole {{ cluster_role.metadata.name }}
   command: >
     {{ oc_cmd }} get clusterrole {{ cluster_role.metadata.name | quote }} -o json
+  check_mode: false
   changed_when: false
   failed_when: false
   register: get_clusterrole

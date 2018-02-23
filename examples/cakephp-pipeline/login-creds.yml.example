@@ -1,0 +1,4 @@
+---
+openshift_connection_server: https://openshift-master.libvirt
+openshift_connection_insecure_skip_tls_verify: "true"
+openshift_connection_token: L6e9y9uDUWouDlPkvEI5KxHYvGliNagYZFXXix8-ydA

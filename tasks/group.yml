@@ -1,6 +1,7 @@
 - name: Get group {{ group.name }}
   command: >
     {{ oc_cmd }} get group {{ group.name }} -o json
+  check_mode: false
   changed_when: false
   failed_when: false
   register: get_group

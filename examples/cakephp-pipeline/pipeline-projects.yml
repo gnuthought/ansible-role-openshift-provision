@@ -1,0 +1,39 @@
+---
+- name: {{ app_name }}-build
+  imagestreams:
+  - {{ app_name }}
+  resources:
+  - app-buildconfig.yml.j2
+
+- name: cakephp-dev
+  imagestreams:
+  - {{ app_name }}
+  resources:
+  - app-secret.yml.j2
+  - app-service.yml.j2
+  - app-route.yml.j2
+  - app-deploymentconfig.yml.j2
+  - database-service.yml.j2
+  - database-deploymentconfig.yml.j2
+
+- name: cakephp-stage
+  imagestreams:
+  - {{ app_name }}
+  resources:
+  - app-secret.yml.j2
+  - app-service.yml.j2
+  - app-route.yml.j2
+  - app-deploymentconfig.yml.j2
+  - database-service.yml.j2
+  - database-deploymentconfig.yml.j2
+
+- name: cakephp-prod
+  imagestreams:
+  - {{ app_name }}
+  resources:
+  - app-secret.yml.j2
+  - app-service.yml.j2
+  - app-route.yml.j2
+  - app-deploymentconfig.yml.j2
+  - database-service.yml.j2
+  - database-deploymentconfig.yml.j2
