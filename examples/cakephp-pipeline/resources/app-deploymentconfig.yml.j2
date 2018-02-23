@@ -79,12 +79,11 @@ spec:
           limits:
             memory: {{ app_memory_limit |default("512Mi")|to_json}}
   triggers:
-  - imageChangeParams:
+  - type: ImageChange
+    imageChangeParams:
       automatic: true
       containerNames:
       - cakephp-mysql-example
       from:
         kind: ImageStreamTag
         name: {{ (app_name ~ ':latest') |to_json}}
-    type: ImageChange
-  - type: ConfigChange

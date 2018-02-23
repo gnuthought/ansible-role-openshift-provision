@@ -1,0 +1,11 @@
+app_name: cakephp-mysql-example
+#app_source_context_dir: /mycode
+#app_source_repsitory_ref: mybranch
+app_source_repository_uri: https://github.com/openshift/cakephp-ex.git
+#app_source_image_namespace: openshift
+#app_source_composer_mirror: ...
+
+# Auto generation is not really apprpriate here as it would
+# update this value on each iteration... can a github trigger
+# use the downward api? Is there another suitable approach?
+app_build_github_webhook_secret: bUFSM0daRExsZ2VRWEF5am9ucm45d

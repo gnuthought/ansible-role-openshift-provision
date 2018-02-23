@@ -1,0 +1,8 @@
+app_name: cakephp-mysql-example
+#app_domain: cakephp.example.com
+#app_memory_limit: 512Mi
+#app_opcache_revalidate_freq: "2"
+
+database_service_name: mysql
+database_engine: mysql
+database_name: default
