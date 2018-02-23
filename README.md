@@ -185,10 +185,13 @@ List of templates to process to manage resources for the cluster. The result
 items list from the processed template is then parsed and each resource in
 that list is processed by `openshift_provision`.
 
-* `name` - Template name to process
+* `file` - Filename or URL to use for template source, mutually exclusive with
+  `name`
 
-* `namespace` - Namespace in which the template is found, default is this
-  project
+* `name` - Template name to process, mutually exclusive with `file`
+
+* `namespace` - Namespace in which the template specified in `name` is found,
+  default is this project
 
 * `parameters` - Dictionary of parameters to pass to the template. Optional
 

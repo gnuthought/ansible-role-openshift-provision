@@ -1,0 +1,21 @@
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+  - cicd-creds.yml
+  - app-build-vars.yml
+  roles:
+  - role: openshift-provision
+    openshift_resource_path:
+    - resources
+    openshift_clusters:
+    - projects:
+      - name: "{{ app_name }}-build"
+        imagestreams:
+        - "{{ app_name }}"
+        resources:
+        - app-buildconfig.yml.j2
+  tasks:
+  - name: Build {{ app_name }}
+    command: >-
+      {{ oc_cmd }} start-build -F -n {{ app_name }}-build {{ app_name }}

@@ -1,0 +1,44 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+  - login-creds.yml
+  - app-deploy-vars.yml
+  pre_tasks:
+  - name: Assert required variables are defined
+    assert:
+      that:
+      - source_environment is defined
+      - target_environment is defined
+  roles:
+  - role: openshift-provision
+    openshift_resource_path:
+    - resources
+    openshift_clusters:
+    - projects:
+      - name: "{{ app_name }}-{{ target_environment }}"
+        imagestreams:
+        - "{{ app_name }}"
+        resources:
+        - app-service.yml.j2
+        - app-route.yml.j2
+        - app-deploymentconfig.yml.j2
+
+  tasks:
+  - name: Promote image from source environment
+    # If promoting across clusters we would need credentials
+    # for both and use skopeo
+    command: >-
+      oc tag
+      {{ app_name }}-{{ source_environment }}/{{ app_name }}:latest 
+      {{ app_name }}-{{ target_environment }}/{{ app_name }}:latest 
+
+  - name: Rollout latest (in case only config change)
+    command: >-
+      oc rollout latest {{ app_name }}
+      -n {{ app_name }}-{{ target_environment }}
+    register: rollout
+    failed_when: >-
+      rollout.rc != 0 and
+      'already in progress' not in rollout.stderr
