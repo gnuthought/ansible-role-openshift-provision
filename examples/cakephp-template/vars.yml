@@ -1,3 +1,3 @@
 app_name: cakephp-mysql-example
-app_build_github_webhook_secret: bUFSM0daRExsZ2VRWEF5am9ucm45d
 app_memory_limit: 512Mi
+app_build_github_webhook_secret: bUFSM0daRExsZ2VRWEF5am9ucm45d
