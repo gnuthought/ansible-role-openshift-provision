@@ -107,7 +107,8 @@ Secret.
                - -c
 -              - MYSQL_PWD='${DATABASE_PASSWORD}' mysql -h 127.0.0.1 -u ${DATABASE_USER}
 -                -D ${DATABASE_NAME} -e 'SELECT 1'
-+              - MYSQL_PWD="${MYSQL_PASSWORD}" mysql -h 127.0.0.1 -u ${MYSQL_USER} -D ${MYSQL_DATABASE} -e 'SELECT 1'
++              - MYSQL_PWD="${MYSQL_PASSWORD}" mysql -h 127.0.0.1 -u ${MYSQL_USER}
++                -D ${MYSQL_DATABASE} -e 'SELECT 1'
              initialDelaySeconds: 5
              timeoutSeconds: 1
 ```
