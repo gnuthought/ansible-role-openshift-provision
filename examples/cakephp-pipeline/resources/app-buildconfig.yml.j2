@@ -30,7 +30,6 @@ spec:
     type: Source
   triggers:
   - type: ImageChange
-  - type: ConfigChange
   - github:
       secret: {{app_build_github_webhook_secret |default('')|to_json}}
     type: GitHub

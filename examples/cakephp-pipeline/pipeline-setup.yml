@@ -1,0 +1,68 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+  - login-creds.yml
+  - pipeline-setup-vars.yml
+  roles:
+  - role: openshift-provision
+    openshift_resource_path:
+    - resources
+    openshift_clusters:
+    - projects:
+      - name: "{{ app_name }}-build"
+        service_accounts:
+        - cicd
+        role_bindings:
+        - role: edit
+          users:
+          - system:serviceaccount:{{ app_name }}-build:cicd
+
+      - name: "{{ app_name }}-dev"
+        resources:
+        - app-secret.yml.j2
+        - database-service.yml.j2
+        - database-deploymentconfig.yml.j2
+        role_bindings:
+        - role: edit
+          users:
+          - system:serviceaccount:{{ app_name }}-build:cicd
+
+      - name: "{{ app_name }}-stage"
+        resources:
+        - app-secret.yml.j2
+        - database-service.yml.j2
+        - database-deploymentconfig.yml.j2
+        role_bindings:
+        - role: edit
+          users:
+          - system:serviceaccount:{{ app_name }}-build:cicd
+
+      - name: "{{ app_name }}-prod"
+        resources:
+        - app-secret.yml.j2
+        - database-service.yml.j2
+        - database-deploymentconfig.yml.j2
+        role_bindings:
+        - role: edit
+          users:
+          - system:serviceaccount:{{ app_name }}-build:cicd
+  tasks:
+  - name: Get token for cicd service account
+    command: oc sa get-token -n {{ app_name }}-build cicd
+    changed_when: false
+    register: get_cicd_token
+
+  - name: Save cicd service account connection configuration
+    copy:
+      content: "{{ cicd_creds |to_yaml}}"
+      dest: "{{ playbook_dir }}/cicd-creds.yml"
+    # Explicitly indicate localhost in case this playbook is adapted to
+    # otherwise run remote
+    delegate_to: localhost
+    vars:
+      cicd_creds:
+        openshift_connection_server: "{{ openshift_connection_server }}"
+        openshift_connection_insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify |default('false')}}"
+        openshift_connection_token: "{{ get_cicd_token.stdout }}"
