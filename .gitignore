@@ -1,4 +1,4 @@
 *.swp
 *.pyc
 *.retry
-tests/login-creds.yml
+login-creds.yml

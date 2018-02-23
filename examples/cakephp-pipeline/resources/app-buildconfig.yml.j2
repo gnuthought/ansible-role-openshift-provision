@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: BuildConfig
+metadata:
+  annotations:
+    description: Defines how to build the application
+    template.alpha.openshift.io/wait-for-ready: "true"
+  name: {{ app_name |to_json}}
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: {{ (app_name ~ ":latest") |to_json}}
+  postCommit:
+    script: ./lib/Cake/Console/cake test app AllTests
+  source:
+    contextDir: {{ app_source_context_dir |default('')|to_json}}
+    git:
+      ref: {{ app_source_repository_ref |default('')|to_json}}
+      uri: {{ app_source_repository_uri |to_json}}
+    type: Git
+  strategy:
+    sourceStrategy:
+      env:
+      - name: COMPOSER_MIRROR
+        value: {{ app_source_composer_mirror |default('')|to_json}}
+      from:
+        kind: ImageStreamTag
+        name: php:7.0
+        namespace: {{ app_source_image_namespace |default('openshift')|to_json}}
+    type: Source
+  triggers:
+  - type: ImageChange
+  - type: ConfigChange
+  - github:
+      secret: {{app_build_github_webhook_secret |default('')|to_json}}
+    type: GitHub
