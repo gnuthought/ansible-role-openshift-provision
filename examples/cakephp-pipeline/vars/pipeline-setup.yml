@@ -1,0 +1,4 @@
+---
+app_name: cakephp-mysql-example
+database_service_name: mysql
+database_name: default

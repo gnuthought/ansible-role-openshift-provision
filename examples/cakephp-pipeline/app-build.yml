@@ -3,7 +3,7 @@
   gather_facts: no
   vars_files:
   - cicd-creds.yml
-  - app-build-vars.yml
+  - vars/app-build.yml
   roles:
   - role: openshift-provision
     openshift_resource_path:
@@ -19,3 +19,5 @@
   - name: Build {{ app_name }}
     command: >-
       {{ oc_cmd }} start-build -F -n {{ app_name }}-build {{ app_name }}
+    # Skip in check mode so it will not report changed
+    when: not ansible_check_mode

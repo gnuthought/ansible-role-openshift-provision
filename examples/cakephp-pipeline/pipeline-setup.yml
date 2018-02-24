@@ -4,11 +4,9 @@
   gather_facts: no
   vars_files:
   - login-creds.yml
-  - pipeline-setup-vars.yml
+  - vars/pipeline-setup.yml
   roles:
   - role: openshift-provision
-    openshift_resource_path:
-    - resources
     openshift_clusters:
     - projects:
       - name: "{{ app_name }}-build"
@@ -20,30 +18,36 @@
           - system:serviceaccount:{{ app_name }}-build:cicd
 
       - name: "{{ app_name }}-dev"
-        resources:
-        - app-secret.yml.j2
-        - database-service.yml.j2
-        - database-deploymentconfig.yml.j2
+        process_templates:
+        - file: mysql.template.yml
+          parameters:
+            NAME: "{{ app_name }}"
+            DATABASE_NAME: "{{ database_name }}"
+            DATABASE_SERVICE_NAME: "{{ database_service_name }}"
         role_bindings:
         - role: edit
           users:
           - system:serviceaccount:{{ app_name }}-build:cicd
 
       - name: "{{ app_name }}-stage"
-        resources:
-        - app-secret.yml.j2
-        - database-service.yml.j2
-        - database-deploymentconfig.yml.j2
+        process_templates:
+        - file: mysql.template.yml
+          parameters:
+            NAME: "{{ app_name }}"
+            DATABASE_NAME: "{{ database_name }}"
+            DATABASE_SERVICE_NAME: "{{ database_service_name }}"
         role_bindings:
         - role: edit
           users:
           - system:serviceaccount:{{ app_name }}-build:cicd
 
       - name: "{{ app_name }}-prod"
-        resources:
-        - app-secret.yml.j2
-        - database-service.yml.j2
-        - database-deploymentconfig.yml.j2
+        process_templates:
+        - file: mysql.template.yml
+          parameters:
+            NAME: "{{ app_name }}"
+            DATABASE_NAME: "{{ database_name }}"
+            DATABASE_SERVICE_NAME: "{{ database_service_name }}"
         role_bindings:
         - role: edit
           users:

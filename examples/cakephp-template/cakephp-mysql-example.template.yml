@@ -257,7 +257,8 @@ objects:
               - /bin/sh
               - -i
               - -c
-              - MYSQL_PWD="${MYSQL_PASSWORD}" mysql -h 127.0.0.1 -u ${MYSQL_USER} -D ${MYSQL_DATABASE} -e 'SELECT 1'
+              - MYSQL_PWD="${MYSQL_PASSWORD}" mysql -h 127.0.0.1 -u ${MYSQL_USER}
+                -D ${MYSQL_DATABASE} -e 'SELECT 1'
             initialDelaySeconds: 5
             timeoutSeconds: 1
           resources:
@@ -321,8 +322,6 @@ parameters:
 - description: Github trigger secret.  A difficult to guess string encoded as part
     of the webhook URL.  Not encrypted.
   displayName: GitHub Webhook Secret
-  #from: '[a-zA-Z0-9]{40}'
-  #generate: expression
   required: true
   name: GITHUB_WEBHOOK_SECRET
 - displayName: Database Service Name

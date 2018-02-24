@@ -1,26 +1,3 @@
 app_name: cakephp-mysql-example
-#app_domain: cakephp.example.com
-#app_memory_limit: 512Mi
-#app_opcache_revalidate_freq: "2"
-#app_source_context_dir: /mycode
-#app_source_repsitory_ref: mybranch
-app_source_repository_uri: https://github.com/openshift/cakephp-ex.git
-#app_source_image_namespace: openshift
-#app_source_composer_mirror: ...
-# Auto generation is not really apprpriate here as it would
-# update this value on each iteration... can a github trigger
-# use the downward api? Is there another suitable approach?
+app_memory_limit: 512Mi
 app_build_github_webhook_secret: bUFSM0daRExsZ2VRWEF5am9ucm45d
-
-database_service_name: mysql
-database_engine: mysql
-database_name: default
-#database_memory_limit: 512Mi
-#database_image_namespace: openshift
-
-# Auto-generation of secret values
-init_app_cakephp_secret_token: "{{ '[a-zA-Z0-9]{40}' |strgen}}"
-init_app_cakephp_security_cipher_seed: "{{ '[0-9]{30}' |strgen}}"
-init_app_cakephp_security_salt: "{{ '[a-zA-Z0-9]{40}' |strgen}}"
-init_database_password: "{{ '[\\w]{50}' |strgen}}"
-init_database_user: cakephp
