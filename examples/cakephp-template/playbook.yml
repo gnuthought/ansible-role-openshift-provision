@@ -2,7 +2,6 @@
 - hosts: localhost
   connection: local
   vars_files:
-  - login-creds.yml
   - vars.yml
   roles:
   - role: openshift-provision

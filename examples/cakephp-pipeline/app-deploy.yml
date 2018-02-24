@@ -3,13 +3,13 @@
   connection: local
   gather_facts: no
   vars_files:
-  - login-creds.yml
-  - app-deploy-vars.yml
+  - cicd-creds.yml
+  - vars/app-deploy.yml
   pre_tasks:
   - name: Assert required variables are defined
     assert:
       that:
-      - source_environment is defined
+      - source_environment is defined or ansible_check_mode
       - target_environment is defined
   roles:
   - role: openshift-provision
@@ -33,6 +33,8 @@
       oc tag
       {{ app_name }}-{{ source_environment }}/{{ app_name }}:latest 
       {{ app_name }}-{{ target_environment }}/{{ app_name }}:latest 
+    # Skip in check mode so it will not report changed
+    when: not ansible_check_mode
 
   - name: Rollout latest (in case only config change)
     command: >-
@@ -42,3 +44,5 @@
     failed_when: >-
       rollout.rc != 0 and
       'already in progress' not in rollout.stderr
+    # Skip in check mode so it will not report changed
+    when: not ansible_check_mode
