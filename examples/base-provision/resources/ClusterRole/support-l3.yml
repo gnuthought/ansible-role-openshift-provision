@@ -1,0 +1,7 @@
+---
+apiVersion: v1
+kind: ClusterRole
+metadata:
+  name: support-l3
+rules: []
+# FIXME

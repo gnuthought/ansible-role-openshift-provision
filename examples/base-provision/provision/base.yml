@@ -1,0 +1,136 @@
+---
+# Path to used to find files listed under resources. The default is simply
+# relative to the playbook.  Here we just specify the subdirectory "resources",
+# but in more advanced cases where multiple clusters are managed from the same
+# git repository we may implement an inheritance path such that an environment,
+# cloud provider, or OpenShift release specific directory is checked before
+# falling back to a default location.
+openshift_resource_path:
+- resources
+
+# Main variable is openshift_clusters, which takes a list value. A single play
+# can manage multiple clusters, but in this case we only manage the local
+# cluster for this master.
+openshift_clusters:
+-
+  # Provision a group named "admins" with members alice and bob, remove any
+  # other users from the group.
+  #
+  # This is handy if LDAP group sync is unavailable for some reason. If LDAP
+  # groups are available for the cluster then `oc adm group sync` is the
+  # preferred approach
+  groups:
+  - name: admins
+    members:
+    - alice
+    - bob
+    remove_unlisted_members: true
+  - name: support-l3
+    members:
+    - carol
+    remove_unlisted_members: true
+  - name: support-l2
+    members:
+    - dan
+    - erin
+    remove_unlisted_members: true
+
+  cluster_resources:
+  # Define cluster roles for level 2/3 support
+  - ClusterRole/support-l2.yml
+  - ClusterRole/support-l3.yml
+  # Custom cluster role that can only run pods
+  - ClusterRole/pod-manager.yml
+
+  cluster_role_bindings:
+  # Care must be taken with cluster-admin role-bindings when specifying
+  # `remove_unlisted` as openshift-provision will do as you define and remove
+  # core system accounts if not explitly listed.
+  #
+  # Since openshift-provision supports Ansible check mode it is a good idea to
+  # run check mode before comitting any new configuration to see what users
+  # would be removed.
+  - role: cluster-admin
+    users:
+    - system:admin
+    - system:serviceaccount:openshift:test-provision
+    groups:
+    - admins
+    - system:cluster-admins
+    - system:masters
+    remove_unlisted: true
+  # Disable self-provisioner for most users, enable just for central service
+  # accounts
+  - role: self-provisioner
+    users:
+    - system:serviceaccount:management-infra:management-admin
+    - system:serviceaccount:openshift:cicd
+    remove_unlisted: true
+  # Level 3 and 2 support role assignments map to groups. Remove any unlisted
+  # users or groups.
+  - role: support-l3
+    groups:
+    - carol
+    remove_unlisted: true
+  - role: support-l2
+    groups:
+    - carol
+    remove_unlisted: true
+
+  projects:
+  - name: openshift
+    resources:
+    # Add/Reconfigure ImageStreams for the cluster
+    - ImageStream/nodejs.yml
+    - ImageStream/rhel7.yml
+    # Simple imagestreams for local image builds
+    imagestreams:
+    - rhel7-custom
+    # Create a service account for cluster management cicd activity
+    service_accounts:
+    - cicd
+    role_bindings:
+    # Role binding to allow the cicd service account to manage content in the
+    # openshift namespace
+    - role: edit
+      users:
+      - system:serviceaccount:openshift:cicd
+
+  - name: image-build
+    # Build project for cluster-wide images such as custom s2i images, Jenkins
+    # agents, and common application images such as AMQ, MySQL, etc.
+    #
+    # We show an example of managing the build config directly from the base
+    # cluster configuration, but more common would be to manage these resources
+    # in separate version control repositories.
+    #
+    # In this example we build and push to a local imagestream. The newly built
+    # image would then be tested and promoted from image-build to an
+    # imagestream in the openshift project.
+    resources:
+    - BuildConfig/rhel7-custom.yml
+    imagestreams:
+    - rhel7-custom
+    role_bindings:
+    # Role binding to allow the openshift cicd service account to manage content
+    # in this project
+    - role: edit
+      users:
+      - system:serviceaccount:openshift:cicd
+    # Make builds run on designated build nodes
+    node_selector: region=build
+
+  - name: jenkins
+    # A shared namespace in which to run jenkins agents. These agents run with
+    # minimal permissions, but jenkins credentials can provide access to act as
+    # other service accounts
+    service_accounts:
+    - jenkins
+    # The jenkins service account only has rights to manage pods in this
+    # project
+    role_bindings:
+    - role: pod-manager
+      users:
+      - system:serviceaccount:jenkins:jenkins
+    # Make jenkins agents run on designated build nodes
+    node_selector: region=build
