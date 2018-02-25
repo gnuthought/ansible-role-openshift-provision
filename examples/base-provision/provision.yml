@@ -1,6 +1,9 @@
-- hosts: masters[0]
+# Run directly on a master within the cluster for full access.
+- name: Base Provision
+  hosts: masters[0]
+  vars:
+    oc_cmd_base: oc --config=/etc/origin/master/admin.kubeconfig
   vars_files: 
   - provision/base.yml
   roles:
-  # Provision cluster base configuration
   - role: openshift-provision

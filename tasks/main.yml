@@ -17,8 +17,8 @@
   loop_control:
     loop_var: openshift_cluster
   vars:
-    oc_cmd_base: >-
-      oc
+    oc_cmd_opt: >-
+      {{ oc_cmd_base }}
       {% if openshift_connection_certificate_authority is defined %}
       --certificate-authority={{ openshift_connection_certificate_authority | quote }}
       {% endif %}

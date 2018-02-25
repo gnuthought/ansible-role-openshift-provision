@@ -42,7 +42,10 @@ variables from the file specified.
 Role Variables
 --------------
 
-* `openshift_clusters` - List of openshift cluster definitions as defined
+* `oc_cmd_base` - The base `oc` command. Defaults to "oc", but can be set to
+  specify a different path or add custom options
+
+* `openshift_clusters` - List of openshift cluster definitions as described
   below
 
 * `openshift_connection_certificate_authority` - Path to file containing
