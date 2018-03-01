@@ -7,47 +7,69 @@
   - vars/pipeline-setup.yml
   roles:
   - role: openshift-provision
+    openshift_resource_path:
+    - resources
     openshift_clusters:
     - projects:
       - name: "{{ app_name }}-build"
+        annotations:
+          example.com/quota-size: small
         service_accounts:
         - cicd
+        resources:
+        - app-limitrange-small.yml
+        - app-quota.yml.j2
         role_bindings:
         - role: edit
           users:
           - system:serviceaccount:{{ app_name }}-build:cicd
 
       - name: "{{ app_name }}-dev"
+        annotations:
+          example.com/quota-size: medium
         process_templates:
         - file: mysql.template.yml
           parameters:
             NAME: "{{ app_name }}"
             DATABASE_NAME: "{{ database_name }}"
             DATABASE_SERVICE_NAME: "{{ database_service_name }}"
+        resources:
+        - app-limitrange-medium.yml
+        - app-quota.yml.j2
         role_bindings:
         - role: edit
           users:
           - system:serviceaccount:{{ app_name }}-build:cicd
 
       - name: "{{ app_name }}-stage"
+        annotations:
+          example.com/quota-size: medium
         process_templates:
         - file: mysql.template.yml
           parameters:
             NAME: "{{ app_name }}"
             DATABASE_NAME: "{{ database_name }}"
             DATABASE_SERVICE_NAME: "{{ database_service_name }}"
+        resources:
+        - app-limitrange-medium.yml
+        - app-quota.yml.j2
         role_bindings:
         - role: edit
           users:
           - system:serviceaccount:{{ app_name }}-build:cicd
 
       - name: "{{ app_name }}-prod"
+        annotations:
+          example.com/quota-size: large
         process_templates:
         - file: mysql.template.yml
           parameters:
             NAME: "{{ app_name }}"
             DATABASE_NAME: "{{ database_name }}"
             DATABASE_SERVICE_NAME: "{{ database_service_name }}"
+        resources:
+        - app-limitrange-large.yml
+        - app-quota.yml.j2
         role_bindings:
         - role: edit
           users:
