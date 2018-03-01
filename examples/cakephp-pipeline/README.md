@@ -95,6 +95,17 @@ initialize resources with randomly generated passwords and other security
 features. See the cakephp-template example for more information on template
 processing.
 
+This playbook also shows two approaches to "T-shirt" sizing for quotas and
+limits. Two approaches are shown only for demonstration purposes. In your own
+playbooks you should likely choose one approach and be consistent.
+
+LimitRanges are shown being set by pointing to different files with the
+appropriate definition, a simple direct approach.
+
+For ResourceQuotas we show using a template that references attributes set
+on the project. Within project resources the enclosing project can be
+referenced with the `project` variable.
+
 ## app-build.py
 
 This playbook manages the OpenShift BuildConfig and then starts a build.
