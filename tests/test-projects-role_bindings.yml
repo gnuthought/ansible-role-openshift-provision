@@ -49,7 +49,7 @@
   tasks:
   - name: Get project RoleBindings
     command: >-
-      {{ test_oc_cmd }} export rolebinding edit -n testproj -o json
+      {{ test_oc_cmd }} export rolebinding -n testproj -o json
     register: get_rolebindings
     changed_when: false
 
@@ -63,8 +63,9 @@
         {{ got_users | to_yaml }}
         <<<
     vars:
+      role_users_query: "items[?roleRef.name=='edit'].userNames[]"
       got_users: >-
-        {{ get_rolebindings.stdout | from_json | json_query('userNames') | sort }}
+        {{ get_rolebindings.stdout | from_json | json_query(role_users_query) | sort }}
     when:
       got_users != edit_users
 
@@ -78,8 +79,9 @@
         {{ got_groups | to_yaml }}
         <<<
     vars:
+      role_groups_query: "items[?roleRef.name=='edit'].groupNames[]"
       got_groups: >-
-        {{ get_rolebindings.stdout | from_json | json_query('groupNames') }}
+        {{ get_rolebindings.stdout | from_json | json_query(role_groups_query) | sort }}
     when:
       got_groups != edit_groups
 
@@ -106,7 +108,7 @@
   tasks:
   - name: Get project RoleBindings
     command: >-
-      {{ test_oc_cmd }} export rolebinding edit -n testproj -o json
+      {{ test_oc_cmd }} export rolebinding -n testproj -o json
     register: get_rolebindings
     changed_when: false
 
@@ -120,8 +122,9 @@
         {{ got_users | to_yaml }}
         <<<
     vars:
+      role_users_query: "items[?roleRef.name=='edit'].userNames[]"
       got_users: >-
-        {{ get_rolebindings.stdout | from_json | json_query('userNames') | sort }}
+        {{ get_rolebindings.stdout | from_json | json_query(role_users_query) | sort }}
     when:
       got_users != edit_users
 
@@ -135,7 +138,8 @@
         {{ got_groups | to_yaml }}
         <<<
     vars:
+      role_groups_query: "items[?roleRef.name=='edit'].groupNames[]"
       got_groups: >-
-        {{ get_rolebindings.stdout | from_json | json_query('groupNames') }}
+        {{ get_rolebindings.stdout | from_json | json_query(role_groups_query) | sort }}
     when:
       got_groups != edit_groups

@@ -1,4 +1,6 @@
 ---
+# FIXME - Skip test if not using multitenant plugin
+# oc get netnamespaces -o json, check for empty items list
 - name: Set Facts
   hosts: localhost
   connection: local
