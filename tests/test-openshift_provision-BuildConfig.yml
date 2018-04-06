@@ -22,7 +22,9 @@
 
   roles:
   - role: openshift-provision
-
+    openshift_clusters:
+    - projects:
+      - name: provision-test
   tasks:
   - name: Provision BuildConfig
     openshift_provision:
