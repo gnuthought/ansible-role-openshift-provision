@@ -10,7 +10,7 @@
     openshift_login:
       username: "{{ openshift_test_login_username }}"
       password: "{{ openshift_test_login_password }}"
-      server: https://openshift-master.libvirt
+      server: "{{ openshift_connection_server }}" 
       insecure_skip_tls_verify: "true"
     register: openshift_login
 
