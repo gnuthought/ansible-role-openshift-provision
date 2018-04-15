@@ -1,6 +1,4 @@
 ---
-# FIXME - Skip test if not using multitenant plugin
-# oc get netnamespaces -o json, check for empty items list
 - name: Set Facts
   hosts: localhost
   connection: local
@@ -22,33 +20,12 @@
         {% if openshift_connection_token is defined %}
         --token={{ openshift_connection_token | quote }}
         {% endif %}
-
-- name: Test Provision
-  hosts: localhost
-  connection: local
-
-  roles:
-  - role: openshift-provision
-    openshift_clusters:
-    - projects:
-      - name: test-join-target
-
-      - name: test-join-project
-        join_pod_network: test-join-target
-
-  tasks:
-  - name: get target netid
+  - name: Check if netnamespaces are defined
     command: >-
-      {{ test_oc_cmd }} get netnamespace test-join-target -o jsonpath='{.netid}'
+      {{ test_oc_cmd }} get netnamespaces -o json
+    register: get_netnamespaces
     changed_when: false
-    register: get_target_netid
 
-  - name: get project netid
-    command: >-
-      {{ test_oc_cmd }} get netnamespace test-join-project -o jsonpath='{.netid}'
-    changed_when: false
-    register: get_project_netid
-
-  - fail:
-      msg: Project NETIDs differ
-    when: get_project_netid.stdout != get_target_netid.stdout
+  - include_tasks: tasks/test-projects-join_pod_networks.yml
+    when: >-
+      0 < get_netnamespaces.stdout | from_json | json_query('items') | count
