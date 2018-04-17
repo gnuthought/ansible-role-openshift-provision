@@ -385,13 +385,12 @@ class OpenShiftProvision:
                         "protocol": "TCP"
                     }],
                     "sessionAffinity": "None",
+                    "sessionAffinityConfig": {
+                        "clientIP": {
+                            "timeoutSeconds": 10800
+                        }
+                    },
                     "type": "ClusterIP"
-                }
-            }, False)
-        elif ret['kind'] == 'Service':
-            self.merge_dict(ret, {
-                "spec": {
-                    "podManagementPolicy": "OrderedReady",
                 }
             }, False)
 

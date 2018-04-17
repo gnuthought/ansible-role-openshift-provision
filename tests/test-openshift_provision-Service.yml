@@ -29,6 +29,11 @@
           annotations:
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
+        spec:
+          sessionAffinityConfig:
+            clientIP:
+              timeoutSeconds: 10800
+
 
 - name: Test Provision
   hosts: localhost
@@ -53,6 +58,9 @@
 
   roles:
   - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: provision-test
 
   tasks:
   - name: Provision Service
@@ -107,6 +115,7 @@
         name: test-service
       spec:
         ports:
+        # FIXME, handle random ordering
         - name: 8023-tcp
           port: 8023
           protocol: TCP
