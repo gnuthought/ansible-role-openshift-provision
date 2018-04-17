@@ -48,6 +48,12 @@ Role Variables
 * `openshift_clusters` - List of openshift cluster definitions as described
   below
 
+* `openshift_cluster_provision_post_tasks` - List of ansible tasks files to
+  include after processing provision for each cluster
+
+* `openshift_cluster_provision_pre_tasks` - List of ansible tasks files to
+  include immediately before processing provision for each cluster
+
 * `openshift_connection_certificate_authority` - Path to file containing
   signing certificate for OpenShift server. This option may also be set within
   `openshift_clusters` as `connection.certificate_authority`
@@ -116,6 +122,12 @@ List of OpenShift cluster definitions
   cluster level, described below
 
 * `projects` - List of projects to manage, described below:
+
+* `provision_post_tasks` - List of ansible tasks files to include after
+  processing provision this cluster
+
+* `provision_pre_tasks` - List of ansible tasks files to include immediately
+  before processing provision for this cluster
 
 * `resource_path` - List of paths to search for resource definitons specified
   by relative file path under `cluster_resources` and `resources`, defaults
