@@ -1,0 +1,26 @@
+---
+- name: Include openshift-provision role
+  include_role:
+    name: openshift-provision
+  vars:
+    openshift_clusters:
+    - projects:
+      - name: test-join-target
+      - name: test-join-project
+        join_pod_network: test-join-target
+
+- name: get target netid
+  command: >-
+    {{ test_oc_cmd }} get netnamespace test-join-target -o jsonpath='{.netid}'
+  changed_when: false
+  register: get_target_netid
+
+- name: get project netid
+  command: >-
+    {{ test_oc_cmd }} get netnamespace test-join-project -o jsonpath='{.netid}'
+  changed_when: false
+  register: get_project_netid
+
+- fail:
+    msg: Project NETIDs differ
+  when: get_project_netid.stdout != get_target_netid.stdout

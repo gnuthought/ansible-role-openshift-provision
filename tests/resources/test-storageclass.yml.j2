@@ -4,7 +4,7 @@ metadata:
   name: test-storageclass
 {% if storageclass_default %}
   annotations:
-    storageclass.beta.kubernetes.io/is-default-class: "true" 
+    storageclass.beta.kubernetes.io/is-default-class: "true"
 {% endif %}
 parameters:
   type: pd-standard

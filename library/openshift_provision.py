@@ -401,10 +401,14 @@ class OpenShiftProvision:
           return ['metadata', 'rules']
         elif self.resource['kind'] in ['ConfigMap', 'Secret']:
           return ['metadata', 'data']
+        elif self.resource['kind'] == 'Group':
+          return ['metadata', 'users']
         elif self.resource['kind'] == 'ServiceAccount':
           return ['metadata', 'imagePullSecrets', 'secrets']
         elif self.resource['kind'] == 'Template':
           return ['metadata', 'labels', 'objects', 'parameters']
+        elif self.resource['kind'] == 'SecurityContextConstraints':
+          return self.resource.keys()
         else:
           return ['metadata', 'spec']
 

@@ -1,36 +1,23 @@
-- name: Get group {{ group.name }}
+- name: Get current members of group {{ group.name }}
   command: >
-    {{ oc_cmd }} get group {{ group.name }} -o json
+    {{ oc_cmd }} get group {{ group.name }} -o 'jsonpath={range .users[*]}{@}{"\n"}{end}'
   check_mode: false
   changed_when: false
   failed_when: false
-  register: get_group
+  when: not group.remove_unlisted_members | default(False) | bool
+  register: get_group_members
 
-- name: Create group {{ group.name }}
-  command: >
-    {{ oc_cmd }} adm groups new {{ group.name }}
-  when: get_group.rc != 0
-
-- name: Members for group {{ group.name }}
-  command: >
-    {{ oc_cmd }} adm groups add-users {{ group.name }} {{ user.user_name if user is mapping else user }}
-  with_items: "{{ group.members | default([])}}"
-  when: >
-    get_group.rc != 0 or
-    None == get_group.stdout | from_json | json_query('users') or
-    (user.user_name if user is mapping else user) not in get_group.stdout | from_json | json_query('users')
-  loop_control:
-    loop_var: user
-
-- name: Remove unlisted members from group {{ group.name }}
-  command: >
-    {{ oc_cmd }} adm groups remove-users {{ group.name }} {{ user }}
-  when: >
-    group.remove_unlisted_members is defined and
-    group.remove_unlisted_members | bool and
-    user != None and
-    user != '' and
-    user not in group.members | default([])
-  with_items: "{% if get_group.stdout != '' %}{{ get_group.stdout | from_json | json_query('users') }}{% else %}}{{ [] }}{% endif %}"
-  loop_control:
-    loop_var: user
+- name: Group {{ group.name }}
+  openshift_provision:
+    action: apply
+    connection:
+      oc_cmd: "{{ oc_cmd }}"
+    resource:
+      apiVersion: v1
+      kind: Group
+      metadata:
+        name: "{{ group.name }}"
+      users: >-
+        {{ group.members if group.remove_unlisted_members|default(False)|bool
+           else group.members|union(get_group_members.stdout_lines)|sort
+        }}
