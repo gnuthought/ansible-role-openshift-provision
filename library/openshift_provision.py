@@ -407,6 +407,8 @@ class OpenShiftProvision:
           return ['metadata', 'imagePullSecrets', 'secrets']
         elif self.resource['kind'] == 'Template':
           return ['metadata', 'labels', 'objects', 'parameters']
+        elif self.resource['kind'] == 'SecurityContextConstraints':
+          return self.resource.keys()
         else:
           return ['metadata', 'spec']
 
