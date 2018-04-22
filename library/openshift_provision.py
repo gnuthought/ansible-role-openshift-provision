@@ -401,6 +401,8 @@ class OpenShiftProvision:
           return ['metadata', 'rules']
         elif self.resource['kind'] in ['ConfigMap', 'Secret']:
           return ['metadata', 'data']
+        elif self.resource['kind'] == 'Group':
+          return ['metadata', 'users']
         elif self.resource['kind'] == 'ServiceAccount':
           return ['metadata', 'imagePullSecrets', 'secrets']
         elif self.resource['kind'] == 'Template':

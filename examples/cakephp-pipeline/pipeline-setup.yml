@@ -78,6 +78,7 @@
   - name: Get token for cicd service account
     command: oc sa get-token -n {{ app_name }}-build cicd
     changed_when: false
+    check_mode: no
     register: get_cicd_token
 
   - name: Save cicd service account connection configuration
