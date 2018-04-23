@@ -5,108 +5,29 @@
   vars_files:
   - login-creds.yml
   tasks:
+  - include_tasks: setup-test.yml
   - set_fact:
-      test_oc_cmd: >-
-        oc
-        {% if openshift_connection_certificate_authority is defined %}
-        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
-        {% endif %}
-        {% if openshift_connection_insecure_skip_tls_verify is defined %}
-        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
-        {% endif %}
-        {% if openshift_connection_server is defined %}
-        --server={{ openshift_connection_server | quote }}
-        {% endif %}
-        {% if openshift_connection_token is defined %}
-        --token={{ openshift_connection_token | quote }}
-        {% endif %}
-      openshift_connection:
-        server: "{{ openshift_connection_server }}"
-        insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify }}"
-        token: "{{ openshift_connection_token }}"
       ignore_differences:
         metadata:
           annotations:
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
           generation: 0
+        spec:
+          template:
+            metadata:
+              creationTimestamp: null
 
 - name: Test Provision
   hosts: localhost
   connection: local
   vars:
-    provision_deploymentconfig:
-      apiVersion: v1
-      kind: DeploymentConfig
-      metadata:
-        annotations:
-          kubectl.kubernetes.io/last-applied-configuration: ''
-        creationTimestamp: null
-        generation: 0
-        labels:
-          provision-test: openshift-provision
-        name: test-deploymentconfig
-      spec:
-        replicas: 1
-        selector:
-          deploymentconfig: test-deploymentconfig
-        strategy:
-          activeDeadlineSeconds: 21600
-          resources: {}
-          rollingParams:
-            intervalSeconds: 1
-            maxSurge: 25%
-            maxUnavailable: 25%
-            timeoutSeconds: 600
-            updatePeriodSeconds: 1
-          type: Rolling
-        template:
-          metadata:
-            creationTimestamp: null
-            labels:
-              deploymentconfig: test-deploymentconfig
-          spec:
-            containers:
-            - image: registry.access.redhat.com/rhscl/httpd-24-rhel7:latest
-              imagePullPolicy: IfNotPresent
-              livenessProbe:
-                failureThreshold: 3
-                httpGet:
-                  path: /
-                  port: 8080
-                  scheme: HTTP
-                initialDelaySeconds: 30
-                periodSeconds: 10
-                successThreshold: 1
-                timeoutSeconds: 3
-              name: httpd-example
-              readinessProbe:
-                failureThreshold: 3
-                httpGet:
-                  path: /
-                  port: 8080
-                  scheme: HTTP
-                initialDelaySeconds: 3
-                periodSeconds: 10
-                successThreshold: 1
-                timeoutSeconds: 3
-              resources:
-                requests:
-                  cpu: 100m
-                  memory: 256Mi
-              securityContext:
-                privileged: false
-              terminationMessagePath: /dev/termination-log
-              terminationMessagePolicy: File
-            dnsPolicy: ClusterFirst
-            restartPolicy: Always
-            schedulerName: default-scheduler
-            securityContext: {}
-            terminationGracePeriodSeconds: 30
-        test: false
-        triggers:
-        - type: ConfigChange
-
+    provision_deploymentconfig: "{{ lookup('template', 'resources/test-deploymentconfig.yml.j2') | from_yaml }}"
+    deploymentconfig_env:
+    - name: AFOO
+      value: abar
+    - name: FOO
+      value: bar
   roles:
   - role: openshift-provision
     openshift_clusters:
@@ -143,6 +64,17 @@
       cmp_deploymentconfig.metadata != got_deploymentconfig.metadata or
       cmp_deploymentconfig.spec != got_deploymentconfig.spec
 
+- name: Test Reprovision
+  hosts: localhost
+  connection: local
+  vars:
+    provision_deploymentconfig: "{{ lookup('template', 'resources/test-deploymentconfig.yml.j2') | from_yaml }}"
+    deploymentconfig_env:
+    - name: FOO
+      value: bar
+    - name: AFOO
+      value: abar
+  tasks:
   - name: Check reprovision DeploymentConfig
     openshift_provision:
       connection: "{{ openshift_connection }}"
@@ -158,82 +90,10 @@
   hosts: localhost
   connection: local
   vars:
-    provision_deploymentconfig:
-      apiVersion: v1
-      kind: DeploymentConfig
-      metadata:
-        annotations:
-          kubectl.kubernetes.io/last-applied-configuration: ''
-        creationTimestamp: null
-        generation: 0
-        labels:
-          provision-test: openshift-provision
-          newlabel: foo
-        name: test-deploymentconfig
-      spec:
-        replicas: 1
-        selector:
-          deploymentconfig: test-deploymentconfig
-        strategy:
-          activeDeadlineSeconds: 21600
-          resources: {}
-          rollingParams:
-            intervalSeconds: 1
-            maxSurge: 25%
-            maxUnavailable: 25%
-            timeoutSeconds: 600
-            updatePeriodSeconds: 1
-          type: Rolling
-        template:
-          metadata:
-            creationTimestamp: null
-            labels:
-              deploymentconfig: test-deploymentconfig
-          spec:
-            containers:
-            - image: registry.access.redhat.com/rhscl/httpd-24-rhel7:latest
-              imagePullPolicy: IfNotPresent
-              livenessProbe:
-                failureThreshold: 3
-                httpGet:
-                  path: /
-                  port: 8080
-                  scheme: HTTP
-                initialDelaySeconds: 30
-                periodSeconds: 10
-                successThreshold: 1
-                timeoutSeconds: 3
-              name: httpd-example
-              readinessProbe:
-                failureThreshold: 3
-                httpGet:
-                  path: /
-                  port: 8080
-                  scheme: HTTP
-                initialDelaySeconds: 3
-                periodSeconds: 10
-                successThreshold: 1
-                timeoutSeconds: 3
-              resources:
-                requests:
-                  cpu: 100m
-                  memory: 256Mi
-              securityContext:
-                privileged: false
-              terminationMessagePath: /dev/termination-log
-              terminationMessagePolicy: File
-            dnsPolicy: ClusterFirst
-            restartPolicy: Always
-            schedulerName: default-scheduler
-            securityContext: {}
-            terminationGracePeriodSeconds: 30
-        test: false
-        triggers:
-        - type: ConfigChange
-
-  roles:
-  - role: openshift-provision
-
+    provision_deploymentconfig: "{{ lookup('template', 'resources/test-deploymentconfig.yml.j2') | from_yaml }}"
+    deploymentconfig_env:
+    - name: FOO
+      value: bar
   tasks:
   - name: Apply update to DeploymentConfig
     openshift_provision:
@@ -273,8 +133,6 @@
       kind: DeploymentConfig
       metadata:
         name: test-deploymentconfig
-  roles:
-  - role: openshift-provision
   tasks:
   - name: Delete DeploymentConfig
     openshift_provision:
