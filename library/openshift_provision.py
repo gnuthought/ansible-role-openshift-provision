@@ -131,6 +131,7 @@ class OpenShiftProvision:
                             self.merge_dict(i, v[0], overwrite)
                         else:
                             raise Exception("Unable to merge item " + type(i).__name__ + " with dict")
+                    merged[k].sort()
             elif not k in merged:
                 merged[k] = copy.deepcopy(v)
             elif overwrite:
@@ -277,6 +278,54 @@ class OpenShiftProvision:
                     }]
                 }
             }, False)
+        elif ret['kind'] == 'DaemonSet':
+            self.merge_dict(ret, {
+              "spec": {
+                "template": {
+                  "spec": {
+                    "containers": [{
+                      "env": [{
+                        "value": ""
+                      }],
+                      "imagePullPolicy": "IfNotPresent",
+                      "livenessProbe": {
+                        "httpGet": {
+                          "scheme": "HTTP"
+                        },
+                        "initialDelaySeconds": 30,
+                        "periodSeconds": 10,
+                        "successThreshold": 1,
+                        "failureThreshold": 3
+                      },
+                      "ports": [{
+                        "protocol": "TCP"
+                      }],
+                      "readinessProbe": {
+                        "httpGet": {
+                          "scheme": "HTTP"
+                        },
+                        "initialDelaySeconds": 30,
+                        "periodSeconds": 10,
+                        "successThreshold": 1,
+                        "failureThreshold": 3
+                      },
+                      "resources": {},
+                      "terminationMessagePath": "/dev/termination-log",
+                      "terminationMessagePolicy": "File",
+                      "volumeMounts": []
+                    }],
+                    "dnsPolicy": "ClusterFirst",
+                    "restartPolicy": "Always",
+                    "securityContext": {},
+                    "schedulerName": "default-scheduler",
+                    "terminationGracePeriodSeconds": 30,
+                    "volumes": [{
+                      "defaultMode": 0644
+                    }]
+                  }
+                }
+              }
+            }, False)
         elif ret['kind'] == 'DeploymentConfig':
             self.merge_dict(ret, {
               "spec": {
@@ -317,13 +366,17 @@ class OpenShiftProvision:
                       },
                       "resources": {},
                       "terminationMessagePath": "/dev/termination-log",
-                      "terminationMessagePolicy": "File"
+                      "terminationMessagePolicy": "File",
+                      "volumeMounts": []
                     }],
                     "dnsPolicy": "ClusterFirst",
                     "restartPolicy": "Always",
                     "securityContext": {},
                     "schedulerName": "default-scheduler",
-                    "terminationGracePeriodSeconds": 30
+                    "terminationGracePeriodSeconds": 30,
+                    "volumes": [{
+                      "defaultMode": 0644
+                    }]
                   }
                 },
                 "test": False,
