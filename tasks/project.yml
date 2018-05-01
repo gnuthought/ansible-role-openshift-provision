@@ -104,7 +104,7 @@
 - name: Set project labels for {{ project.name }}
   command: >
     {{ oc_cmd }} patch namespace {{ project.name | quote }}
-    -R -p {{ patch | to_json | quote }}
+    --type=json -o json -p {{ patch | to_json | quote }}
   vars:
     current_labels: >-
       {{
@@ -113,8 +113,9 @@
       | json_query('metadata.labels')
       }}
     patch:
-      metadata:
-        labels: "{{ project.labels | default({}) }}"
+    - op: add
+      path: /metadata/labels
+      value: "{{ project.labels | default({}) }}"
   when: >
     project.labels is defined and (
       get_project.rc != 0 or
