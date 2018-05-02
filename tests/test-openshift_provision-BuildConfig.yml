@@ -25,6 +25,7 @@
     openshift_clusters:
     - projects:
       - name: provision-test
+
   tasks:
   - name: Provision BuildConfig
     openshift_provision:
