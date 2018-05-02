@@ -116,14 +116,14 @@
       spec:
         ports:
         # FIXME, handle random ordering
-        - name: 8023-tcp
-          port: 8023
-          protocol: TCP
-          targetPort: 8023
         - name: 8093-tcp
           port: 8093
           protocol: TCP
           targetPort: 8093
+        - name: 8023-tcp
+          port: 8023
+          protocol: TCP
+          targetPort: 8023
         selector:
           test-app: appname
         sessionAffinity: ClientIP
