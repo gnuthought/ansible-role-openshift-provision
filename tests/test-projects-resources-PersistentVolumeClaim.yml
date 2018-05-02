@@ -24,7 +24,11 @@
         metadata:
           annotations:
             kubectl.kubernetes.io/last-applied-configuration: ''
+            pv.kubernetes.io/bind-completed: ''
+            pv.kubernetes.io/bound-by-controller: ''
           creationTimestamp: null
+        spec:
+          volumeName: ''
 
 - name: Test Provision
   hosts: localhost
@@ -36,7 +40,7 @@
       metadata:
         name: test-persistentvolumeclaim
         labels:
-          testlabel: bar
+          testlabel: bar 
       spec:
         accessModes:
         - ReadWriteOnce
@@ -48,7 +52,7 @@
   - role: openshift-provision
     openshift_clusters:
     - projects:
-      - name: testproj
+      - name: testproj 
         resources:
         - "{{ provision_persistentvolumeclaim }}"
 
@@ -97,7 +101,7 @@
   - role: openshift-provision
     openshift_clusters:
     - projects:
-      - name: testproj
+      - name: testproj 
         resources:
         - "{{ provision_persistentvolumeclaim }}"
 
