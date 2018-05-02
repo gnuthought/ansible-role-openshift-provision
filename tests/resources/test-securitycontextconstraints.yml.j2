@@ -6,9 +6,8 @@ allowHostPorts: true
 allowPrivilegedContainer: true
 allowedCapabilities:
 - '*'
-allowedFlexVolumes: null
 apiVersion: v1
-defaultAddCapabilities: null
+defaultAddCapabilities: []
 fsGroup:
   type: RunAsAny
 groups:
@@ -26,7 +25,7 @@ metadata:
   name: test-securitycontextconstraints
 priority: null
 readOnlyRootFilesystem: false
-requiredDropCapabilities: null
+requiredDropCapabilities: []
 runAsUser:
   type: RunAsAny
 seLinuxContext:
