@@ -5,63 +5,14 @@
   vars_files:
   - login-creds.yml
   tasks:
-  - set_fact:
-      test_oc_cmd: >-
-        oc
-        {% if openshift_connection_certificate_authority is defined %}
-        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
-        {% endif %}
-        {% if openshift_connection_insecure_skip_tls_verify is defined %}
-        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
-        {% endif %}
-        {% if openshift_connection_server is defined %}
-        --server={{ openshift_connection_server | quote }}
-        {% endif %}
-        {% if openshift_connection_token is defined %}
-        --token={{ openshift_connection_token | quote }}
-        {% endif %}
+  - include_tasks: setup-test.yml
 
-- name: Test Provision
-  hosts: localhost
-  connection: local
-
-  roles:
-  - role: openshift-provision
-    openshift_clusters:
-    - projects:
-      - name: test-provision
-        multicast_enabled: true
-
-  tasks:
-  - name: Verify multicast-enabled
+  - name: Check if netnamespaces are defined
     command: >-
-      oc get netnamespace test-provision --template
-      '{{ '{{ index .metadata.annotations "netnamespace.network.openshift.io/multicast-enabled" }}' }}'
-    register: verify_multicast
+      {{ test_oc_cmd }} get netnamespaces -o json
+    register: get_netnamespaces
     changed_when: false
-    failed_when: verify_multicast.stdout != 'true'
 
-- name: Test Update
-  hosts: localhost
-  connection: local
-
-  roles:
-  - role: openshift-provision
-    openshift_clusters:
-    - projects:
-      - name: test-provision
-        multicast_enabled: false
-
-  tasks:
-  - name: Verify multicast-enabled
-    command: >-
-      {{ test_oc_cmd }} get netnamespace test-provision --template
-      '{{ '{{ index .metadata.annotations "netnamespace.network.openshift.io/multicast-enabled" }}' }}'
-    register: verify_multicast
-    changed_when: false
-    failed_when: verify_multicast.stdout != 'false'
-
-  - name: Cleanup
-    command: >-
-      {{ test_oc_cmd }} delete project test-provision
-    changed_when: false
+  - include_tasks: tasks/test-projects-multicast_enabled.yml
+    when: >-
+      0 < get_netnamespaces.stdout | from_json | json_query('items') | count

@@ -1,0 +1,38 @@
+- name: Include openshift-provision role with multicast_enabled true
+  include_role:
+    name: openshift-provision
+  vars:
+    openshift_clusters:
+    - projects:
+      - name: test-provision
+        multicast_enabled: true
+
+- name: Verify multicast-enabled
+  command: >-
+    oc get netnamespace test-provision --template
+    '{{ '{{ index .metadata.annotations "netnamespace.network.openshift.io/multicast-enabled" }}' }}'
+  register: verify_multicast
+  changed_when: false
+  failed_when: verify_multicast.stdout != 'true'
+
+- name: Include openshift-provision role with multicast_enabled false
+  include_role:
+    name: openshift-provision
+  vars:
+    openshift_clusters:
+    - projects:
+      - name: test-provision
+        multicast_enabled: false
+
+- name: Verify multicast-enabled
+  command: >-
+    {{ test_oc_cmd }} get netnamespace test-provision --template
+    '{{ '{{ index .metadata.annotations "netnamespace.network.openshift.io/multicast-enabled" }}' }}'
+  register: verify_multicast
+  changed_when: false
+  failed_when: verify_multicast.stdout != 'false'
+
+- name: Cleanup
+  command: >-
+    {{ test_oc_cmd }} delete project test-provision
+  changed_when: false

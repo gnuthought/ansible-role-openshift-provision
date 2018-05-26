@@ -31,8 +31,8 @@
     # for both and use skopeo
     command: >-
       oc tag
-      {{ app_name }}-{{ source_environment }}/{{ app_name }}:latest 
-      {{ app_name }}-{{ target_environment }}/{{ app_name }}:latest 
+      {{ app_name }}-{{ source_environment }}/{{ app_name }}:latest
+      {{ app_name }}-{{ target_environment }}/{{ app_name }}:latest
     # Skip in check mode so it will not report changed
     when: not ansible_check_mode
 

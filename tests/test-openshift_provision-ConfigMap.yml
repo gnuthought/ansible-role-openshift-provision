@@ -5,25 +5,8 @@
   vars_files:
   - login-creds.yml
   tasks:
+  - include_tasks: setup-test.yml
   - set_fact:
-      test_oc_cmd: >-
-        oc
-        {% if openshift_connection_certificate_authority is defined %}
-        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
-        {% endif %}
-        {% if openshift_connection_insecure_skip_tls_verify is defined %}
-        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
-        {% endif %}
-        {% if openshift_connection_server is defined %}
-        --server={{ openshift_connection_server | quote }}
-        {% endif %}
-        {% if openshift_connection_token is defined %}
-        --token={{ openshift_connection_token | quote }}
-        {% endif %}
-      openshift_connection:
-        server: "{{ openshift_connection_server }}"
-        insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify }}"
-        token: "{{ openshift_connection_token }}"
       ignore_differences:
         metadata:
           annotations:
@@ -34,14 +17,11 @@
   hosts: localhost
   connection: local
   vars:
-    provision_configmap:
-      apiVersion: v1
-      kind: ConfigMap
-      metadata:
-        creationTimestamp: null
-        name: test-configmap
-      data:
-        foo: bar
+    provision_configmap: >-
+      {{ lookup('template', 'resources/test-configmap.yml.j2')
+       | from_yaml }}
+    configmap_data:
+      foo: bar
 
   roles:
   - role: openshift-provision
@@ -104,9 +84,6 @@
         foo: boop
         bar: three
 
-  roles:
-  - role: openshift-provision
-
   tasks:
   - name: Apply update to ConfigMap
     openshift_provision:
@@ -140,20 +117,16 @@
 - name: Test Delete
   hosts: localhost
   connection: local
-  vars:
-    provision_configmap:
-      kind: ConfigMap
-      metadata:
-        name: test-configmap
-  roles:
-  - role: openshift-provision
   tasks:
   - name: Delete ConfigMap
     openshift_provision:
       action: delete
       namespace: provision-test
       connection: "{{ openshift_connection }}"
-      resource: "{{ provision_configmap }}"
+      resource:
+        kind: ConfigMap
+        metadata:
+          name: test-configmap
 
   - name: Verify ConfigMap Delete
     command: >-

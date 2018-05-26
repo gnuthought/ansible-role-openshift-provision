@@ -3,7 +3,7 @@ openshift-provision
 
 An Ansible role for provisioning resources within OpenShift clusters.
 
-This role provides comprehensive OpenShift cluster resource provisioning 
+This role provides comprehensive OpenShift cluster resource provisioning
 using a single declarative variable structure or using the
 `openshift_provision` Ansible module provided.
 

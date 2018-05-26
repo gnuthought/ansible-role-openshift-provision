@@ -32,7 +32,7 @@ or as we do here, just explicitly point to `/etc/origin/master/admin.kubeconfig`
   hosts: masters[0]
   vars:
     oc_cmd_base: oc --config=/etc/origin/master/admin.kubeconfig
-  vars_files: 
+  vars_files:
   - provision/base.yml
   roles:
   - role: openshift-provision

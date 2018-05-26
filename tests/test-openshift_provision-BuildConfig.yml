@@ -17,7 +17,9 @@
   hosts: localhost
   connection: local
   vars:
-    provision_buildconfig: "{{ lookup('template', 'resources/test-buildconfig.yml.j2') | from_yaml }}"
+    provision_buildconfig: >-
+      {{ lookup('template', 'resources/test-buildconfig.yml.j2')
+       | from_yaml }}
     from_source_name: httpd:2.4
 
   roles:
