@@ -5,25 +5,8 @@
   vars_files:
   - login-creds.yml
   tasks:
+  - include_tasks: setup-test.yml
   - set_fact:
-      test_oc_cmd: >-
-        oc
-        {% if openshift_connection_certificate_authority is defined %}
-        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
-        {% endif %}
-        {% if openshift_connection_insecure_skip_tls_verify is defined %}
-        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
-        {% endif %}
-        {% if openshift_connection_server is defined %}
-        --server={{ openshift_connection_server | quote }}
-        {% endif %}
-        {% if openshift_connection_token is defined %}
-        --token={{ openshift_connection_token | quote }}
-        {% endif %}
-      openshift_connection:
-        server: "{{ openshift_connection_server }}"
-        insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify }}"
-        token: "{{ openshift_connection_token }}"
       ignore_differences:
         metadata:
           annotations:
@@ -34,19 +17,9 @@
   hosts: localhost
   connection: local
   vars:
-    provision_template:
-      apiVersion: v1
-      kind: Template
-      metadata:
-        name: test-template
-      objects:
-      - apiVersion: v1
-        kind: ImageStream
-        metadata:
-          name: ${NAME}
-      parameters:
-      - name: NAME
-        required: true
+    provision_template: >-
+      {{ lookup('template', 'resources/test-template.yml.j2')
+       | from_yaml }}
 
   roles:
   - role: openshift-provision
@@ -101,28 +74,10 @@
   hosts: localhost
   connection: local
   vars:
-    provision_template:
-      apiVersion: v1
-      kind: Template
-      labels:
-        template: test-template
-      metadata:
-        name: test-template
-      objects:
-      - apiVersion: v1
-        kind: ImageStream
-        metadata:
-          name: ${NAME}
-          labels:
-            app: ${APPNAME}
-      parameters:
-      - name: NAME
-        required: true
-      - name: APPNAME
-        required: true
-
-  roles:
-  - role: openshift-provision
+    provision_template: >-
+      {{ lookup('template', 'resources/test-template.yml.j2')
+       | from_yaml }}
+    include_appname: true
 
   tasks:
   - name: Apply update to Template
@@ -152,28 +107,23 @@
       cmp_template: "{{ provision_template | combine(ignore_differences, recursive=True) }}"
     when: >-
       cmp_template.metadata != got_template.metadata or
-      cmp_template.labels != got_template.labels or
+      cmp_template.labels | default({}) != got_template.labels | default({}) or
       cmp_template.objects != got_template.objects or
       cmp_template.parameters != got_template.parameters
 
 - name: Test Delete
   hosts: localhost
   connection: local
-  vars:
-    provision_template:
-      apiVersion: extensions/v1beta1
-      kind: Template
-      metadata:
-        name: test-template
-  roles:
-  - role: openshift-provision
   tasks:
   - name: Delete Template
     openshift_provision:
       action: delete
       namespace: provision-test
       connection: "{{ openshift_connection }}"
-      resource: "{{ provision_template }}"
+      resource:
+        kind: Template
+        metadata:
+          name: test-template
 
   - name: Verify Template Delete
     command: >-

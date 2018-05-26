@@ -8,28 +8,28 @@ metadata:
 spec:
   hard:
 {% if quota_size == 'xlarge' %}
-    pods: "40" 
-    requests.cpu: "8" 
-    requests.memory: 8Gi 
-    limits.cpu: "16" 
-    limits.memory: 16Gi 
+    pods: "40"
+    requests.cpu: "8"
+    requests.memory: 8Gi
+    limits.cpu: "16"
+    limits.memory: 16Gi
 {% elif quota_size == 'large' %}
-    pods: "20" 
-    requests.cpu: "4" 
-    requests.memory: 4Gi 
-    limits.cpu: "8" 
-    limits.memory: 8Gi 
+    pods: "20"
+    requests.cpu: "4"
+    requests.memory: 4Gi
+    limits.cpu: "8"
+    limits.memory: 8Gi
 {% elif quota_size == 'medium' %}
-    pods: "10" 
-    requests.cpu: "2" 
-    requests.memory: 2Gi 
-    limits.cpu: "4" 
-    limits.memory: 4Gi 
+    pods: "10"
+    requests.cpu: "2"
+    requests.memory: 2Gi
+    limits.cpu: "4"
+    limits.memory: 4Gi
 {% else %}
     # Small or invalid specification
-    pods: "5" 
-    requests.cpu: "1" 
-    requests.memory: 1Gi 
-    limits.cpu: "2" 
-    limits.memory: 2Gi 
+    pods: "5"
+    requests.cpu: "1"
+    requests.memory: 1Gi
+    limits.cpu: "2"
+    limits.memory: 2Gi
 {% endif %}

@@ -31,7 +31,7 @@ set the values:
   verification when connection to the cluster URL
 
 * `openshift_connection_token` - Authentication token which can be obtained by
-  running `oc whoami -t` or the token of a service account obtained with 
+  running `oc whoami -t` or the token of a service account obtained with
   `oc sa get-token -n <NAMESPACE> <SERVICE_ACCOUNT>`
 
 Once the `logins-creds.yml` is ready you can Setup the project pipeline:

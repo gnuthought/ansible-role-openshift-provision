@@ -81,8 +81,6 @@
 - name: Test Update
   hosts: localhost
   connection: local
-  vars_files:
-  - login-creds.yml
   vars:
     provision_replicaset: "{{ lookup('template', 'resources/test-replicaset.yml.j2') | from_yaml }}"
     replicaset_app_label: rs-test

@@ -240,6 +240,12 @@ class OpenShiftProvision:
             override["spec"] = {
                 "claimRef": ""
             }
+        elif resource['kind'] == 'PersistentVolumeClaim':
+            override["spec"] = {
+                "volumeName": ""
+            }
+            override["metadata"]["annotations"]["pv.kubernetes.io/bind-completed"] = ""
+            override["metadata"]["annotations"]["pv.kubernetes.io/bound-by-controller"] = ""
 
         # Copy and override
         ret = self.merge(resource, override)

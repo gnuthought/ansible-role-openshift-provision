@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: test-template
+objects:
+- apiVersion: v1
+  kind: ImageStream
+{% if include_appname|default(False)|bool %}
+  labels:
+    app: ${APPNAME}
+{% endif %}
+  metadata:
+    name: ${NAME}
+parameters:
+- name: NAME
+  required: true
+{% if include_appname|default(False)|bool %}
+- name: APPNAME
+  required: true
+{% endif %}

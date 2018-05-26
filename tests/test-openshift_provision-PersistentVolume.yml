@@ -5,25 +5,8 @@
   vars_files:
   - login-creds.yml
   tasks:
+  - include_tasks: setup-test.yml
   - set_fact:
-      test_oc_cmd: >-
-        oc
-        {% if openshift_connection_certificate_authority is defined %}
-        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
-        {% endif %}
-        {% if openshift_connection_insecure_skip_tls_verify is defined %}
-        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
-        {% endif %}
-        {% if openshift_connection_server is defined %}
-        --server={{ openshift_connection_server | quote }}
-        {% endif %}
-        {% if openshift_connection_token is defined %}
-        --token={{ openshift_connection_token | quote }}
-        {% endif %}
-      openshift_connection:
-        server: "{{ openshift_connection_server }}"
-        insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify }}"
-        token: "{{ openshift_connection_token }}"
       ignore_differences:
         metadata:
           annotations:
@@ -33,8 +16,6 @@
 - name: Test Provision
   hosts: localhost
   connection: local
-  vars_files:
-  - login-creds.yml
   vars:
     provision_persistentvolume:
       apiVersion: v1
@@ -98,8 +79,6 @@
 - name: Test Update
   hosts: localhost
   connection: local
-  vars_files:
-  - login-creds.yml
   vars:
     provision_persistentvolume:
       apiVersion: v1
@@ -117,9 +96,6 @@
           path: /export/foo
           server: nfsserver.example.com
         persistentVolumeReclaimPolicy: Retain
-
-  roles:
-  - role: openshift-provision
 
   tasks:
   - name: Apply update to PersistentVolume
@@ -153,15 +129,11 @@
 - name: Test Delete
   hosts: localhost
   connection: local
-  vars_files:
-  - login-creds.yml
   vars:
     provision_persistentvolume:
       kind: PersistentVolume
       metadata:
         name: test-persistentvolume
-  roles:
-  - role: openshift-provision
   tasks:
   - name: Delete PersistentVolume
     openshift_provision:

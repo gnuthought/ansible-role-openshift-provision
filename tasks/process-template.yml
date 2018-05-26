@@ -54,7 +54,7 @@
     -f {{ tempfile.path }}
     {% else %}
     -n {{ template.namespace | default(project.name if project is defined else 'openshift') }}
-    {{ template.name }} 
+    {{ template.name }}
     {% endif %}
     {% if template.parameters is defined %}
     {% for key, value in template.parameters.iteritems() %}
