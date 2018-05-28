@@ -31,7 +31,7 @@ galaxy_info:
   # the ones that apply to your role. If you don't see your
   # platform on this list, let us know and we'll get it added!
   #
-  #platforms:
+  platforms:
   #- name: OpenBSD
   #  versions:
   #  - all
@@ -40,9 +40,9 @@ galaxy_info:
   #  - 5.8
   #  - 5.9
   #  - 6.0
-  #- name: Fedora
-  #  versions:
-  #  - all
+  - name: Fedora
+    versions:
+    - all
   #  - 16
   #  - 17
   #  - 18
@@ -59,9 +59,9 @@ galaxy_info:
   #  - 10
   #  - 6
   #  - 9
-  #- name: MacOSX
-  #  versions:
-  #  - all
+  - name: MacOSX
+    versions:
+    - all
   #  - 10.10
   #  - 10.11
   #  - 10.12
@@ -84,10 +84,10 @@ galaxy_info:
   #  versions:
   #  - all
   #  - any
-  #- name: GenericLinux
-  #  versions:
-  #  - all
-  #  - any
+  - name: GenericLinux
+    versions:
+    - all
+    - any
   #- name: NXOS
   #  versions:
   #  - all
@@ -156,9 +156,9 @@ galaxy_info:
   #  versions:
   #  - all
   #  - any
-  #- name: EL
-  #  versions:
-  #  - all
+  - name: EL
+    versions:
+    - all
   #  - 5
   #  - 6
   #  - 7
@@ -207,7 +207,7 @@ galaxy_info:
   #  - all
   #  - Any
 
-  galaxy_tags: []
+  galaxy_tags:
     # List tags for your role here, one per line. A tag is
     # a keyword that describes and categorizes the role.
     # Users find roles by searching for tags. Be sure to
@@ -215,6 +215,8 @@ galaxy_info:
     #
     # NOTE: A tag is limited to a single word comprised of
     # alphanumeric characters. Maximum 20 tags per role.
+    - oc
+    - openshift
 
 dependencies: []
   # List your role dependencies here, one per line.
