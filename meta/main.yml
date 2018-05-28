@@ -1,7 +1,7 @@
 galaxy_info:
-  author: your name
-  description: your description
-  company: your company (optional)
+  author: Johnathan Kupferer
+  description: OpenShift Resource Provisioning and management
+  company: Red Hat
 
   # If the issue tracker for your role is not on github, uncomment the
   # next line and provide a value
