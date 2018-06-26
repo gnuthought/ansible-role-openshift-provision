@@ -4,8 +4,7 @@
   with_items: "{{ cluster_role_binding.users | default([]) }}"
   loop_control:
     loop_var: user
-  when: >
-    user not in current_cluster_role_users 
+  when: user not in current_cluster_role_users 
 
 - name: Grant group cluster role {{ cluster_role_binding.role }}
   command: >
