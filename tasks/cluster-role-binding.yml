@@ -1,10 +1,11 @@
 - name: Grant user cluster role {{ cluster_role_binding.role }}
   command: >
-    {{ oc_cmd }} adm policy add-cluster-role-to-user {{ cluster_role_binding.role }} {{ user }}
+    {% if {{ openshift_version | version_compare('v3.9', '>=') }}{{ oc_cmd }} adm policy add-cluster-role-to-user {{ cluster_role_binding.role }} {{ user }} --rolebinding-name={{ cluster_role_binding.role }}{% else %}{{ oc_cmd }} adm policy add-cluster-role-to-user {{ cluster_role_binding.role }} {{ user }}{% endif %}
   with_items: "{{ cluster_role_binding.users | default([]) }}"
   loop_control:
     loop_var: user
-  when: user not in current_cluster_role_users
+  when: >
+    user not in current_cluster_role_users 
 
 - name: Grant group cluster role {{ cluster_role_binding.role }}
   command: >
