@@ -31,6 +31,19 @@
       --token={{ oc_get_token.stdout }}
       {% endif %}
 
+- name: Get OpenShift version
+  command: "{{ oc_cmd }} version"
+  register: get_version
+  check_mode: false
+  changed_when: false
+
+- name: Set version facts
+  set_fact:
+    openshift_provision_oc_version: >-
+      {{ get_version.stdout | regex_replace('(.|\s)*oc (\S+)(.|\s)*', '\2') }}
+    openshift_provision_openshift_version: >-
+      {{ get_version.stdout | regex_replace('(.|\s)*openshift (\S+)(.|\s)*', '\2') }}
+
 - name: Include provision pre-tasks
   include_tasks: "{{ pre_tasks_include }}"
   with_items: >-
