@@ -2,6 +2,9 @@
   command: >-
     {{ oc_cmd }} adm policy -n {{ project.name }} add-role-to-user
     {{ ocp_role_name }} {{ ocp_user_name }}
+    {% if openshift_provision_openshift_version|version_compare('v3.9', '>=') %}
+    --rolebinding-name={{ ocp_role_name }}
+    {% endif %}
   with_nested:
   - "{{ user_role.roles | default([user_role.role]) }}"
   - "{{ user_role.users | default([user_role.user] if user_role.user is defined else []) }}"
