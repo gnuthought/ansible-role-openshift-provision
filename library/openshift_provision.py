@@ -112,7 +112,7 @@ class OpenShiftProvision:
                 self.oc_cmd += ['--insecure-skip-tls-verify='+connection['insecure_skip_tls_verify']]
 
     def merge_dict(self, merged, patch, overwrite=True):
-        for k, v in patch.iteritems():
+        for k, v in patch.items():
             if type(v) is dict:
                 if not k in merged:
                     merged[k] = copy.deepcopy(v)
