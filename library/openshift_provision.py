@@ -326,7 +326,7 @@ class OpenShiftProvision:
                     "schedulerName": "default-scheduler",
                     "terminationGracePeriodSeconds": 30,
                     "volumes": [{
-                      "defaultMode": 0644
+                      "defaultMode": 644
                     }]
                   }
                 }
@@ -381,7 +381,7 @@ class OpenShiftProvision:
                     "schedulerName": "default-scheduler",
                     "terminationGracePeriodSeconds": 30,
                     "volumes": [{
-                      "defaultMode": 0644
+                      "defaultMode": 644
                     }]
                   }
                 },
