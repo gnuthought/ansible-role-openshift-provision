@@ -496,8 +496,14 @@ class OpenShiftProvision:
             if current_resource:
                 self.resource = current_resource
                 return
-        elif self.action == 'apply' or self.action == 'replace':
+        elif self.action == 'apply':
             if self.compare_resource(current_resource):
+                self.resource = current_resource
+                return
+        elif self.action == 'replace':
+            if current_resource == None:
+                self.action = 'create'
+            elif self.compare_resource(current_resource):
                 self.resource = current_resource
                 return
         elif self.action == 'delete':
