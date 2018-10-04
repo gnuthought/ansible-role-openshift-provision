@@ -218,6 +218,9 @@ that list is processed by `openshift_provision`.
 
 * `name` - Project name string
 
+* `admin_create` - Boolean flag to indicate if projects should be created with
+  `oc adm new-project`, otherwise `oc new-project` is used. Defaults to false.
+
 * `annotations` - Dictionary of project annotations
 
 * `description` - Project description string
