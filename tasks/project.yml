@@ -8,8 +8,9 @@
   register: get_project
 
 - name: Create project {{ project.name }}
-  command: >
-    {{ oc_cmd }} new-project {{ project.name }}
+  command: >-
+    {{ oc_cmd }} {% if project.admin_create | default(False) | bool %}adm{% endif %}
+    new-project {{ project.name }}
     {% if project.display_name is defined %}--display-name={{ project.display_name | quote }}{% endif %}
     {% if project.description is defined %}--description={{ project.description | quote }}{% endif %}
   when: get_project.rc != 0
