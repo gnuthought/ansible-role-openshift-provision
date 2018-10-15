@@ -123,7 +123,7 @@ class OpenShiftProvision:
             self.oc_cmd += ['--' + opt.replace('_', '-') + '=' + connection[opt]]
 
     def merge_dict(self, merged, patch):
-        for k, v in patch.iteritems():
+        for k, v in patch.items():
             if type(v) is dict:
                 if not k in merged:
                     merged[k] = copy.deepcopy(v)
@@ -376,7 +376,7 @@ def run_module():
 
     except Exception as e:
         module.fail_json(
-            msg=e.message,
+            msg=str(e),
             traceback=traceback.format_exc().split('\n')
         )
 

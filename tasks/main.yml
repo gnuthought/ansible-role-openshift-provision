@@ -32,7 +32,7 @@
       --token={{ openshift_connection_token | quote }}
       {% endif %}
       {% if openshift_cluster.connection is defined %}
-      {% for key, value in openshift_cluster.connection.iteritems() %}
+      {% for key, value in openshift_cluster.connection.items() %}
       --{{ key | regex_replace('_', '-') }}={{ value | quote }}
       {% endfor %}
       {% endif %}

@@ -112,7 +112,7 @@ class OpenShiftProvision:
                 self.oc_cmd += ['--insecure-skip-tls-verify='+connection['insecure_skip_tls_verify']]
 
     def merge_dict(self, merged, patch, overwrite=True):
-        for k, v in patch.iteritems():
+        for k, v in patch.items():
             if type(v) is dict:
                 if not k in merged:
                     merged[k] = copy.deepcopy(v)
@@ -131,7 +131,7 @@ class OpenShiftProvision:
                             self.merge_dict(i, v[0], overwrite)
                         else:
                             raise Exception("Unable to merge item " + type(i).__name__ + " with dict")
-                    merged[k].sort()
+                    merged[k].sort(key=str)
             elif not k in merged:
                 merged[k] = copy.deepcopy(v)
             elif overwrite:
@@ -326,7 +326,7 @@ class OpenShiftProvision:
                     "schedulerName": "default-scheduler",
                     "terminationGracePeriodSeconds": 30,
                     "volumes": [{
-                      "defaultMode": 0644
+                      "defaultMode": 0o644
                     }]
                   }
                 }
@@ -381,7 +381,7 @@ class OpenShiftProvision:
                     "schedulerName": "default-scheduler",
                     "terminationGracePeriodSeconds": 30,
                     "volumes": [{
-                      "defaultMode": 0644
+                      "defaultMode": 0o644
                     }]
                   }
                 },
@@ -560,7 +560,7 @@ def run_module():
         provisioner.provision()
     except Exception as e:
         module.fail_json(
-            msg=e.message,
+            msg=str(e),
             traceback=traceback.format_exc().split('\n'),
             resource=provisioner.resource
         )
