@@ -125,7 +125,7 @@ class OpenShiftProvision:
                     merged[k] = []
                 elif not type(merged[k]) is list:
                     raise Exception("Unable to merge " + type(merged[key]).__name__ + " with list")
-		elif len(v) > 0:
+                elif len(v) > 0:
                     for i in merged[k]:
                         if type(i) is dict:
                             self.merge_dict(i, v[0], overwrite)
