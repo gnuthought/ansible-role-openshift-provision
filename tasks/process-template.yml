@@ -57,7 +57,7 @@
     {{ template.name }}
     {% endif %}
     {% if template.parameters is defined %}
-    {% for key, value in template.parameters.iteritems() %}
+    {% for key, value in template.parameters.items() %}
     -p {{ (key ~ '=' ~ value) | quote }}
     {% endfor %}
     {% endif %}
