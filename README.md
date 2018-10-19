@@ -153,8 +153,23 @@ List of OpenShift cluster definitions
 Cluster resources are the first items processed in provisioning. This is a
 list of OpenShift resource definitions that are created/updated using the `oc`
 command. The default action is `oc apply`, but may be overridden by setting
-`action` on the resource to `create` or `replace`. If `action` is set to
-`create` and the cluster resource already exists then no action is taken.
+"metadata.annotations.openshift-provision/action" on the resource. Values for
+action may be:
+
+* `apply` - Use `oc apply` to create or update the resource
+
+* `create` - Use `oc create` to create the resource. If the resource already
+  exists then no action is taken
+
+* `delete` - Use `oc delete` to delete the resource. If the resource does not
+  exist then no action is taken
+
+* `patch` - Use `oc patch` to update the resource. If the resource does not
+  exist then an error is thrown
+
+* `replace` - Use `oc replace` to update the resource. If the resource does not
+  exist then it is created with `oc create`
+
 Besides the field `action` all other fields follow OpenShift standards. All
 resources must define `metadata.name`.
 
@@ -210,9 +225,10 @@ that list is processed by `openshift_provision`.
 
 * `parameters` - Dictionary of parameters to pass to the template. Optional
 
-* `action` - Action to process template output, values may be "create",
-  "apply", or "replace". Default "apply". Individual resources may override
-  this value with the annotation "openshift-provision/action".
+* `action` - Action to process template output, values for `action` are the same
+  as described for above for `openshift_clusters[*].cluster_resources`.
+
+* `patch_type` - Patch type to use when action is "patch".
 
 ### `openshift_clusters[*].projects`
 
@@ -286,19 +302,19 @@ that list is processed by `openshift_provision`.
 
 * `parameters` - Dictionary of parameters to pass to the template. Optional
 
-* `action` - Action to process template output, values may be "create",
-  "apply", or "replace". Default "apply". Individual resources may override
-  this value with the annotation "openshift-provision/action".
+* `action` - Action to process template output, values for `action` are the same
+  as described for above for `openshift_clusters[*].cluster_resources`.
+
+* `patch_type` - Patch type to use when action is "patch".
 
 ### `openshift_clusters[*].projects[*].resources`
 
 This is a list of OpenShift resource definitions that are created/updated in
 a project using the `oc` command. The default action is `oc apply`, but may be
 overridden by setting the annotation "openshift-provision/action" within the
-resource. The action may be "create", "apply", "replace", or "delete".
-If the action is set to `create` and the resource already exists then no
-action is taken. Besides the field `action` all other fields follow OpenShift
-standards. All resources must define `metadata.name`.
+resource. Values for `action` are the same as described above for
+`openshift_clusters[*].cluster_resources`. The annotation
+"openshift-provision/patch-type" may be used with the "patch" action.
 
 ### `openshift_clusters[*].projects[*].role_bindings`
 
