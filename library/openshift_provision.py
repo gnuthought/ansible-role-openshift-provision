@@ -504,10 +504,9 @@ class OpenShiftProvision:
     def check_patch(self, resource):
         '''return true if patch would not change resource'''
         if resource == None:
-            raise Exception(
-                "Cannot patch %s %s, resoure not found",
+            raise Exception("Cannot patch %s %s, resource not found" % (
                 self.resource['kind'], self.resource['metadata']['name']
-            )
+            ))
 
         # Create tempfile for local changes
         temp_fd, temp_path = tempfile.mkstemp(suffix='.json')
