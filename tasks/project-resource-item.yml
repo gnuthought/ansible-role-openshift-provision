@@ -8,6 +8,12 @@
       | default(resource.action, true)
       | default('apply', true)
       }}
+    patch_type: >-
+      {{
+      resource | json_query('metadata.annotations."openshift-provision/patch-type"')
+      | default(resource.patch_type, true)
+      | default('strategic', true)
+      }}
     connection:
       oc_cmd: "{{ oc_cmd }}"
     namespace: "{{ project.name }}"

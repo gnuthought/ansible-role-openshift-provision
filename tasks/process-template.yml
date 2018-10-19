@@ -74,6 +74,13 @@
       | default(template.action, true)
       | default('apply', true)
       }}
+    patch_type: >-
+      {{
+      item | json_query('metadata.annotations."openshift-provision/patch-type"')
+      | default(item.patch_type, true)
+      | default(template.patch_type, true)
+      | default('strategic', true)
+      }}
     connection:
       oc_cmd: "{{ oc_cmd }}"
     namespace: "{{ project.name if project is defined else '' }}"

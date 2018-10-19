@@ -2,7 +2,9 @@
 
 import copy
 import json
+import os
 import re
+import tempfile
 import traceback
 import types
 
@@ -29,8 +31,14 @@ options:
     aliases: []
   action:
     description:
-    - Action to perform on resource: apply, create, replace, delete
+    - Action to perform on resource: apply, create, delete, patch, replace
     default: apply
+    required: false
+    aliases: []
+  patch_type:
+    description:
+    - Type of patch to use with patch action
+    default: strategic
     required: false
     aliases: []
   connection:
@@ -83,6 +91,7 @@ class OpenShiftProvision:
         self.module = module
         self.changed = False
         self.action = module.params['action']
+        self.patch_type = module.params['patch_type']
         self.resource = module.params['resource']
 
         if not 'kind' in self.resource:
@@ -172,7 +181,10 @@ class OpenShiftProvision:
         (rc, stdout, stderr) = self.run_oc(command, check_rc=False)
         if rc != 0:
             return None
-        return json.loads(stdout)
+        resource = json.loads(stdout)
+        if self.namespace:
+            resource['metadata']['namespace'] = self.namespace
+        return resource
 
     def filter_differences(self, resource):
         """
@@ -489,15 +501,43 @@ class OpenShiftProvision:
                 return False
         return True
 
+    def check_patch(self, resource):
+        '''return true if patch would not change resource'''
+        if resource == None:
+            raise Exception(
+                "Cannot patch %s %s, resoure not found",
+                self.resource['kind'], self.resource['metadata']['name']
+            )
+
+        # Create tempfile for local changes
+        temp_fd, temp_path = tempfile.mkstemp(suffix='.json')
+
+        # Write json to tempfile
+        with os.fdopen(temp_fd, 'w') as f:
+            f.write(json.dumps(resource))
+
+        command = ['patch', '--local', '--output=json',
+            '--filename=' + temp_path,
+            '--patch=' + json.dumps(self.resource),
+            '--type=' + self.patch_type
+        ]
+        rc, stdout, stderr = self.run_oc(command, check_rc=True)
+        return resource == json.loads(stdout)
+
     def provision(self):
         current_resource = self.get_current_resource()
 
+        # Handle cases where no change will be applied
         if self.action == 'create':
             if current_resource:
                 self.resource = current_resource
                 return
         elif self.action == 'apply':
             if self.compare_resource(current_resource):
+                self.resource = current_resource
+                return
+        elif self.action == 'patch':
+            if self.check_patch(current_resource):
                 self.resource = current_resource
                 return
         elif self.action == 'replace':
@@ -510,22 +550,32 @@ class OpenShiftProvision:
             if current_resource == None:
                 return
 
+        # Handle check mode by returning without applying change
         self.changed = True
         if self.module.check_mode:
             return
 
+        # Apply changes
         if self.action == 'delete':
             command = ['delete', self.resource['kind'], self.resource['metadata']['name']]
             if self.namespace:
                 command += ['-n', self.namespace]
             (rc, stdout, stderr) = self.run_oc(command, check_rc=True)
+        elif self.action == 'patch':
+            command = ['patch', self.resource['kind'], self.resource['metadata']['name'],
+                '--patch=' + json.dumps(self.resource),
+                '--type=' + self.patch_type
+            ]
+            if self.namespace:
+                command += ['-n', self.namespace]
+            self.run_oc(command, check_rc=True)
         else:
             command = [self.action, '-f', '-']
             if self.namespace:
                 command += ['-n', self.namespace]
             # FIXME - Support other options such as
             # --cascade, --force, --overwrite, --prune, --prune-whitelist
-            (rc, stdout, stderr) = self.run_oc(command, data=json.dumps(self.resource), check_rc=True)
+            self.run_oc(command, data=json.dumps(self.resource), check_rc=True)
 
 def run_module():
     module_args = {
@@ -533,6 +583,11 @@ def run_module():
             'type': 'str',
             'required': False,
             'default': 'apply'
+        },
+        'patch_type': {
+            'type': 'str',
+            'required': False,
+            'default': 'strategic'
         },
         'namespace': {
             'type': 'str',

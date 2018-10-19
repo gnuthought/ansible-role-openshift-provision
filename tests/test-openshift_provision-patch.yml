@@ -1,0 +1,96 @@
+---
+- name: Set Facts
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  tasks:
+  - include_tasks: setup-test.yml
+  - set_fact:
+      ignore_differences:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+
+- name: Test Provision
+  hosts: localhost
+  connection: local
+  vars:
+    provision_configmap: >-
+      {{ lookup('template', 'resources/test-configmap.yml.j2')
+       | from_yaml }}
+    configmap_data:
+      foo: bar
+
+  roles:
+  - role: openshift-provision
+    openshift_clusters:
+    - projects:
+      - name: provision-test
+
+  tasks:
+  - name: Provision ConfigMap
+    openshift_provision:
+      action: replace
+      connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_configmap }}"
+
+  - name: Get ConfigMap
+    command: >-
+      {{ test_oc_cmd }} export configmap
+      test-configmap -n provision-test -o json
+    register: get_configmap
+    changed_when: false
+
+  - name: Verify ConfigMap
+    fail:
+      msg: |
+        ConfigMap not defined as expected
+        >>>
+        {{ cmp_configmap | to_yaml }}
+        ===
+        {{ got_configmap | to_yaml }}
+        <<<
+    vars:
+      got_configmap: "{{ get_configmap.stdout | from_json | combine(ignore_differences, recursive=True) }}"
+      cmp_configmap: "{{ provision_configmap | combine(ignore_differences, recursive=True) }}"
+    when: >-
+      cmp_configmap.metadata != got_configmap.metadata or
+      cmp_configmap.data != got_configmap.data
+
+  - name: Patch ConfigMap
+    openshift_provision:
+      connection: "{{ openshift_connection }}"
+      action: patch
+      namespace: provision-test
+      patch_type: merge
+      resource:
+        kind: ConfigMap
+        metadata:
+          name: test-configmap
+        data:
+          foo: test
+    register: patch_configmap
+
+  - fail:
+      msg: Patch did not indicate change to ConfigMap
+    when: not patch_configmap.changed
+
+  - name: Check re-patch ConfigMap
+    openshift_provision:
+      connection: "{{ openshift_connection }}"
+      action: patch
+      namespace: provision-test
+      resource:
+        kind: ConfigMap
+        metadata:
+          name: test-configmap
+        data:
+          foo: test
+    register: repatch_configmap
+
+  - fail:
+      msg: Patch indicated change to ConfigMap on re-patch
+    when: repatch_configmap.changed
