@@ -5,7 +5,7 @@ metadata:
     name: test-daemonset
   name: test-daemonset
 spec:
-{% if openshift_version|version_compare('v3.7', '>=') %}
+{% if openshift_version is version_compare('v3.7', '>=') %}
   revisionHistoryLimit: 10
 {% endif %}
   selector:

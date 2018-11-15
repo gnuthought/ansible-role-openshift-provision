@@ -33,7 +33,7 @@
   when: >-
     template.file is defined and
     template.file != '' and
-    not template.file|match('(https?|ftp)://.*')
+    not template.file is match('(https?|ftp)://.*')
   check_mode: false
   changed_when: false
 
@@ -43,7 +43,7 @@
     dest: "{{ tempfile.path }}"
   when: >-
     template.file is defined and
-    template.file|match('(https?|ftp)://.*')
+    template.file is match('(https?|ftp)://.*')
   check_mode: false
   changed_when: false
 
@@ -67,13 +67,7 @@
 
 - name: Template resources
   openshift_provision:
-    action: >-
-      {{
-      item | json_query('metadata.annotations."openshift-provision/action"')
-      | default(item.action, true)
-      | default(template.action, true)
-      | default('apply', true)
-      }}
+    action: "{{ provision_action }}"
     patch_type: >-
       {{
       item | json_query('metadata.annotations."openshift-provision/patch-type"')
@@ -87,6 +81,15 @@
     resource: "{{ item }}"
   with_items: >-
     {{ process_template.stdout | from_json | json_query('items') }}
+  vars:
+    provision_action: >-
+      {{
+      item | json_query('metadata.annotations."openshift-provision/action"')
+      | default(item.action, true)
+      | default(template.action, true)
+      | default('apply', true)
+      }}
+  when: provision_action != 'ignore'
 
 - name: Cleanup temporary directory for template
   file:

@@ -2,12 +2,7 @@
 - name: >-
     Provision {{ resource.kind }} {{ resource.metadata.name }} in {{ project.name }}
   openshift_provision:
-    action: >-
-      {{
-      resource | json_query('metadata.annotations."openshift-provision/action"')
-      | default(resource.action, true)
-      | default('apply', true)
-      }}
+    action: "{{ provision_action }}"
     patch_type: >-
       {{
       resource | json_query('metadata.annotations."openshift-provision/patch-type"')
@@ -18,3 +13,11 @@
       oc_cmd: "{{ oc_cmd }}"
     namespace: "{{ project.name }}"
     resource: "{{ resource }}"
+  vars:
+    provision_action: >-
+      {{
+      resource | json_query('metadata.annotations."openshift-provision/action"')
+      | default(resource.action, true)
+      | default('apply', true)
+      }}
+  when: provision_action != 'ignore'

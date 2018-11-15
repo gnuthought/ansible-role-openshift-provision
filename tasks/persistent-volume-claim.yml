@@ -34,7 +34,7 @@
         accessModes: "{{ persistent_volume_claim.access_modes }}"
         resources:
           requests:
-            storage: "{% if persistent_volume_claim.storage | string | match('^[0-9]+$') %}{{ persistent_volume_claim.storage }}Gi{% else %}{{ persistent_volume_claim.storage }}{% endif %}"
+            storage: "{% if persistent_volume_claim.storage | string is match('^[0-9]+$') %}{{ persistent_volume_claim.storage }}Gi{% else %}{{ persistent_volume_claim.storage }}{% endif %}"
     selector_def:
       spec:
         selector:

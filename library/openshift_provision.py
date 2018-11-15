@@ -91,6 +91,7 @@ class OpenShiftProvision:
         self.module = module
         self.changed = False
         self.action = module.params['action']
+        self.fail_on_change = module.params['fail_on_change']
         self.patch_type = module.params['patch_type']
         self.resource = module.params['resource']
 
@@ -129,22 +130,33 @@ class OpenShiftProvision:
                     self.merge_dict(merged[k], v, overwrite)
                 else:
                     raise Exception("Unable to merge " + type(merged[key]).__name__ + " with dict")
-            elif type(v) is list:
-                if not k in merged:
-                    merged[k] = []
-                elif not type(merged[k]) is list:
-                    raise Exception("Unable to merge " + type(merged[key]).__name__ + " with list")
-                elif len(v) > 0:
-                    for i in merged[k]:
-                        if type(i) is dict:
-                            self.merge_dict(i, v[0], overwrite)
-                        else:
-                            raise Exception("Unable to merge item " + type(i).__name__ + " with dict")
-                    merged[k].sort(key=str)
+            elif callable(v):
+                merged[k] = v(merged[k] if k in merged else None)
             elif not k in merged:
                 merged[k] = copy.deepcopy(v)
             elif overwrite:
                 merged[k] = copy.deepcopy(v)
+
+    def merge_dict_list(self, merged, patch, overwrite=True):
+        if not merged:
+            return []
+        if not type(merged) is list:
+            raise Exception(
+                "Unable to merge {} with list".format(
+                    type(merged).__name__
+                )
+            )
+        for entry in merged:
+            if type(entry) is dict:
+                self.merge_dict(entry, patch, overwrite=overwrite)
+            else:
+                raise Exception(
+                    "Unable to merge item {} with dict".format(
+                        type(entry).__name__
+                    )
+                )
+        merged.sort(key=str)
+        return merged
 
     def merge(self, source, patch):
         merged = copy.deepcopy(source)
@@ -230,12 +242,16 @@ class OpenShiftProvision:
                 "templateGeneration": 0
             }
         if resource['kind'] == 'StatefulSet':
-            override["spec"]["volumeClaimTemplates"] = [{
-                "metadata": {
-                    "creationTimestamp": ""
+            override["spec"]["volumeClaimTemplates"] = lambda items : self.merge_dict_list(
+                items,
+                {
+                    "metadata": {
+                        "creationTimestamp": ""
+                    },
+                    "status": ""
                 },
-                "status": ""
-            }]
+                overwrite=True
+            )
         elif resource['kind'] == 'Deployment':
             override["metadata"]["annotations"]["deployment.kubernetes.io/revision"] = 0
         elif resource['kind'] == 'HorizontalPodAutoscaler':
@@ -243,9 +259,13 @@ class OpenShiftProvision:
         elif resource['kind'] == 'ImageStream':
             override["metadata"]["annotations"]["openshift.io/image.dockerRepositoryCheck"] = ""
             override["spec"] = {
-                "tags": [{
-                    "generation": 0
-                }]
+                "tags": lambda tags : self.merge_dict_list(
+                    tags,
+                    {
+                        "generation": 0
+                    },
+                    overwrite=True
+                )
             }
         elif resource['kind'] == 'PersistentVolume':
             override["metadata"]["annotations"]["pv.kubernetes.io/bound-by-controller"] = ""
@@ -258,6 +278,10 @@ class OpenShiftProvision:
             }
             override["metadata"]["annotations"]["pv.kubernetes.io/bind-completed"] = ""
             override["metadata"]["annotations"]["pv.kubernetes.io/bound-by-controller"] = ""
+            override["metadata"]["annotations"]["volume.beta.kubernetes.io/storage-provisioner"] = ""
+            # If storageClassName is not given, then it may be dynamically assigned
+            if "storageClassName" not in self.resource["spec"]:
+                override["spec"]["storageClassName"] = ""
 
         # Copy and override
         ret = self.merge(resource, override)
@@ -282,132 +306,39 @@ class OpenShiftProvision:
                     },
                     "strategy": {
                         "sourceStrategy": {
-                            # Openshift drops the empty value strings, put those back to compare
-                            "env": [{
-                                "value": ""
-                            }],
+                            "env": lambda env : self.empty_value_defaults(env),
                             "from": {
                                 "namespace": ""
                             }
                         }
                     },
+                    # Build config default imageChange trigger
                     "triggers": [{
                         "imageChange": {}
                     }]
                 }
-            }, False)
+            }, overwrite=False)
         elif ret['kind'] == 'DaemonSet':
             self.merge_dict(ret, {
-              "spec": {
-                "template": {
-                  "spec": {
-                    "containers": [{
-                      "env": [{
-                        "value": ""
-                      }],
-                      "imagePullPolicy": "IfNotPresent",
-                      "livenessProbe": {
-                        "httpGet": {
-                          "scheme": "HTTP"
-                        },
-                        "initialDelaySeconds": 30,
-                        "periodSeconds": 10,
-                        "successThreshold": 1,
-                        "failureThreshold": 3
-                      },
-                      "ports": [{
-                        "protocol": "TCP"
-                      }],
-                      "readinessProbe": {
-                        "httpGet": {
-                          "scheme": "HTTP"
-                        },
-                        "initialDelaySeconds": 30,
-                        "periodSeconds": 10,
-                        "successThreshold": 1,
-                        "failureThreshold": 3
-                      },
-                      "resources": {},
-                      "terminationMessagePath": "/dev/termination-log",
-                      "terminationMessagePolicy": "File",
-                      "volumeMounts": []
-                    }],
-                    "dnsPolicy": "ClusterFirst",
-                    "restartPolicy": "Always",
-                    "securityContext": {},
-                    "schedulerName": "default-scheduler",
-                    "terminationGracePeriodSeconds": 30,
-                    "volumes": [{
-                      "defaultMode": 0o644
-                    }]
-                  }
+                "spec": {
+                    "template": lambda pod_template : self.pod_template_defaults(pod_template),
                 }
-              }
-            }, False)
+            }, overwrite=False)
         elif ret['kind'] == 'DeploymentConfig':
             self.merge_dict(ret, {
-              "spec": {
-                "strategy": {
-                  "activeDeadlineSeconds": 21600,
-                  "recreateParams": {
-                    "timeoutSeconds": 600
-                  },
-                  "resources": {}
-                },
-                "template": {
-                  "spec": {
-                    "containers": [{
-                      "env": [{
-                        "value": ""
-                      }],
-                      "imagePullPolicy": "IfNotPresent",
-                      "livenessProbe": {
-                        "httpGet": {
-                          "scheme": "HTTP"
+                "spec": {
+                    "strategy": {
+                        "activeDeadlineSeconds": 21600,
+                        "recreateParams": {
+                            "timeoutSeconds": 600
                         },
-                        "initialDelaySeconds": 30,
-                        "periodSeconds": 10,
-                        "successThreshold": 1,
-                        "failureThreshold": 3
-                      },
-                      "ports": [{
-                        "protocol": "TCP"
-                      }],
-                      "readinessProbe": {
-                        "httpGet": {
-                          "scheme": "HTTP"
-                        },
-                        "initialDelaySeconds": 30,
-                        "periodSeconds": 10,
-                        "successThreshold": 1,
-                        "failureThreshold": 3
-                      },
-                      "resources": {},
-                      "terminationMessagePath": "/dev/termination-log",
-                      "terminationMessagePolicy": "File",
-                      "volumeMounts": []
-                    }],
-                    "dnsPolicy": "ClusterFirst",
-                    "restartPolicy": "Always",
-                    "securityContext": {},
-                    "schedulerName": "default-scheduler",
-                    "terminationGracePeriodSeconds": 30,
-                    "volumes": [{
-                      "defaultMode": 0o644
-                    }]
-                  }
-                },
-                "test": False,
-                "triggers": [{
-                  "type": "ConfigChange",
-                  "imageChangeParams": {
-                    "from": {
-                      "namespace": self.namespace
-                    }
-                  }
-                }]
-              }
-            }, False)
+                        "resources": {}
+                    },
+                    "template": lambda pod_template : self.pod_template_defaults(pod_template),
+                    "test": False,
+                    "triggers": lambda triggers : self.deploymentconfig_trigger_defaults(triggers)
+                }
+            }, overwrite=False)
             has_image_change_trigger = False
             for trigger in ret['spec']['triggers']:
                 if trigger['type'] == 'ImageChange':
@@ -417,18 +348,33 @@ class OpenShiftProvision:
                     container['image'] = ''
         elif ret['kind'] == 'ImageStream':
             self.merge_dict(ret, {
-              "spec": {
-                "dockerImageRepository": '',
-                "lookupPolicy": {
-                  "local": False
+                "spec": {
+                    "dockerImageRepository": '',
+                    "lookupPolicy": {
+                        "local": False
+                    },
+                    "tags": lambda tags : self.imagestream_tags_defaults(tags)
+                }
+            }, overwrite=False)
+        elif ret['kind'] == 'PersistentVolume':
+            self.merge_dict(ret, {
+                "metadata": {
+                    "finalizers": [
+                        "kubernetes.io/pv-protection"
+                    ]
                 },
-                "tags": [{
-                  "referencePolicy": {
-                    "type": "Source"
-                  }
-                }]
-              }
-            }, False)
+                "spec": {
+                    "persistentVolumeReclaimPolicy": "Retain"
+                }
+            }, overwrite=False)
+        elif ret['kind'] == 'PersistentVolumeClaim':
+            self.merge_dict(ret, {
+                "metadata": {
+                    "finalizers": [
+                        "kubernetes.io/pvc-protection"
+                    ]
+                }
+            }, overwrite=False)
         elif ret['kind'] == 'Route':
             self.merge_dict(ret, {
                 "metadata": {
@@ -443,7 +389,7 @@ class OpenShiftProvision:
                     },
                     "wildcardPolicy": "None"
                 }
-            }, False)
+            }, overwrite=False)
             # If route host is generated, then need to blank out the host field to compare
             if ret['spec']['host'] == '':
                 ret['metadata']['annotations']['openshift.io/host.generated'] = 'true'
@@ -452,9 +398,7 @@ class OpenShiftProvision:
         elif ret['kind'] == 'Service':
             self.merge_dict(ret, {
                 "spec": {
-                    "ports": [{
-                        "protocol": "TCP"
-                    }],
+                    "ports": lambda ports : self.port_list_defaults(ports),
                     "sessionAffinity": "None",
                     "sessionAffinityConfig": {
                         "clientIP": {
@@ -463,9 +407,110 @@ class OpenShiftProvision:
                     },
                     "type": "ClusterIP"
                 }
-            }, False)
+            }, overwrite=False)
 
         return ret
+
+    def deploymentconfig_trigger_defaults(self, triggers):
+        if not triggers:
+            return [ { "type": "ConfigChange" } ]
+        if not type(triggers) is list:
+            raise Exception("DeploymentConfig triggers must be a list")
+        for trigger in triggers:
+            if not type(trigger) is dict:
+                raise Exception("DeploymentConfig triggers must only include dict")
+            if 'type' not in trigger:
+                raise Exception("DeploymentConfig triggers must specify type")
+            if trigger['type'] == 'ImageChange':
+                self.merge_dict(
+                    trigger,
+                    {
+                        "imageChangeParams": {
+                            "from": {
+                                "namespace": self.namespace
+                            }
+                        }
+                    },
+                    overwrite=False
+                )
+        return triggers
+
+    # Openshift drops the empty value strings, put those back to compare
+    def empty_value_defaults(self, items):
+         return self.merge_dict_list(
+             items,
+             { "value": "" },
+             overwrite=False
+         ),
+
+    def port_list_defaults(self, items):
+         return self.merge_dict_list(
+             items,
+             { "protocol": "TCP" },
+             overwrite=False
+         ),
+
+    def imagestream_tags_defaults(self, tags):
+         return self.merge_dict_list(
+             tags,
+             {
+                 "referencePolicy": {
+                     "type": "Source"
+                 }
+             },
+             overwrite=False
+         )
+
+    def pod_volumes_defaults(self, volumes):
+         return self.merge_dict_list(
+             volumes,
+             { "defaultMode": 0o644 },
+             overwrite=False
+         )
+
+    def pod_template_defaults(self, pod_template):
+        self.merge_dict(pod_template, {
+            "spec": {
+                "containers": lambda containers : self.merge_dict_list(
+                    containers,
+                    {
+                        "env": lambda env : self.empty_value_defaults(env),
+                        "imagePullPolicy": "IfNotPresent",
+                        "livenessProbe": {
+                            "httpGet": {
+                                "scheme": "HTTP"
+                            },
+                            "initialDelaySeconds": 30,
+                            "periodSeconds": 10,
+                            "successThreshold": 1,
+                            "failureThreshold": 3
+                        },
+                        "ports": lambda ports : self.port_list_defaults(ports),
+                        "readinessProbe": {
+                            "httpGet": {
+                                "scheme": "HTTP"
+                            },
+                            "initialDelaySeconds": 30,
+                            "periodSeconds": 10,
+                            "successThreshold": 1,
+                            "failureThreshold": 3
+                        },
+                        "resources": {},
+                        "terminationMessagePath": "/dev/termination-log",
+                        "terminationMessagePolicy": "File",
+                        "volumeMounts": []
+                    },
+                    overwrite=False
+                ),
+                "dnsPolicy": "ClusterFirst",
+                "restartPolicy": "Always",
+                "securityContext": {},
+                "schedulerName": "default-scheduler",
+                "terminationGracePeriodSeconds": 30,
+                "volumes": lambda volumes : self.pod_volumes_defaults(volumes)
+            }
+        }, overwrite=False)
+        return pod_template
 
     def comparison_fields(self):
         if self.resource['kind'] == 'ClusterRole':
@@ -491,13 +536,16 @@ class OpenShiftProvision:
         b = self.filter_differences(resource)
         for field in self.comparison_fields():
             if field in a and not field in b:
-                #raise Exception(field + ' not in b')
+                if self.fail_on_change:
+                    raise Exception(field + ' not in b')
                 return False
             if field in b and not field in a:
-                #raise Exception(field + ' not in a')
+                if self.fail_on_change:
+                    raise Exception(field + ' not in a')
                 return False
             if field in a and field in b and a[field] != b[field]:
-                #raise Exception('a != b ' + field + json.dumps(a[field]) + json.dumps(b[field]))
+                if self.fail_on_change:
+                    raise Exception('a != b ' + field + json.dumps(a[field]) + json.dumps(b[field]))
                 return False
         return True
 
@@ -548,6 +596,8 @@ class OpenShiftProvision:
         elif self.action == 'delete':
             if current_resource == None:
                 return
+        elif self.action == 'ignore':
+            return
 
         # Handle check mode by returning without applying change
         self.changed = True
@@ -600,6 +650,11 @@ def run_module():
         'resource': {
             'type': 'dict',
             'required': True
+        },
+        # Useful when testing...
+        'fail_on_change': {
+            'type': 'bool',
+            'default': False
         }
     }
 

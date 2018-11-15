@@ -34,3 +34,8 @@ spec:
       schedulerName: default-scheduler
       securityContext: {}
       terminationGracePeriodSeconds: 30
+{% if openshift_version is version_compare('v3.10', '>=') %}
+{# New defaults introduced is 3.10 #}
+  progressDeadlineSeconds: 600
+  revisionHistoryLimit: 10
+{% endif %}
