@@ -38,7 +38,7 @@
         labels: "{{ persistent_volume.labels }}"
       spec:
         capacity:
-          storage: "{% if persistent_volume.capacity | string | match('^[0-9]+$') %}{{ persistent_volume.capacity }}Gi{% else %}{{ persistent_volume.capacity }}{% endif %}"
+          storage: "{% if persistent_volume.capacity | string is match('^[0-9]+$') %}{{ persistent_volume.capacity }}Gi{% else %}{{ persistent_volume.capacity }}{% endif %}"
         accessModes: "{{ persistent_volume.access_modes }}"
         persistentVolumeReclaimPolicy: "{{ persistent_volume.reclaim_policy | default('Retain') }}"
         nfs:

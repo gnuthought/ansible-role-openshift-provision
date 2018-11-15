@@ -182,7 +182,7 @@
     resource_entry: >-
       {% if resource_item is mapping %}{{
       resource_item
-      }}{% elif resource_item | match('.*\.j2') %}{{
+      }}{% elif resource_item is match('.*\.j2') %}{{
       lookup('template', lookup('first_found', {'files':resource_item, 'paths': resource_path})) | from_yaml
       }}{% else %}{{
       lookup('file', lookup('first_found', {'files':resource_item, 'paths':resource_path})) | from_yaml

@@ -3,12 +3,7 @@
     Provision {{ resource.kind }} {{ resource.metadata.name }}
     {{ resource.metadata.namespace|default('')|regex_replace('^(.)','in \1') }}
   openshift_provision:
-    action: >-
-      {{
-      resource | json_query('metadata.annotations."openshift-provision/action"')
-      | default(resource.action, true)
-      | default('apply', true)
-      }}
+    action: "{{ provision_action }}"
     patch_type: >-
       {{
       resource | json_query('metadata.annotations."openshift-provision/patch-type"')
@@ -18,3 +13,11 @@
     connection:
       oc_cmd: "{{ oc_cmd }}"
     resource: "{{ resource }}"
+  vars:
+    provision_action: >-
+      {{
+      resource | json_query('metadata.annotations."openshift-provision/action"')
+      | default(resource.action, true)
+      | default('apply', true)
+      }}
+  when: provision_action != 'ignore'

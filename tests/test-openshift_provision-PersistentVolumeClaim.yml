@@ -13,27 +13,22 @@
             kubectl.kubernetes.io/last-applied-configuration: ''
             pv.kubernetes.io/bind-completed: ''
             pv.kubernetes.io/bound-by-controller: ''
+            volume.beta.kubernetes.io/storage-provisioner: ''
           creationTimestamp: null
+          finalizers: null
         spec:
+          storageClassName: ''
           volumeName: ''
 
 - name: Test Provision
   hosts: localhost
   connection: local
   vars:
-    provision_persistentvolumeclaim:
-      apiVersion: v1
-      kind: PersistentVolumeClaim
-      metadata:
-        name: test-persistentvolumeclaim
-        labels:
-          testlabel: bar
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 1Gi
+    provision_persistentvolumeclaim: >-
+      {{ lookup('template', 'resources/test-persistentvolumeclaim-minimal.yml.j2')
+       | from_yaml }}
+    persistentvolumeclaim_labels:
+      testlabel: foo
 
   roles:
   - role: openshift-provision
@@ -76,6 +71,7 @@
       connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_persistentvolumeclaim }}"
+      fail_on_change: true
     register: reprovision_persistentvolumeclaim
 
   - fail:
@@ -86,19 +82,11 @@
   hosts: localhost
   connection: local
   vars:
-    provision_persistentvolumeclaim:
-      apiVersion: v1
-      kind: PersistentVolumeClaim
-      metadata:
-        name: test-persistentvolumeclaim
-        labels:
-          testlabel: foo
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 1Gi
+    provision_persistentvolumeclaim: >-
+      {{ lookup('template', 'resources/test-persistentvolumeclaim-minimal.yml.j2')
+       | from_yaml }}
+    persistentvolumeclaim_labels:
+      testlabel: bar
 
   tasks:
   - name: Apply update to PersistentVolumeClaim
@@ -133,23 +121,24 @@
 - name: Test Delete
   hosts: localhost
   connection: local
-  vars:
-    provision_persistentvolumeclaim:
-      kind: PersistentVolumeClaim
-      metadata:
-        name: test-persistentvolumeclaim
   tasks:
   - name: Delete PersistentVolumeClaim
     openshift_provision:
       action: delete
       namespace: provision-test
       connection: "{{ openshift_connection }}"
-      resource: "{{ provision_persistentvolumeclaim }}"
+      resource:
+        kind: PersistentVolumeClaim
+        metadata:
+          name: test-persistentvolumeclaim
 
   - name: Verify PersistentVolumeClaim Delete
     command: >-
-      {{ test_oc_cmd }} export persistentvolumeclaim
+      {{ test_oc_cmd }} get persistentvolumeclaim
       test-persistentvolumeclaim -n provision-test -o json
     register: get_persistentvolumeclaim
     failed_when: get_persistentvolumeclaim.rc == 0
+    until: get_persistentvolumeclaim.rc != 0
+    retries: 3
+    delay: 1
     changed_when: false

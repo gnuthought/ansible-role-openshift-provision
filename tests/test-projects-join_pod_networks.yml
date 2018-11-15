@@ -6,12 +6,13 @@
   - login-creds.yml
   tasks:
   - include_tasks: setup-test.yml
-  - name: Check if netnamespaces are defined
+
+  - name: Get clusternetwork definition
     command: >-
-      {{ test_oc_cmd }} get netnamespaces -o json
-    register: get_netnamespaces
+      {{ test_oc_cmd }} get clusternetwork default -o json
+    register: get_clusternetwork
     changed_when: false
 
   - include_tasks: tasks/test-projects-join_pod_networks.yml
-    when: >-
-      0 < get_netnamespaces.stdout | from_json | json_query('items') | count
+    when: >
+      get_clusternetwork.stdout | from_json | json_query('pluginName') == 'redhat/openshift-ovs-multitenant'

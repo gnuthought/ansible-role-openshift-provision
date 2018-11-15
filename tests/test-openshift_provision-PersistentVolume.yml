@@ -12,27 +12,18 @@
           annotations:
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
+          finalizers: null
+        spec:
+          persistentVolumeReclaimPolicy: ''
 
 - name: Test Provision
   hosts: localhost
   connection: local
   vars:
-    provision_persistentvolume:
-      apiVersion: v1
-      kind: PersistentVolume
-      metadata:
-        labels:
-          foo: bar
-        name: test-persistentvolume
-      spec:
-        accessModes:
-        - ReadWriteMany
-        capacity:
-          storage: 10Gi
-        nfs:
-          path: /export/foo
-          server: nfsserver.example.com
-        persistentVolumeReclaimPolicy: Retain
+    provision_persistentvolume: >-
+      {{ lookup('template', 'resources/test-persistentvolume-minimal.yml.j2')
+       | from_yaml }}
+    persistent_volume_labels: {}
 
   roles:
   - role: openshift-provision
@@ -70,6 +61,7 @@
     openshift_provision:
       connection: "{{ openshift_connection }}"
       resource: "{{ provision_persistentvolume }}"
+      fail_on_change: true
     register: reprovision_persistentvolume
 
   - fail:
@@ -80,22 +72,11 @@
   hosts: localhost
   connection: local
   vars:
-    provision_persistentvolume:
-      apiVersion: v1
-      kind: PersistentVolume
-      metadata:
-        labels:
-          foo: bartest
-        name: test-persistentvolume
-      spec:
-        accessModes:
-        - ReadWriteMany
-        capacity:
-          storage: 10Gi
-        nfs:
-          path: /export/foo
-          server: nfsserver.example.com
-        persistentVolumeReclaimPolicy: Retain
+    provision_persistentvolume: >-
+      {{ lookup('template', 'resources/test-persistentvolume-minimal.yml.j2')
+       | from_yaml }}
+    persistent_volume_labels:
+      testlabel: foo
 
   tasks:
   - name: Apply update to PersistentVolume
@@ -129,17 +110,15 @@
 - name: Test Delete
   hosts: localhost
   connection: local
-  vars:
-    provision_persistentvolume:
-      kind: PersistentVolume
-      metadata:
-        name: test-persistentvolume
   tasks:
   - name: Delete PersistentVolume
     openshift_provision:
       action: delete
       connection: "{{ openshift_connection }}"
-      resource: "{{ provision_persistentvolume }}"
+      resource:
+        kind: PersistentVolume
+        metadata:
+          name: test-persistentvolume
 
   - name: Verify PersistentVolume Delete
     command: >-

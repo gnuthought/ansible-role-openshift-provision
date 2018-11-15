@@ -17,8 +17,8 @@ ansible-galaxy install https://github.com/gnuthought/ansible-role-openshift-prov
 Requirements
 ------------
 
-OCP 3.4, 3.5, 3.7, & 3.9
-ansible 2.4+
+OCP 3.4, 3.5, 3.7, 3.9, & 3.10
+ansible 2.4+ with Python 2.7+
 
 A host with the `oc` command to run from.
 
