@@ -3,6 +3,7 @@ kind: BuildConfig
 metadata:
   name: test-buildconfig
 spec:
+  failedBuildsHistoryLimit: 5
   nodeSelector: null
   output:
     to:
@@ -22,4 +23,5 @@ spec:
         name: "{{ from_source_name }}"
         namespace: openshift
     type: Source
+  successfulBuildsHistoryLimit: 5
   triggers: []
