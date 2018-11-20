@@ -12,6 +12,7 @@
           annotations:
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
+          selfLink: ''
 
 - name: Test Provision SecurityContextConstraints
   hosts: localhost
@@ -35,7 +36,7 @@
 
   - name: Get SecurityContextConstraints
     command: >-
-      {{ test_oc_cmd }} export securitycontextconstraints
+      {{ test_oc_cmd }} get --export securitycontextconstraints
       test-securitycontextconstraints -o json
     register: get_securitycontextconstraints
     changed_when: false
@@ -43,7 +44,7 @@
   - name: Verify SecurityContextConstraints
     fail:
       msg: |
-        BSecurityContextConstraints not defined as expected
+        SecurityContextConstraints not defined as expected
         >>>
         {{ cmp_securitycontextconstraints | to_yaml }}
         ===
@@ -58,6 +59,7 @@
   - name: Check reprovision SecurityContextConstraints
     openshift_provision:
       connection: "{{ openshift_connection }}"
+      fail_on_change: true
       namespace: provision-test
       resource: "{{ provision_securitycontextconstraints }}"
     register: reprovision_securitycontextconstraints
@@ -83,7 +85,7 @@
 
   - name: Get SecurityContextConstraints
     command: >-
-      {{ test_oc_cmd }} export securitycontextconstraints
+      {{ test_oc_cmd }} get --export securitycontextconstraints
       test-securitycontextconstraints -n provision-test -o json
     register: get_securitycontextconstraints
     changed_when: false
@@ -119,7 +121,7 @@
 
   - name: Verify SecurityContextConstraints Delete
     command: >-
-      {{ test_oc_cmd }} export securitycontextconstraints
+      {{ test_oc_cmd }} get --export securitycontextconstraints
       test-securitycontextconstraints -n provision-test -o json
     register: get_securitycontextconstraints
     failed_when: get_securitycontextconstraints.rc == 0

@@ -5,6 +5,12 @@
   - role: openshift-provision
   vars_files:
   - login-creds.yml
+  vars:
+    provision_persistentvolumeclaim: >-
+      {{ lookup('template', 'resources/test-persistentvolumeclaim-minimal.yml.j2')
+       | from_yaml }}
+    persistentvolumeclaim_labels:
+      testlabel: bar
   tasks:
   - name: Login to OpenShift Cluster
     openshift_login:
@@ -17,16 +23,5 @@
   - name: Test Provision
     openshift_provision:
       connection: "{{ openshift_login.session }}"
-      resource:
-        apiVersion: v1
-        kind: PersistentVolumeClaim
-        metadata:
-          name: test-persistentvolumeclaim
-          labels:
-            testlabel: bar
-        spec:
-          accessModes:
-          - ReadWriteOnce
-          resources:
-            requests:
-              storage: 1Gi
+      namespace: provision-test
+      resource: "{{ provision_persistentvolumeclaim }}"

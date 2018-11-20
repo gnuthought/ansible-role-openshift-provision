@@ -6,10 +6,7 @@ allowHostPorts: true
 allowPrivilegedContainer: true
 allowedCapabilities:
 - '*'
-{% if oc_version is version('v3.9', '>=') %}
-allowedFlexVolumes: null
-{% endif %}
-apiVersion: v1
+apiVersion: security.openshift.io/v1
 {% if oc_version is version('v3.9', '>=') %}
 defaultAddCapabilities: null
 {% else %}

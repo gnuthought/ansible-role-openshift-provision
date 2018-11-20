@@ -133,6 +133,7 @@
         kind: StatefulSet
         metadata:
           name: test-statefulset
+    retries: 3
 
   - name: Verify StatefulSet Delete
     command: >-

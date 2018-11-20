@@ -78,6 +78,7 @@
   - name: Check reprovision DeploymentConfig
     openshift_provision:
       connection: "{{ openshift_connection }}"
+      fail_on_change: true
       namespace: provision-test
       resource: "{{ provision_deploymentconfig }}"
     register: reprovision_deploymentconfig
