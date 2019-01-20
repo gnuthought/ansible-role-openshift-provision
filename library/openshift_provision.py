@@ -499,6 +499,8 @@ class OpenShiftProvision:
             resource,
             {
                 "spec": {
+                    "progressDeadlineSeconds": 600,
+                    "revisionHistoryLimit": 10,
                     "template": pod_template_defaults
                 }
             },
