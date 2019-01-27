@@ -3,6 +3,9 @@ allowHostIPC: true
 allowHostNetwork: true
 allowHostPID: true
 allowHostPorts: true
+{% if oc_version is version('v3.11', '>=') %}
+allowPrivilegeEscalation: true
+{% endif %}
 allowPrivilegedContainer: true
 allowedCapabilities:
 - '*'

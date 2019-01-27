@@ -512,6 +512,7 @@ class OpenShiftProvision:
             resource,
             {
                 "spec": {
+                    "revisionHistoryLimit": 10,
                     "strategy": {
                         "activeDeadlineSeconds": 21600,
                         "recreateParams": {
@@ -776,6 +777,9 @@ class OpenShiftProvision:
             raise Exception("Cannot patch %s %s, resource not found" % (
                 self.resource['kind'], self.resource['metadata']['name']
             ))
+
+        # Remove namespace from metadata
+        resource['metadata']['namespace'] = ''
 
         # Create tempfile for local changes
         temp_fd, temp_path = tempfile.mkstemp(suffix='.json')

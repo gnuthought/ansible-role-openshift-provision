@@ -14,6 +14,7 @@
           creationTimestamp: null
           generation: 0
         spec:
+          revisionHistoryLimit: 10
           template:
             metadata:
               creationTimestamp: null
