@@ -44,6 +44,25 @@
     openshift_provision_openshift_version: >-
       {{ get_version.stdout | regex_replace('(.|\s)*openshift (\S+)(.|\s)*', '\2') }}
 
+- name: Get cluster-vars configmap from kube-public
+  command: >-
+    {{ oc_cmd }} get configmap -n kube-public cluster-vars -o json
+  register: get_cluster_vars
+  changed_when: false
+  failed_when: >-
+    get_cluster_vars.rc != 0 and
+    '(NotFound)' not in get_cluster_vars.stderr
+
+- name: Set fact for cluster
+  set_fact:
+    openshift_provision_cluster_vars: "{{ cluster_vars.data }}"
+  vars:
+    cluster_vars: >-
+      {{ (
+        get_cluster_vars.stdout if get_cluster_vars.rc == 0 else '{}'
+      ) | from_json }}
+  when: get_cluster_vars.rc == 0
+
 - name: Include provision pre-tasks
   include_tasks: "{{ pre_tasks_include }}"
   with_items: >-
