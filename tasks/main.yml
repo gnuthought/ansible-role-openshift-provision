@@ -13,7 +13,10 @@
 - name: Handle openshift_clusters
   include_tasks: openshift-cluster.yml
   static: false
-  with_items: "{{ openshift_clusters | default([]) }}"
+  with_items: >-
+    {{ openshift_clusters
+     | default([openshift_provision] if openshift_provision is defined else [])
+    }}
   loop_control:
     loop_var: openshift_cluster
   vars:

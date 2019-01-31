@@ -46,7 +46,8 @@ Role Variables
   specify a different path or add custom options
 
 * `openshift_clusters` - List of openshift cluster definitions as described
-  below
+  below. If a single cluster is being configured then `openshift_provision`
+  may be used instead.
 
 * `openshift_cluster_provision_post_tasks` - List of ansible tasks files to
   include after processing provision for each cluster
@@ -78,6 +79,9 @@ Role Variables
   preferred to providing a username and password. This option may also be
   set within `openshift_clusters` as `login.password`
 
+* `openshift_provision` - Variable for single cluster management, ignored
+  if `openshift_clusters` is set.
+
 * `openshift_resource_path` - Default list of directories to search for file
   paths in cluster and project `cluster_resources` and `resources` definitions.
   Default to playbook directory
@@ -89,9 +93,9 @@ Role Variables
 * `user_groups` (DEPRECATED) - List of groups to create across all clusters,
   use of `groups` under `openshift_clusters` is preferred
 
-### `openshift_clusters[*]`
+### `openshift_provision` or `openshift_clusters[*]`
 
-List of OpenShift cluster definitions
+Top level definition of how to manage a cluster:
 
 * `connection` - OpenShift connection parameters, defined to match `oc` command
   line including `server`, `certificate_authority`, `insecure_skip_tls_verify`,
@@ -148,7 +152,7 @@ List of OpenShift cluster definitions
 * `cluster_roles` (DEPRECATED) - List of OpenShift cluster role definitions.
   Use of `cluster_resources` is preferred
 
-### `openshift_clusters[*].cluster_resources`
+### `openshift_provision.cluster_resources` or `openshift_clusters[*].cluster_resources`
 
 Cluster resources are the first items processed in provisioning. This is a
 list of OpenShift resource definitions that are created/updated using the `oc`
@@ -173,7 +177,7 @@ action may be:
 Besides the field `action` all other fields follow OpenShift standards. All
 resources must define `metadata.name`.
 
-### `openshift_clusters[*].cluster_role_bindings`
+### `cluster_role_bindings`
 
 List of cluster role assignments. Each entry is a dictionary containing:
 
@@ -198,7 +202,7 @@ List of cluster role assignments. Each entry is a dictionary containing:
 * `remove_unlisted_groups` - Same as `remove_unlisted`, but specifically
   targeting groups. Optional, default "false"
 
-### `openshift_clusters[*].groups`
+### `groups`
 
 List of OpenShift groups to manage
 
@@ -209,7 +213,7 @@ List of OpenShift groups to manage
 * `remove_unlisted_members` - Boolean to indicate whether unlisted users should
   be removed from this group. Optional, default "false"
 
-### `openshift_clusters[*].process_templates`
+### `process_templates`
 
 List of templates to process to manage resources for the cluster. The result
 items list from the processed template is then parsed and each resource in
@@ -230,7 +234,7 @@ that list is processed by `openshift_provision`.
 
 * `patch_type` - Patch type to use when action is "patch".
 
-### `openshift_clusters[*].projects`
+### `projects`
 
 * `name` - Project name string
 
@@ -289,7 +293,7 @@ that list is processed by `openshift_provision`.
 * `quotas` (DEPRECATED) - List of quotas to apply to project, use of
   `resources` is preferred to create ResourceQuota objects
 
-### `openshift_clusters[*].projects[*].process_templates`
+### `projects[*].process_templates`
 
 List of templates to process to manage resources within project. The result
 items list from the processed template is then parsed and each resource in
@@ -303,20 +307,20 @@ that list is processed by `openshift_provision`.
 * `parameters` - Dictionary of parameters to pass to the template. Optional
 
 * `action` - Action to process template output, values for `action` are the same
-  as described for above for `openshift_clusters[*].cluster_resources`.
+  as described for above for `cluster_resources`.
 
 * `patch_type` - Patch type to use when action is "patch".
 
-### `openshift_clusters[*].projects[*].resources`
+### `projects[*].resources`
 
 This is a list of OpenShift resource definitions that are created/updated in
 a project using the `oc` command. The default action is `oc apply`, but may be
 overridden by setting the annotation "openshift-provision/action" within the
 resource. Values for `action` are the same as described above for
-`openshift_clusters[*].cluster_resources`. The annotation
+`cluster_resources`. The annotation
 "openshift-provision/patch-type" may be used with the "patch" action.
 
-### `openshift_clusters[*].projects[*].role_bindings`
+### `projects[*].role_bindings`
 
 List of project role assignments. Each entry is a dictionary containing:
 
@@ -341,10 +345,10 @@ List of project role assignments. Each entry is a dictionary containing:
 * `remove_unlisted_groups` - Same as `remove_unlisted`, but specifically
   targeting groups. Optional, default "false"
 
-### `openshift_clusters[*].resources`
+### `resources`
 
 List of OpenShift project resources to create. Declaration is the same as
-specified above for `openshift_clusters[*].projects[*].resources` with the
+specified above for `projects[*].resources` with the
 addition that each entry here must specify `metadata.namespace` to specify
 the target project for the resource.
 
@@ -358,8 +362,8 @@ Example Playbook with Provisioning by Role Variables
 
 Example resources file:
 
-    openshift_clusters:
-    - connection:
+    openshift_provision:
+      connection:
         server: https://openshift-master.libvirt:8443
         token: abcdefghijklmnopqrstuvwxyz0123456798...
 
