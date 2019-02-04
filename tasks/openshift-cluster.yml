@@ -48,6 +48,7 @@
   command: >-
     {{ oc_cmd }} get configmap -n kube-public cluster-vars -o json
   register: get_cluster_vars
+  check_mode: false
   changed_when: false
   failed_when: >-
     get_cluster_vars.rc != 0 and
