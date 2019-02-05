@@ -14,6 +14,9 @@
     {% if project.display_name is defined %}--display-name={{ project.display_name | quote }}{% endif %}
     {% if project.description is defined %}--description={{ project.description | quote }}{% endif %}
   when: get_project.rc != 0
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)
 
 - name: Set project display-name for {{ project.name }}
   command: >
@@ -36,6 +39,9 @@
       current_display_name is not defined or
       current_display_name != project.display_name
     )
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)
 
 - name: Set project description for {{ project.name }}
   command: >
@@ -58,6 +64,9 @@
       current_description is not defined or
       current_description != project.description
     )
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)
 
 - name: Set project node-selector for {{ project.name }}
   command: >
@@ -79,6 +88,9 @@
       current_node_selector is not defined or
       current_node_selector != project.node_selector
     )
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)
 
 - name: Set project annotations for {{ project.name }}
   command: >
@@ -101,6 +113,9 @@
       current_annotations == '' or
       current_annotations != current_annotations | combine(project.annotations, recursive=True)
     )
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)
 
 - name: Set project labels for {{ project.name }}
   command: >
@@ -123,6 +138,9 @@
       current_labels is not defined or
       current_labels != project.labels
     )
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)
 
 - name: Handle project join_pod_network
   include_tasks: project-pod-network.yml
@@ -138,7 +156,7 @@
   - project.multicast_enabled is defined
   - project.multicast_enabled != ''
 
-- name: Handle project limit_ranges
+- name: Handle deprecated project limit_ranges
   include_tasks: project-limit-range.yml
   with_items: "{{ project.limit_ranges | default([]) }}"
   loop_control:

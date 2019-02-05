@@ -20,3 +20,6 @@
   when: >-
     current_imagestream is undefined or
     current_imagestream == ''
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)

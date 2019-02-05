@@ -9,3 +9,6 @@
   when: >
     group_name not in ocp_groups and
     { "name": group_name } not in ocp_groups
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)

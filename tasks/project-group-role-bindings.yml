@@ -16,6 +16,9 @@
     current_role_groups: >-
       {{ current_role_bindings | json_query(current_role_groups_query) }}
   when: ocp_group_name not in current_role_groups
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)
 
 - name: Handle remove unlisted group role bindings
   include_tasks: project-remove-unlisted-group-role-bindings.yml

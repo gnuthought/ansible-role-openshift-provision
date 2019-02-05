@@ -8,6 +8,9 @@
   loop_control:
     loop_var: user
   when: user not in current_cluster_role_users
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)
 
 - name: Grant group cluster role {{ cluster_role_binding.role }}
   command: >
@@ -17,6 +20,9 @@
     loop_var: group
   when: >
     group not in current_cluster_role_groups
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)
 
 - name: Remove unlisted users from cluster role {{ cluster_role_binding.role }}
   command: >
@@ -28,6 +34,9 @@
     ( cluster_role_binding.remove_unlisted | default(false) | bool or
       cluster_role_binding.remove_unlisted_users | default(false) | bool ) and
     user not in cluster_role_binding.users | default([])
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)
 
 - name: Remove unlisted groups from cluster role {{ cluster_role_binding.role }}
   command: >
@@ -39,3 +48,6 @@
     ( cluster_role_binding.remove_unlisted | default(false) | bool or
       cluster_role_binding.remove_unlisted_groups | default(false) | bool ) and
     group not in cluster_role_binding.groups | default([])
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)

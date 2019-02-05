@@ -19,6 +19,9 @@
     current_role_users: >-
       {{ current_role_bindings | json_query(current_role_users_query) }}
   when: ocp_user_name not in current_role_users
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)
 
 - name: Handle remove unlisted users from role bindings
   include_tasks: project-remove-unlisted-user-role-bindings.yml

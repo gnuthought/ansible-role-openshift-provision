@@ -24,12 +24,6 @@ options:
     default: apply
     required: false
     aliases: []
-  change_record:
-    description:
-    - file path to record changes
-    default: null
-    required: false
-    aliases: []
   connection:
     description:
     - Dictionary of connection options, may include 'token', 'server', 'certificate_authority', 'insecure_skip_tls_verify', and 'oc_cmd'
@@ -92,7 +86,7 @@ resource:
 
 from ansible.module_utils.basic import AnsibleModule
 
-def recursive_compare(src, dst):
+def make_field_patch(field, current, config):
     # Adapted from jsonpatch to add current value
     def compare_values(path, value, other):
         if value == other:
@@ -104,11 +98,13 @@ def recursive_compare(src, dst):
             for operation in compare_list(path, value, other):
                 yield operation
         else:
-            yield {'op': 'replace', 'path': '/'.join(path), 'current_value': value, 'value': other}
+            yield {'op': 'test', 'path': '/'.join(path), 'value': value}
+            yield {'op': 'replace', 'path': '/'.join(path), 'value': other}
 
     def compare_dict(path, src, dst):
         for key in src:
             if key not in dst:
+                yield {'op': 'test', 'path': '/'.join(path + [key]), 'value': src[key]}
                 yield {'op': 'remove', 'path': '/'.join(path + [key])}
                 continue
             current = path + [key]
@@ -130,9 +126,10 @@ def recursive_compare(src, dst):
                 yield {'op': 'add', 'path': '/'.join(current), 'value': dst[idx]}
         elif lsrc > ldst:
             for idx in reversed(range(ldst, lsrc)):
+                yield {'op': 'test', 'path': '/'.join(path + [str(idx)]), 'value': src[idx]}
                 yield {'op': 'remove', 'path': '/'.join(path + [str(idx)])}
 
-    return list(compare_values([''], src, dst))
+    return list(compare_values(['/' + field], current, config))
 
 def sort_lists_in_dict(d):
     """Given a dictionary where some values are lists, sort those lists"""
@@ -343,9 +340,9 @@ class OpenShiftProvision:
     def __init__(self, module):
         self.module = module
         self.changed = False
-        self.change_record = module.params['change_record']
         self.action = module.params['action']
         self.fail_on_change = module.params['fail_on_change']
+        self.patch = None
         self.patch_type = module.params['patch_type']
         self.resource = module.params['resource']
 
@@ -799,27 +796,34 @@ class OpenShiftProvision:
 
 
     def compare_resource(self, resource, compare_to=None):
-        if resource == None:
-            return 'cluster resource not found'
         if compare_to == None:
             compare_to = self.resource
 
-        a = self.normalize_resource(compare_to)
-        b = self.normalize_resource(resource)
-        differences = []
+        current = self.normalize_resource(compare_to)
+        config = self.normalize_resource(resource)
+        patch = []
         for field in self.comparison_fields():
-            if field in a and not field in b:
-                differences.append(field + ' not in cluster resource')
-            elif field in b and not field in a:
-                differences.append(field + ' not in resource definition')
-            elif field in a and field in b and a[field] != b[field]:
-                differences.append("Differences in {}:\n{}".format(
-                    field,
-                    "\n".join([json.dumps(d) for d in recursive_compare(b[field], a[field])])
-                ))
-        if differences:
-            return "\n".join(differences)
-        return None
+            if field in current and not field in config:
+                patch.extend([{
+                    "op": "test",
+                    "path": "/" + field,
+                    "value": current[field]
+                },{
+                    "op": "remove",
+                    "path": "/" + field
+                }])
+            elif field in config and not field in current:
+                patch.append({
+                    "op": "add",
+                    "path": "/" + field,
+                    "value": config[field]
+                })
+            elif field in config and field in current \
+            and config[field] != current[field]:
+                patch.extend(
+                    make_field_patch(field, current[field], config[field])
+                )
+        return patch
 
     def check_patch(self, resource):
         '''return true if patch would not change resource'''
@@ -914,26 +918,26 @@ class OpenShiftProvision:
 
         # Check if changes are required and if we need to reset the apply metadata.
         reset_last_applied_configuration = False
-        difference = None
+        patch = None
         if self.action == 'create':
             if current_resource:
                 self.resource = current_resource
                 return
         elif self.action == 'apply':
-            difference = self.compare_resource(current_resource)
-            if not difference:
-                self.resource = current_resource
-                return
-            # If current resource does not match last_applied_configuration
-            # then we must switch to replace mode or risk unexpected behavior
-            if( current_resource
-            and current_resource_version
-            and current_last_applied_configuration
-            and not self.compare_resource(
-                current_resource, json.loads(current_last_applied_configuration)
-            )):
-                self.action = 'replace'
-                reset_last_applied_configuration = True
+            if current_resource != None:
+                patch = self.compare_resource(current_resource)
+                if not patch:
+                    self.resource = current_resource
+                    return
+                # If current resource does not match last_applied_configuration
+                # then we must switch to replace mode or risk unexpected behavior
+                if( current_resource_version
+                and current_last_applied_configuration
+                and not self.compare_resource(
+                    current_resource, json.loads(current_last_applied_configuration)
+                )):
+                    self.action = 'replace'
+                    reset_last_applied_configuration = True
         elif self.action == 'patch':
             if self.check_patch(current_resource):
                 self.resource = current_resource
@@ -942,8 +946,8 @@ class OpenShiftProvision:
             if current_resource == None:
                 self.action = 'create'
             else:
-                difference = self.compare_resource(current_resource)
-                if not difference:
+                patch = self.compare_resource(current_resource)
+                if not patch:
                     self.resource = current_resource
                     return
         elif self.action == 'delete':
@@ -952,22 +956,16 @@ class OpenShiftProvision:
         elif self.action == 'ignore':
             return
 
-        change = self.action + ' ' + self.resource['kind']
-        if self.namespace:
-            change += ' in ' + self.namespace
-        if difference:
-            change += "\n" + difference
-
         if self.fail_on_change:
-            raise Exception(change)
+            raise Exception(json.dumps(patch))
+
+        # Record calculated differences expressed as a json patch
+        self.patch = patch
 
         # Handle check mode by returning without performing action
         self.changed = True
         if self.module.check_mode:
             return
-
-        if self.change_record:
-            self.record_change(change)
 
         # Perform action on resource
         if self.action == 'delete':
@@ -996,21 +994,12 @@ class OpenShiftProvision:
                 command += ['--save-config']
             self.run_oc(command, data=json.dumps(self.resource), check_rc=True)
 
-    def record_change(self, change):
-        fh = open(self.change_record, 'a')
-        fh.write(change + "\n")
-
 def run_module():
     module_args = {
         'action': {
             'type': 'str',
             'required': False,
             'default': 'apply'
-        },
-        'change_record': {
-            'type': 'str',
-            'required': False,
-            'default': None
         },
         'patch_type': {
             'type': 'str',
@@ -1049,11 +1038,17 @@ def run_module():
     except Exception as e:
         module.fail_json(
             msg=str(e),
+            action = provisioner.action,
             traceback=traceback.format_exc().split('\n'),
             resource=provisioner.resource
         )
 
-    module.exit_json(changed=provisioner.changed, resource=provisioner.resource)
+    module.exit_json(
+        action = provisioner.action,
+        changed = provisioner.changed,
+        patch = provisioner.patch,
+        resource = provisioner.resource
+    )
 
 def main():
     run_module()

@@ -82,6 +82,9 @@ Role Variables
 * `openshift_provision` - Variable for single cluster management, ignored
   if `openshift_clusters` is set.
 
+* `openshift_provision_change_record` - Local filename in which to record all
+  changes between current state and configured state.
+
 * `openshift_resource_path` - Default list of directories to search for file
   paths in cluster and project `cluster_resources` and `resources` definitions.
   Default to playbook directory
@@ -109,6 +112,10 @@ Top level definition of how to manage a cluster:
   cluster resources will only be provisioned if this variable is not set or if
   `openshift_master_cluster_public_hostname` equals a value in
   `openshift_host_env`
+
+* `change_record` - Local filename in which to record all changes between
+  current state and configured state. Defaults to
+  `openshift_provision_change_record`
 
 * `cluster_resources` - List of OpenShift resource definitions, these should
   be cluster level resources. Resources may be specified by a file path

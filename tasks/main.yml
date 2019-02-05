@@ -20,6 +20,10 @@
   loop_control:
     loop_var: openshift_cluster
   vars:
+    change_record: >-
+      {{ openshift_cluster.change_record
+       | default(openshift_provision_change_record)
+      }}
     oc_cmd_opt: >-
       {{ oc_cmd_base }}
       {% if openshift_connection_certificate_authority is defined %}

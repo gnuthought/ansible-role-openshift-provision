@@ -1,3 +1,4 @@
+---
 - name: Get current members of group {{ group.name }}
   command: >
     {{ oc_cmd }} get group {{ group.name }} -o 'jsonpath={range .users[*]}{@}{"\n"}{end}'
@@ -21,3 +22,6 @@
         {{ group.members if group.remove_unlisted_members|default(False)|bool
            else group.members|union(get_group_members.stdout_lines)|sort
         }}
+  register: provision
+  changed_when: >-
+    provision | record_change_provision(change_record)

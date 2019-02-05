@@ -19,8 +19,8 @@
 
   roles:
   - role: openshift-provision
-    openshift_clusters:
-    - groups:
+    openshift_provision:
+      groups:
       - name: subgenius
         members:
         - alice
@@ -45,8 +45,8 @@
 
   roles:
   - role: openshift-provision
-    openshift_clusters:
-    - groups:
+    openshift_provision:
+      groups:
       - name: subgenius
         members:
         - candice
@@ -69,8 +69,8 @@
 
   roles:
   - role: openshift-provision
-    openshift_clusters:
-    - groups:
+    openshift_provision:
+      groups:
       - name: subgenius
         members:
         - alice

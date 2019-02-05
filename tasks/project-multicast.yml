@@ -19,3 +19,6 @@
     got_netnamespace.metadata.annotations['netnamespace.network.openshift.io/multicast-enabled'] is undefined or
     project.multicast_enabled | bool != got_netnamespace.metadata.annotations['netnamespace.network.openshift.io/multicast-enabled'] | bool
     )
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)

@@ -53,8 +53,14 @@
         {{ got_buildconfig | to_yaml }}
         <<<
     vars:
-      got_buildconfig: "{{ get_buildconfig.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_buildconfig: "{{ provision_buildconfig | combine(ignore_differences, recursive=True) }}"
+      got_buildconfig: >-
+        {{ get_buildconfig.stdout | from_json
+         | combine(ignore_differences, recursive=True)
+        }}
+      cmp_buildconfig: >-
+        {{ provision_buildconfig
+         | combine(ignore_differences, recursive=True)
+        }}
     when: >-
       cmp_buildconfig.metadata != got_buildconfig.metadata or
       cmp_buildconfig.spec != got_buildconfig.spec
@@ -74,7 +80,8 @@
   hosts: localhost
   connection: local
   vars:
-    provision_buildconfig: "{{ lookup('template', 'resources/test-buildconfig.yml.j2') | from_yaml }}"
+    provision_buildconfig: >-
+      {{ lookup('template', 'resources/test-buildconfig.yml.j2') | from_yaml }}
     from_source_name: httpd:latest
 
   tasks:
@@ -83,6 +90,26 @@
       connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_buildconfig }}"
+    register: do_update
+
+  - name: Check reported update patch
+    fail:
+      msg: |
+        Update patch did not match expected
+        >>>
+        {{ update_patch | to_yaml }}
+        ===
+        {{ do_update.patch | to_yaml }}
+        <<<
+    vars:
+      update_patch:
+      - op: test
+        path: /spec/strategy/sourceStrategy/from/name
+        value: httpd:latest
+      - op: replace
+        path: /spec/strategy/sourceStrategy/from/name
+        value: httpd:2.4
+    when: do_update.patch != update_patch
 
   - name: Get BuildConfig
     command: >-
@@ -101,8 +128,14 @@
         {{ got_buildconfig | to_yaml }}
         <<<
     vars:
-      got_buildconfig: "{{ get_buildconfig.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_buildconfig: "{{ provision_buildconfig | combine(ignore_differences, recursive=True) }}"
+      got_buildconfig: >-
+        {{ get_buildconfig.stdout | from_json
+         | combine(ignore_differences, recursive=True)
+        }}
+      cmp_buildconfig: >-
+        {{ provision_buildconfig
+         | combine(ignore_differences, recursive=True)
+        }}
     when: >-
       cmp_buildconfig.metadata != got_buildconfig.metadata or
       cmp_buildconfig.spec != got_buildconfig.spec

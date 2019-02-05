@@ -7,6 +7,7 @@
       server: "{{ openshift_connection_server }}"
       insecure_skip_tls_verify: "{{ openshift_connection_insecure_skip_tls_verify }}"
       token: "{{ openshift_connection_token }}"
+    openshift_provision_change_record: "{{ openshift_provision_change_record | default('') }}"
     openshift_resource_path:
     - resources
     test_oc_cmd: >-

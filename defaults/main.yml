@@ -3,3 +3,5 @@ oc_cmd_base: oc
 
 openshift_resource_path:
 - "{{ playbook_dir }}"
+
+openshift_provision_change_record: ''

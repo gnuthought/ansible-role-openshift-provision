@@ -21,3 +21,6 @@
     --to={{ project.join_pod_network }}
     {{ project.name }}
   when: get_pod_network.stdout != get_join_pod_network.stdout
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)

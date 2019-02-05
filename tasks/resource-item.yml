@@ -21,3 +21,6 @@
       | default('apply', true)
       }}
   when: provision_action != 'ignore'
+  register: provision
+  changed_when: >-
+    provision | record_change_provision(change_record)
