@@ -1,4 +1,4 @@
-apiVersion: v1
+apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
   labels:
@@ -6,6 +6,7 @@ metadata:
   name: test-deploymentconfig
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     deploymentconfig: test-deploymentconfig
   strategy:

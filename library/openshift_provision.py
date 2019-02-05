@@ -18,21 +18,27 @@ description:
   - Manage OpenShift resources idempotently
 
 options:
-  resource:
-    description:
-    - Resource definition
-    required: true
-    default: None
-    aliases: []
-  namespace:
-    description:
-    - Namespace in which to provision resource
-    required: false
-    aliases: []
   action:
     description:
     - Action to perform on resource: apply, create, delete, patch, replace
     default: apply
+    required: false
+    aliases: []
+  change_record:
+    description:
+    - file path to record changes
+    default: null
+    required: false
+    aliases: []
+  connection:
+    description:
+    - Dictionary of connection options, may include 'token', 'server', 'certificate_authority', 'insecure_skip_tls_verify', and 'oc_cmd'
+    default: {}
+    required: false
+    aliases: []
+  namespace:
+    description:
+    - Namespace in which to provision resource
     required: false
     aliases: []
   patch_type:
@@ -41,11 +47,11 @@ options:
     default: strategic
     required: false
     aliases: []
-  connection:
+  resource:
     description:
-    - Dictionary of connection options, may include 'token', 'server', 'certificate_authority', 'insecure_skip_tls_verify', and 'oc_cmd'
-    default: {}
-    required: false
+    - Resource definition
+    required: true
+    default: None
     aliases: []
 
 extends_documentation_fragment: []
@@ -85,6 +91,48 @@ resource:
 '''
 
 from ansible.module_utils.basic import AnsibleModule
+
+def recursive_compare(src, dst):
+    # Adapted from jsonpatch to add current value
+    def compare_values(path, value, other):
+        if value == other:
+            return
+        if isinstance(value, dict) and isinstance(other, dict):
+            for operation in compare_dict(path, value, other):
+                yield operation
+        elif isinstance(value, list) and isinstance(other, list):
+            for operation in compare_list(path, value, other):
+                yield operation
+        else:
+            yield {'op': 'replace', 'path': '/'.join(path), 'current_value': value, 'value': other}
+
+    def compare_dict(path, src, dst):
+        for key in src:
+            if key not in dst:
+                yield {'op': 'remove', 'path': '/'.join(path + [key])}
+                continue
+            current = path + [key]
+            for operation in compare_values(current, src[key], dst[key]):
+                yield operation
+        for key in dst:
+            if key not in src:
+                yield {'op': 'add', 'path': '/'.join(path + [key]), 'value': dst[key]}
+
+    def compare_list(path, src, dst):
+        lsrc, ldst = len(src), len(dst)
+        for idx in range(min(lsrc, ldst)):
+            current = path + [str(idx)]
+            for operation in compare_values(current, src[idx], dst[idx]):
+                yield operation
+        if lsrc < ldst:
+            for idx in range(lsrc, ldst):
+                current = path + [str(idx)]
+                yield {'op': 'add', 'path': '/'.join(current), 'value': dst[idx]}
+        elif lsrc > ldst:
+            for idx in reversed(range(ldst, lsrc)):
+                yield {'op': 'remove', 'path': '/'.join(path + [str(idx)])}
+
+    return list(compare_values([''], src, dst))
 
 def sort_lists_in_dict(d):
     """Given a dictionary where some values are lists, sort those lists"""
@@ -295,6 +343,7 @@ class OpenShiftProvision:
     def __init__(self, module):
         self.module = module
         self.changed = False
+        self.change_record = module.params['change_record']
         self.action = module.params['action']
         self.fail_on_change = module.params['fail_on_change']
         self.patch_type = module.params['patch_type']
@@ -748,28 +797,29 @@ class OpenShiftProvision:
         else:
           return ['metadata', 'spec']
 
+
     def compare_resource(self, resource, compare_to=None):
         if resource == None:
-            return False
+            return 'cluster resource not found'
         if compare_to == None:
             compare_to = self.resource
 
         a = self.normalize_resource(compare_to)
         b = self.normalize_resource(resource)
+        differences = []
         for field in self.comparison_fields():
             if field in a and not field in b:
-                if self.fail_on_change:
-                    raise Exception(field + ' not in b')
-                return False
-            if field in b and not field in a:
-                if self.fail_on_change:
-                    raise Exception(field + ' not in a')
-                return False
-            if field in a and field in b and a[field] != b[field]:
-                if self.fail_on_change:
-                    raise Exception('a != b ' + field + json.dumps(a[field]) + json.dumps(b[field]))
-                return False
-        return True
+                differences.append(field + ' not in cluster resource')
+            elif field in b and not field in a:
+                differences.append(field + ' not in resource definition')
+            elif field in a and field in b and a[field] != b[field]:
+                differences.append("Differences in {}:\n{}".format(
+                    field,
+                    "\n".join([json.dumps(d) for d in recursive_compare(b[field], a[field])])
+                ))
+        if differences:
+            return "\n".join(differences)
+        return None
 
     def check_patch(self, resource):
         '''return true if patch would not change resource'''
@@ -864,12 +914,14 @@ class OpenShiftProvision:
 
         # Check if changes are required and if we need to reset the apply metadata.
         reset_last_applied_configuration = False
+        difference = None
         if self.action == 'create':
             if current_resource:
                 self.resource = current_resource
                 return
         elif self.action == 'apply':
-            if self.compare_resource(current_resource):
+            difference = self.compare_resource(current_resource)
+            if not difference:
                 self.resource = current_resource
                 return
             # If current resource does not match last_applied_configuration
@@ -889,19 +941,33 @@ class OpenShiftProvision:
         elif self.action == 'replace':
             if current_resource == None:
                 self.action = 'create'
-            elif self.compare_resource(current_resource):
-                self.resource = current_resource
-                return
+            else:
+                difference = self.compare_resource(current_resource)
+                if not difference:
+                    self.resource = current_resource
+                    return
         elif self.action == 'delete':
             if current_resource == None:
                 return
         elif self.action == 'ignore':
             return
 
+        change = self.action + ' ' + self.resource['kind']
+        if self.namespace:
+            change += ' in ' + self.namespace
+        if difference:
+            change += "\n" + difference
+
+        if self.fail_on_change:
+            raise Exception(change)
+
         # Handle check mode by returning without performing action
         self.changed = True
         if self.module.check_mode:
             return
+
+        if self.change_record:
+            self.record_change(change)
 
         # Perform action on resource
         if self.action == 'delete':
@@ -930,12 +996,21 @@ class OpenShiftProvision:
                 command += ['--save-config']
             self.run_oc(command, data=json.dumps(self.resource), check_rc=True)
 
+    def record_change(self, change):
+        fh = open(self.change_record, 'a')
+        fh.write(change + "\n")
+
 def run_module():
     module_args = {
         'action': {
             'type': 'str',
             'required': False,
             'default': 'apply'
+        },
+        'change_record': {
+            'type': 'str',
+            'required': False,
+            'default': None
         },
         'patch_type': {
             'type': 'str',
