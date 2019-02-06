@@ -799,8 +799,8 @@ class OpenShiftProvision:
         if compare_to == None:
             compare_to = self.resource
 
-        current = self.normalize_resource(compare_to)
-        config = self.normalize_resource(resource)
+        config = self.normalize_resource(compare_to)
+        current = self.normalize_resource(resource)
         patch = []
         for field in self.comparison_fields():
             if field in current and not field in config:
