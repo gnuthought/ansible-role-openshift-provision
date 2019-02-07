@@ -26,8 +26,8 @@ def record_change_provision(value, change_record=''):
     fh.write('action: ' + value['action'] + "\n")
     fh.write('kind: ' + value['resource']['kind'] + "\n")
     fh.write('name: ' + value['resource']['metadata']['name'] + "\n")
-    if 'namespace' in value:
-        fh.write('namespace: ' + value['namespace'] + "\n")
+    if 'namespace' in value['resource']['metadata']:
+        fh.write('namespace: ' + value['resource']['metadata']['namespace'] + "\n")
     if value.get('patch', None):
         fh.write('patch: ' + json.dumps(value['patch']) + "\n")
     else:
