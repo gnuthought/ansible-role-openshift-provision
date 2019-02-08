@@ -9,6 +9,7 @@
 
 - name: Create imagestreams in {{ project.name }}
   command: >-
+    {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} create imagestream {{ imagestream }} -n {{ project.name }}
   with_items: "{{ project.imagestreams | default([]) }}"
   loop_control:
@@ -20,6 +21,7 @@
   when: >-
     current_imagestream is undefined or
     current_imagestream == ''
+  check_mode: false
   register: command
   changed_when: >-
     command | record_change_command(change_record)

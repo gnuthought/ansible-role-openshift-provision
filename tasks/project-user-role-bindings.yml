@@ -1,5 +1,7 @@
+---
 - name: Grant roles on {{ project.name }} to users
   command: >-
+    {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} adm policy -n {{ project.name }} add-role-to-user
     {{ ocp_role_name }} {{ ocp_user_name }}
     {% if openshift_provision_openshift_version|version_compare('v3.9', '>=') %}
@@ -19,6 +21,7 @@
     current_role_users: >-
       {{ current_role_bindings | json_query(current_role_users_query) }}
   when: ocp_user_name not in current_role_users
+  check_mode: false
   register: command
   changed_when: >-
     command | record_change_command(change_record)

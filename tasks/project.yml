@@ -9,17 +9,20 @@
 
 - name: Create project {{ project.name }}
   command: >-
+    {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} {% if project.admin_create | default(False) | bool %}adm{% endif %}
     new-project {{ project.name }}
     {% if project.display_name is defined %}--display-name={{ project.display_name | quote }}{% endif %}
     {% if project.description is defined %}--description={{ project.description | quote }}{% endif %}
   when: get_project.rc != 0
+  check_mode: false
   register: command
   changed_when: >-
     command | record_change_command(change_record)
 
 - name: Set project display-name for {{ project.name }}
   command: >
+    {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} patch namespace {{ project.name }}
     -R -p {{ patch | to_json | quote }}
   vars:
@@ -39,12 +42,14 @@
       current_display_name is not defined or
       current_display_name != project.display_name
     )
+  check_mode: false
   register: command
   changed_when: >-
     command | record_change_command(change_record)
 
 - name: Set project description for {{ project.name }}
   command: >
+    {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} patch namespace {{ project.name }}
     -R -p {{ patch | to_json | quote }}
   vars:
@@ -64,12 +69,14 @@
       current_description is not defined or
       current_description != project.description
     )
+  check_mode: false
   register: command
   changed_when: >-
     command | record_change_command(change_record)
 
 - name: Set project node-selector for {{ project.name }}
   command: >
+    {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} patch namespace {{ project.name }}
     -R -p {{ patch | to_json | quote }}
   vars:
@@ -88,12 +95,14 @@
       current_node_selector is not defined or
       current_node_selector != project.node_selector
     )
+  check_mode: false
   register: command
   changed_when: >-
     command | record_change_command(change_record)
 
 - name: Set project annotations for {{ project.name }}
   command: >
+    {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} patch namespace {{ project.name | quote }}
     -R -p {{ patch | to_json | quote }}
   vars:
@@ -113,12 +122,14 @@
       current_annotations == '' or
       current_annotations != current_annotations | combine(project.annotations, recursive=True)
     )
+  check_mode: false
   register: command
   changed_when: >-
     command | record_change_command(change_record)
 
 - name: Set project labels for {{ project.name }}
   command: >
+    {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} patch namespace {{ project.name | quote }}
     --type=json -o json -p {{ patch | to_json | quote }}
   vars:
@@ -138,6 +149,7 @@
       current_labels is not defined or
       current_labels != project.labels
     )
+  check_mode: false
   register: command
   changed_when: >-
     command | record_change_command(change_record)

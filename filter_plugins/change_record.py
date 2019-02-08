@@ -9,6 +9,8 @@ def record_change_command(value, change_record=''):
             if not item.startswith('--server=')
             and not item.startswith('--token=')
         ]
+        if cmd[0] == 'echo':
+            cmd.pop(0)
         fh.write(
             "---\n"
             "action: command\n" +

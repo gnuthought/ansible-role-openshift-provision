@@ -9,6 +9,7 @@
 
 - name: Set mulitcast-enabled for {{ project.name }}
   command: >-
+    {% if ansible_check_mode %}echo{% endif %}
     oc annotate netnamespace {{ project.name }} --overwrite
     netnamespace.network.openshift.io/multicast-enabled={% if project.multicast_enabled | bool %}true{% else %}false{% endif %}
   vars:
@@ -19,6 +20,7 @@
     got_netnamespace.metadata.annotations['netnamespace.network.openshift.io/multicast-enabled'] is undefined or
     project.multicast_enabled | bool != got_netnamespace.metadata.annotations['netnamespace.network.openshift.io/multicast-enabled'] | bool
     )
+  check_mode: false
   register: command
   changed_when: >-
     command | record_change_command(change_record)

@@ -7,38 +7,6 @@
   failed_when: false
   register: get_role_bindings
 
-# Handle user_to_role
-# DEPRECATED - Adapted from ansible stacks
-- name: Deprecation Warning
-  fail:
-    msg: USING DEPRECATED FEATURE openshift_clusters[*].projects[*].user_to_role
-  ignore_errors: true
-  when: project.user_to_role is defined
-
-- name: Handle deprecated openshift_clusters[*].projects[*].user_to_role
-  include_tasks: project-user-role-bindings.yml
-  with_items: "{{ project.user_to_role | default([]) }}"
-  vars:
-    current_role_bindings: "{{ get_role_bindings.stdout | from_json }}"
-  loop_control:
-    loop_var: user_role
-
-# Handle group_to_role
-# DEPRECATED - Adapted from ansible stacks
-- name: Deprecation Warning
-  fail:
-    msg: USING DEPRECATED FEATURE openshift_clusters[*].projects[*].group_to_role
-  ignore_errors: true
-  when: project.user_to_role is defined
-
-- name: Handle deprecated openshift_clusters[*].projects[*].group_to_role
-  include_tasks: project-group-role-bindings.yml
-  with_items: "{{ project.group_to_role | default([]) }}"
-  vars:
-    current_role_bindings: "{{ get_role_bindings.stdout | from_json }}"
-  loop_control:
-    loop_var: group_role
-
 - name: Handle users in role_bindings
   include_tasks: project-user-role-bindings.yml
   static: false

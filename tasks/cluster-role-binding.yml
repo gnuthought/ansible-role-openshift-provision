@@ -1,31 +1,37 @@
+---
 - name: Grant user cluster role {{ cluster_role_binding.role }}
-  command: >
+  command: >-
+    {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} adm policy add-cluster-role-to-user {{ cluster_role_binding.role }} {{ user }}
-    {% if openshift_provision_openshift_version|version_compare('v3.9', '>=') %}
+    {% if openshift_provision_openshift_version is version_compare('v3.9', '>=') %}
     --rolebinding-name={{ cluster_role_binding.role }}
     {% endif %}
   with_items: "{{ cluster_role_binding.users | default([]) }}"
   loop_control:
     loop_var: user
   when: user not in current_cluster_role_users
+  check_mode: false
   register: command
   changed_when: >-
     command | record_change_command(change_record)
 
 - name: Grant group cluster role {{ cluster_role_binding.role }}
   command: >
+    {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} adm policy add-cluster-role-to-group {{ cluster_role_binding.role }} {{ group }}
   with_items: "{{ cluster_role_binding.groups | default([]) }}"
   loop_control:
     loop_var: group
   when: >
     group not in current_cluster_role_groups
+  check_mode: false
   register: command
   changed_when: >-
     command | record_change_command(change_record)
 
 - name: Remove unlisted users from cluster role {{ cluster_role_binding.role }}
   command: >
+    {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} adm policy remove-cluster-role-from-user {{ cluster_role_binding.role }} {{ user }}
   with_items: "{{ current_cluster_role_users }}"
   loop_control:
@@ -34,12 +40,14 @@
     ( cluster_role_binding.remove_unlisted | default(false) | bool or
       cluster_role_binding.remove_unlisted_users | default(false) | bool ) and
     user not in cluster_role_binding.users | default([])
+  check_mode: false
   register: command
   changed_when: >-
     command | record_change_command(change_record)
 
 - name: Remove unlisted groups from cluster role {{ cluster_role_binding.role }}
   command: >
+    {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} adm policy remove-cluster-role-from-group {{ cluster_role_binding.role }} {{ group }}
   with_items: "{{ current_cluster_role_groups }}"
   loop_control:
@@ -48,6 +56,7 @@
     ( cluster_role_binding.remove_unlisted | default(false) | bool or
       cluster_role_binding.remove_unlisted_groups | default(false) | bool ) and
     group not in cluster_role_binding.groups | default([])
+  check_mode: false
   register: command
   changed_when: >-
     command | record_change_command(change_record)

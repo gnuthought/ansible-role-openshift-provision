@@ -1,5 +1,6 @@
 - name: Grant roles on {{ project.name }} to groups
   command: >
+    {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} adm policy -n {{ project.name }} add-role-to-group
     {{ ocp_role_name }} {{ ocp_group_name }}
   with_nested:
@@ -16,6 +17,7 @@
     current_role_groups: >-
       {{ current_role_bindings | json_query(current_role_groups_query) }}
   when: ocp_group_name not in current_role_groups
+  check_mode: false
   register: command
   changed_when: >-
     command | record_change_command(change_record)

@@ -1,6 +1,7 @@
 ---
 - name: Remove role {{ ocp_role_name }} from group in project {{ project.name }}
   command: >
+    {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} adm policy -n {{ project.name }} remove-role-from-group
     {{ ocp_role_name }} {{ group_name }}
   with_items: "{{ current_role_groups }}"
@@ -9,6 +10,7 @@
   when: >
     group_name not in ocp_groups and
     { "name": group_name } not in ocp_groups
+  check_mode: false
   register: command
   changed_when: >-
     command | record_change_command(change_record)

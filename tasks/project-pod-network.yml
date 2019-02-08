@@ -17,10 +17,12 @@
 
 - name: Join pod network for {{ project.name }} to {{ project.join_pod_network }}
   command: >
+    {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} adm pod-network join-projects
     --to={{ project.join_pod_network }}
     {{ project.name }}
   when: get_pod_network.stdout != get_join_pod_network.stdout
+  check_mode: false
   register: command
   changed_when: >-
     command | record_change_command(change_record)
