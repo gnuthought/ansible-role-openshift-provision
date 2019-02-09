@@ -826,7 +826,7 @@ class OpenShiftProvision:
         return patch
 
     def check_patch(self, resource):
-        '''return true if patch would not change resource'''
+        '''return differences created by applying patch'''
         if resource == None:
             raise Exception("Cannot patch %s %s, resource not found" % (
                 self.resource['kind'], self.resource['metadata']['name']
@@ -848,8 +848,7 @@ class OpenShiftProvision:
             '--type=' + self.patch_type
         ]
         rc, stdout, stderr = self.run_oc(command, check_rc=True)
-        return resource == json.loads(stdout)
-
+        return self.compare_resource(resource, json.loads(stdout))
 
     def set_dynamic_values(self, current_resource):
         """
@@ -939,7 +938,8 @@ class OpenShiftProvision:
                     self.action = 'replace'
                     reset_last_applied_configuration = True
         elif self.action == 'patch':
-            if self.check_patch(current_resource):
+            patch = self.check_patch(current_resource)
+            if not patch:
                 self.resource = current_resource
                 return
         elif self.action == 'replace':

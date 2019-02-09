@@ -105,10 +105,10 @@
       update_patch:
       - op: test
         path: /spec/strategy/sourceStrategy/from/name
-        value: httpd:latest
+        value: httpd:2.4
       - op: replace
         path: /spec/strategy/sourceStrategy/from/name
-        value: httpd:2.4
+        value: httpd:latest
     when: do_update.patch != update_patch
 
   - name: Get BuildConfig

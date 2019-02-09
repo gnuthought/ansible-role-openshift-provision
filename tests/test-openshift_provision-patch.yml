@@ -78,6 +78,25 @@
       msg: Patch did not indicate change to ConfigMap
     when: not patch_configmap.changed
 
+  - name: Check reported update patch
+    fail:
+      msg: |
+        Update patch did not match expected
+        >>>
+        {{ update_patch | to_yaml }}
+        ===
+        {{ patch_configmap.patch | to_yaml }}
+        <<<
+    vars:
+      update_patch:
+      - op: test
+        path: /data/foo
+        value: bar
+      - op: replace
+        path: /data/foo
+        value: test
+    when: patch_configmap.patch != update_patch
+
   - name: Check re-patch ConfigMap
     openshift_provision:
       connection: "{{ openshift_connection }}"
