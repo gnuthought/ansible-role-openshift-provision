@@ -1,3 +1,4 @@
+---
 - name: Include openshift-provision role with multicast_enabled true
   include_role:
     name: openshift-provision

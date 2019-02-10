@@ -1,3 +1,4 @@
+---
 # Process cluster_resources before processing other items, including projects.
 # This allows items like cluster roles to be defined within cluster_resources.
 
@@ -25,27 +26,15 @@
   loop_control:
     loop_var: template
 
-- name: Handle persistent_volumes
-  include_tasks: persistent-volume.yml
-  with_items: "{{ openshift_cluster.persistent_volumes | default([]) }}"
-  loop_control:
-    loop_var: persistent_volume
-
 - name: Handle groups
   include_tasks: group.yml
-  with_items: "{{ openshift_cluster.groups | default([]) | union(user_groups | default([])) }}"
+  with_items: "{{ openshift_cluster.groups | default([]) }}"
   loop_control:
     loop_var: group
 
 - name: Handle cluster_role_bindings
-  include_tasks: provision-cluster-roles.yml
+  include_tasks: cluster-role-bindings.yml
   when: openshift_cluster.cluster_role_bindings is defined
-
-- name: Handle deprecated cluster_resource_quotas
-  include_tasks: cluster-resource-quota.yml
-  with_items: "{{ openshift_cluster.cluster_resource_quotas | default([]) }}"
-  loop_control:
-    loop_var: cluster_resource_quota
 
 - name: Handle projects
   include_tasks: project.yml

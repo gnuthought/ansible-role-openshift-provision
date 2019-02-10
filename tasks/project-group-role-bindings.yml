@@ -1,3 +1,4 @@
+---
 - name: Grant roles on {{ project.name }} to groups
   command: >
     {% if ansible_check_mode %}echo{% endif %}

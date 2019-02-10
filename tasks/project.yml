@@ -168,24 +168,6 @@
   - project.multicast_enabled is defined
   - project.multicast_enabled != ''
 
-- name: Handle deprecated project limit_ranges
-  include_tasks: project-limit-range.yml
-  with_items: "{{ project.limit_ranges | default([]) }}"
-  loop_control:
-    loop_var: limit_range
-
-- name: Handle deprecated project quotas
-  include_tasks: project-quota.yml
-  with_items: "{{ project.quotas | default([]) }}"
-  loop_control:
-    loop_var: quota
-
-- name: Handle deprecated project persistent_volume_claims
-  include_tasks: persistent-volume-claim.yml
-  with_items: "{{ project.persistent_volume_claims | default([]) }}"
-  loop_control:
-    loop_var: persistent_volume_claim
-
 - name: Handle project service_accounts
   include_tasks: service-accounts.yml
   when: >-

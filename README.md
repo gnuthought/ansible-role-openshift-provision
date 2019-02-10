@@ -89,13 +89,6 @@ Role Variables
   paths in cluster and project `cluster_resources` and `resources` definitions.
   Default to playbook directory
 
-* `openshift_resource_definition` (DEPRECATED) - Path to variable definitons
-  to dynamically load with `include_vars`. Use of standard Ansible variable
-  mechanisms is recommended
-
-* `user_groups` (DEPRECATED) - List of groups to create across all clusters,
-  use of `groups` under `openshift_clusters` is preferred
-
 ### `openshift_provision` or `openshift_clusters[*]`
 
 Top level definition of how to manage a cluster:
@@ -149,15 +142,6 @@ Top level definition of how to manage a cluster:
   should appear within `projects`, but sometimes specific ordering of resource
   creation may be desired. Resources are defined in the same manner as
   `cluster_resources`
-
-* `persistent_volumes` (DEPRECATED) - List of persistent volumes. Use of
-  `cluster_resources` is preferred
-
-* `cluster_resource_quotas` (DEPRECATED) - List of cluster resource quota
-  definitions. Use of `cluster_resources` is preferred
-
-* `cluster_roles` (DEPRECATED) - List of OpenShift cluster role definitions.
-  Use of `cluster_resources` is preferred
 
 ### `openshift_provision.cluster_resources` or `openshift_clusters[*].cluster_resources`
 
@@ -289,16 +273,6 @@ that list is processed by `openshift_provision`.
   project. Each entry is a name of a service account to create. Service
   accounts may also be created with `resources`, which allows for specifying
   `secrets` and `imagePullSecrets`.
-
-* `limit_ranges` (DEPRECATED) - List of limit ranges to apply to project, use
-  of `resources` is preferred to create LimitRange objects
-
-* `persistent_volume_claims` (DEPRECATED) - List of persistent volume claims
-  for project, use of `resources` is preferred to create PersistentVolumeClaim
-  objects
-
-* `quotas` (DEPRECATED) - List of quotas to apply to project, use of
-  `resources` is preferred to create ResourceQuota objects
 
 ### `projects[*].process_templates`
 
