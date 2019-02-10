@@ -82,7 +82,9 @@
     register: reprovision_service
 
   - fail:
-      msg: Reprovision indicated change to Service
+      msg: |-
+        Reprovision indicated change to Service:
+        {{ reprovision_service.patch }}
     when: reprovision_service.changed
 
 - name: Test Update

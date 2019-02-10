@@ -79,6 +79,12 @@ EXAMPLES = '''
 '''
 
 RETURN = '''
+action:
+  description: Action used to manage resource
+  type: string
+patch:
+  description: JSONpatch describing change
+  type: list
 resource:
   description: Resource definition
   type: dict
@@ -87,6 +93,10 @@ resource:
 from ansible.module_utils.basic import AnsibleModule
 
 def make_field_patch(field, current, config):
+    """
+    Create JSONpatch list to describe differences between the current state
+    and configured state.
+    """
     # Adapted from jsonpatch to add current value
     def compare_values(path, value, other):
         if value == other:
@@ -131,8 +141,20 @@ def make_field_patch(field, current, config):
 
     return list(compare_values(['/' + field], current, config))
 
+def set_dict_defaults(d, default):
+    for k, v in default.items():
+        if k not in d:
+            d[k] = v
+
 def sort_lists_in_dict(d):
-    """Given a dictionary where some values are lists, sort those lists"""
+    """
+    Given a dictionary where some values are lists, sort those lists.
+
+    In many places in kubernetes object definitions lists are used in places
+    where sets are implied such as a list of users, groups, or environment
+    variables in which order is not important. This creates issues when
+    comparing resources.
+    """
     for k, v in d.items():
         if type(v) is list:
             d[k] = sorted(set(v))
@@ -170,15 +192,6 @@ def normalize_resource_units(item):
         item['memory'] = normalize_memory_units(item['memory'])
     if 'cpu' in item:
         item['cpu'] = normalize_cpu_units(item['cpu'])
-
-def normalize_container_resources(resources):
-    if not resources:
-        return {}
-    if 'limits' in resources:
-        resources['limits'] = normalize_resource_units(resources['limits'])
-    if 'requests' in resources:
-        resources['requests'] = normalize_resource_units(resources['requests'])
-    return resources
 
 def merge_dict(merged, patch, overwrite=True):
     """
@@ -237,104 +250,559 @@ def merge_dict_list(merged_list, patch, overwrite=True):
     #merged_list.sort(key=str)
     return merged_list
 
-def normalize_env_list(env_list):
-    if env_list == None:
-        return []
+def normalize_BuildConfig_V1(build_config):
+    set_dict_defaults(build_config, {
+        'metadata': {},
+        'spec': {}
+    })
+    normalize_ObjectMeta_V1(build_config['metadata'])
+    normalize_BuildConfigSpec_V1(build_config['spec'])
+
+def normalize_BuildConfigCustomStrategy_V1(strategy):
+    set_dict_defaults(strategy, {
+        'env': [],
+        'from': {}
+    })
+    normalize_EnvVars_V1(strategy['env'])
+    normalize_ObjectReference_V1(strategy['from'])
+
+def normalize_BuildConfigDockerStrategy_V1(strategy):
+    set_dict_defaults(strategy, {
+        'env': [],
+        'from': {}
+    })
+    normalize_EnvVars_V1(strategy['env'])
+    normalize_ObjectReference_V1(strategy['from'])
+
+def normalize_BuildConfigJenkinsPipelineStrategy_V1(strategy):
+    set_dict_defaults(strategy, {
+        'env': []
+    })
+    normalize_EnvVars_V1(strategy['env'])
+
+def normalize_BuildConfigSpec_V1(spec):
+    set_dict_defaults(spec, {
+        'nodeSelector': None,
+        'resources': {},
+        'runPolicy': 'Serial',
+        'source': {},
+        'strategy': {},
+        'triggers': [{'imageChange': {}}]
+    })
+    normalize_BuildConfigSource_V1(spec['source'])
+    normalize_BuildConfigStrategy_V1(spec['strategy'])
+
+def normalize_BuildConfigSource_V1(source):
+    set_dict_defaults(source, {
+        'contextDir': ''
+    })
+    if 'git' in source:
+        normalize_BuildConfigSourceGit_V1(source['git'])
+
+def normalize_BuildConfigSourceGit_V1(git):
+    set_dict_defaults(git, {
+        'ref': ''
+    })
+
+def normalize_BuildConfigSourceStrategy_V1(strategy):
+    set_dict_defaults(strategy, {
+        'env': [],
+        'from': {}
+    })
+    normalize_EnvVars_V1(strategy['env'])
+    normalize_ObjectReference_V1(strategy['from'])
+
+def normalize_BuildConfigStrategy_V1(strategy):
+    if 'customStrategy' in strategy:
+        normalize_BuildConfigCustomStrategy_V1(strategy['customStrategy'])
+    if 'dockerStrategy' in strategy:
+        normalize_BuildConfigDockerStrategy_V1(strategy['dockerStrategy'])
+    if 'jenkinsPipelineStrategy' in strategy:
+        normalize_BuildConfigJenkinsPipelineStrategy_V1(strategy['jenkinsPipelineStrategy'])
+    if 'sourceStrategy' in strategy:
+        normalize_BuildConfigSourceStrategy_V1(strategy['sourceStrategy'])
+
+def normalize_ClientIPConfig_V1(config):
+    set_dict_defaults(config, {
+        'timeoutSeconds': 10800
+    })
+
+def normalize_ClusterRole_V1(role):
+    set_dict_defaults(role, {
+        'aggregationRule': {},
+        'metadata': {},
+        'rules': []
+    })
+    normalize_ObjectMeta_V1(role['metadata'])
+    for rule in role['rules']:
+        normalize_PolicyRule_V1(rule)
+
+def normalize_ConfigMapVolumeSource_V1(value):
+    set_dict_defaults(value, {
+        'defaultMode': 0o644
+    })
+
+def normalize_Container_V1(container):
+    set_dict_defaults(container, {
+        'env': [],
+        'imagePullPolicy': 'IfNotPresent',
+        'livenessProbe': None,
+        'ports': [],
+        'readinessProbe': None,
+        'resources': {},
+        'terminationMessagePath': '/dev/termination-log',
+        'terminationMessagePolicy': 'File',
+        'volumeMounts': []
+    })
+    normalize_EnvVars_V1(container['env'])
+    normalize_Probe_V1(container['livenessProbe'])
+    for port in container['ports']:
+        normalize_ContainerPort_V1(port)
+    normalize_ResourceRequirements_V1(container['resources'])
+    normalize_VolumeMountList_V1(container['volumeMounts'])
+    normalize_Probe_V1(container['readinessProbe'])
+
+def normalize_ContainerList_V1(container_list):
+    for container in container_list:
+        normalize_Container_V1(container)
+    container_list.sort(key=lambda e: e['name'])
+
+def normalize_ContainerPort_V1(port):
+    set_dict_defaults(port, {
+        'protocol': 'TCP'
+    })
+
+def normalize_ContainerPortList_V1(port_list):
+    for port in port_list:
+        normalize_ContainerPort_V1(port)
+
+def normalize_CronJob_V1beta1(cron_job):
+    set_dict_defaults(cron_job, {
+        'metadata': {},
+        'spec': {}
+    })
+    cron_job['status'] = None
+    normalize_CronJobSpec_V1beta1(cron_job['spec'])
+
+def normalize_CronJobSpec_V1beta1(spec):
+    set_dict_defaults(spec, {
+        'jobTemplate': {}
+    })
+    normalize_JobTemplateSpec_V1beta1(spec['jobTemplate'])
+
+def normalize_DaemonSet_V1(daemon_set):
+    set_dict_defaults(daemon_set, {
+        'metadata': {},
+        'spec': {}
+    })
+    daemon_set['status'] = None
+    normalize_ObjectMeta_V1(daemon_set['metadata'])
+    normalize_DaemonSetSpec_V1(daemon_set['spec'])
+
+def normalize_DaemonSetSpec_V1(spec):
+    set_dict_defaults(spec, {
+        'revisionHistoryLimit': 10,
+        'template': {}
+    })
+    normalize_PodTemplateSpec_V1(spec['template'])
+
+def normalize_Deployment_V1(deployment):
+    set_dict_defaults(deployment, {
+        'metadata': {},
+        'spec': {}
+    })
+    normalize_ObjectMeta_V1(deployment['metadata'])
+    normalize_DeploymentSpec_V1(deployment['spec'])
+    deployment['metadata']['annotations']['deployment.kubernetes.io/revision'] = 0
+    deployment['status'] = None
+
+def normalize_DeploymentConfig_V1(deployment_config):
+    set_dict_defaults(deployment_config, {
+        'metadata': {},
+        'spec': {}
+    })
+    normalize_ObjectMeta_V1(deployment_config['metadata'])
+    normalize_DeploymentConfigSpec_V1(deployment_config['spec'])
+
+def normalize_DeploymentConfigSpec_V1(spec):
+    set_dict_defaults(spec, {
+        'revisionHistoryLimit': 10,
+        'strategy': {},
+        'template': {},
+        'test': False,
+        'triggers': [{"type": "ConfigChange"}]
+    })
+    normalize_DeploymentConfigStrategy_V1(spec['strategy'])
+    normalize_PodTemplateSpec_V1(spec['template'])
+    for trigger in spec['triggers']:
+        normalize_DeploymentConfigTrigger_V1(trigger)
+
+    # Ignore image value if there are ImageChange triggers
+    image_change_trigger_container_names = []
+    for trigger in spec['triggers']:
+        if trigger['type'] == 'ImageChange':
+            image_change_trigger_container_names.extend(trigger['containerNames'])
+    for container in spec['template']['spec']['containers']:
+        if container['name'] in image_change_trigger_container_names:
+            container['image'] = ''
+
+def normalize_DeploymentConfigStrategy_V1(strategy):
+    set_dict_defaults(strategy, {
+        'activeDeadlineSeconds': 21600,
+        'resources': {}
+    })
+    if 'recreateParams' in strategy:
+        normalize_DeploymentConfigStrategyRecreateParams_V1(strategy['recreateParams'])
+
+def normalize_DeploymentConfigStrategyRecreateParams_V1(params):
+    set_dict_defaults(params, {
+        'timeoutSeconds': 600
+    })
+
+def normalize_DeploymentConfigTrigger_V1(trigger):
+    if 'imageChangeParams' in trigger:
+        normalize_DeploymentConfigTriggerImageChangeParams_V1(trigger['imageChangeParams'])
+
+def normalize_DeploymentConfigTriggerImageChangeParams_V1(params):
+    set_dict_defaults(params, {
+        'from': {}
+    })
+    normalize_ObjectReference_V1(params['from'])
+    params['lastTriggeredImage'] = ''
+
+def normalize_DeploymentSpec_V1(spec):
+    set_dict_defaults(spec, {
+        'progressDeadlineSeconds': 600,
+        'revisionHistoryLimit': 10,
+        'template': {}
+    })
+    normalize_PodTemplateSpec_V1(spec['template'])
+
+def normalize_EnvVars_V1(env_list):
     for env in env_list:
         # Openshift drops the empty value strings, put those back to compare
-        if 'value' not in env:
+        if 'value' not in env \
+        and 'valueFrom' not in env:
             env['value'] = ''
     env_list.sort(key=lambda e: e['name'])
-    return env_list
 
-def port_list_defaults(items):
-    return merge_dict_list(
-        items,
-        { "protocol": "TCP" },
-        overwrite=False
-    )
+def normalize_HorizontalPodAutoscaler(autoscaler):
+    set_dict_defaults(autoscaler, {
+        'metadata': {},
+        'spec': {}
+    })
+    autoscaler['status'] = None
+    normalize_ObjectMeta_V1(autoscaler['metadata'])
+    autoscaler['metadata']['annotations']['autoscaling.alpha.kubernetes.io/conditions'] = ''
 
-def imagestream_tags_defaults(tags):
-    return merge_dict_list(
-        tags,
-        {
-            "referencePolicy": {
-                "type": "Source"
-            }
-        },
-        overwrite=False
-    )
+def normalize_HostPathVolumeSource_V1(host_path_source):
+    set_dict_defaults(host_path_source, {
+        'type': ''
+    })
 
-def pod_volumes_defaults(volumes):
-    if not volumes:
-        return []
-    for volume in volumes:
-        if 'configMap' in volume:
-            if 'defaultMode' not in volume['configMap']:
-                volume['configMap']['defaultMode'] = 0o644
-        elif 'hostPath' in volume:
-            if 'type' not in volume['hostPath']:
-                volume['hostPath']['type'] = ''
-        elif 'secret' in volume:
-            if 'defaultMode' not in volume['secret']:
-                volume['secret']['defaultMode'] = 0o644
-    return volumes
+def normalize_HTTPGetAction_V1(value):
+    set_dict_defaults(value, {
+        'scheme': 'HTTP'
+    })
 
-def pod_template_defaults(pod_template):
-    merge_dict(pod_template, {
-        "metadata": {
-            "creationTimestamp": None,
-        },
-        "spec": {
-            "containers": lambda containers : merge_dict_list(
-                containers,
-                {
-                    "env": normalize_env_list,
-                    "imagePullPolicy": "IfNotPresent",
-                    "livenessProbe": {
-                        "httpGet": {
-                            "scheme": "HTTP"
-                        },
-                        "initialDelaySeconds": 30,
-                        "periodSeconds": 10,
-                        "successThreshold": 1,
-                        "failureThreshold": 3
-                    },
-                    "ports": port_list_defaults,
-                    "readinessProbe": {
-                        "httpGet": {
-                            "scheme": "HTTP"
-                        },
-                        "initialDelaySeconds": 30,
-                        "periodSeconds": 10,
-                        "successThreshold": 1,
-                        "failureThreshold": 3
-                    },
-                    "resources": normalize_container_resources,
-                    "terminationMessagePath": "/dev/termination-log",
-                    "terminationMessagePolicy": "File",
-                    "volumeMounts": []
-                },
-                overwrite=False
-            ),
-            "dnsPolicy": "ClusterFirst",
-            "restartPolicy": "Always",
-            "securityContext": {},
-            "schedulerName": "default-scheduler",
-            "terminationGracePeriodSeconds": 30,
-            "volumes": pod_volumes_defaults
-        }
-    }, overwrite=False)
+def normalize_ImageStream_V1(image_stream):
+    set_dict_defaults(image_stream, {
+        'metadata': {},
+        'spec': {}
+    })
+    normalize_ObjectMeta_V1(image_stream['metadata'])
+    normalize_ImageStreamSpec_V1(image_stream['spec'])
+    image_stream['metadata']['annotations']['openshift.io/image.dockerRepositoryCheck'] = ''
+
+def normalize_ImageStreamSpec_V1(spec):
+    set_dict_defaults(spec, {
+        'dockerImageRepository': '',
+        'lookupPolicy': { 'local': False },
+        'tags': []
+    })
+    for tag in spec['tags']:
+        normalize_ImageStreamTag_V1(tag)
+
+def normalize_ImageStreamTag_V1(tag):
+    set_dict_defaults(tag, {
+        'referencePolicy': { 'type': 'Source' }
+    })
+    tag['generation'] = 0
+
+def normalize_JobSpec_V1(spec):
+    set_dict_defaults(spec, {
+        'template': {}
+    })
+    normalize_PodTemplateSpec_V1(spec['template'])
+
+def normalize_JobTemplateSpec_V1beta1(spec):
+    set_dict_defaults(spec, {
+        'metadata': {},
+        'spec': {}
+    })
+    normalize_ObjectMeta_V1(spec['metadata'])
+    normalize_JobSpec_V1(spec['spec'])
+
+def normalize_NetworkPolicy_V1(policy):
+    set_dict_defaults(policy, {
+        'metadata': {},
+        'spec': {}
+    })
+    normalize_ObjectMeta_V1(policy['metadata'])
+    normalize_NetworkPolicySpec_V1(policy['spec'])
+
+def normalize_NetworkPolicySpec_V1(spec):
+    set_dict_defaults(policy, {
+        'podSelector': {},
+        'policyTypes': ['Ingress']
+    })
+
+
+def normalize_ObjectMeta_V1(metadata):
+    set_dict_defaults(metadata, {
+        'annotations': {}
+    })
+    metadata.update({
+        'creationTimestamp': '',
+        'generation': 0,
+        'namespace': '',
+        'resourceVersion': 0,
+        'selfLink': '',
+        'uid': ''
+    })
+    metadata['annotations']['kubectl.kubernetes.io/last-applied-configuration'] = ''
+
+def normalize_ObjectReference_V1(ref):
+    set_dict_defaults(ref, {
+        'namespace': ''
+    })
+
+def normalize_PersistentVolume_V1(pv):
+    set_dict_defaults(pv, {
+        'metadata': {},
+        'spec': {}
+    })
+    pv['status'] = None
+    set_dict_defaults(pv['metadata'], {
+        'finalizers': ['kubernetes.io/pv-protection']
+    })
+    normalize_ObjectMeta_V1(pv['metadata'])
+    normalize_PersistentVolumeSpec_V1(pv['spec'])
+    pv['metadata']['annotations']['pv.kubernetes.io/bound-by-controller'] = ''
+
+def normalize_PersistentVolumeClaim_V1(pvc):
+    set_dict_defaults(pvc, {
+        'metadata': {},
+        'spec': {}
+    })
+    set_dict_defaults(pvc['metadata'], {
+        'finalizers': ['kubernetes.io/pvc-protection']
+    })
+    normalize_ObjectMeta_V1(pvc['metadata'])
+    normalize_PersistentVolumeClaimSpec_V1(pvc['spec'])
+    pvc['status'] = None
+    pvc['metadata']['annotations']['pv.kubernetes.io/bind-completed'] = ''
+    pvc['metadata']['annotations']['pv.kubernetes.io/bound-by-controller'] = ''
+    pvc['metadata']['annotations']['volume.beta.kubernetes.io/storage-provisioner'] = ''
+
+def normalize_PersistentVolumeClaimSpec_V1(spec):
+    spec['volumeName'] = ''
+
+def normalize_PersistentVolumeSpec_V1(spec):
+    set_dict_defaults(spec, {
+        'persistentVolumeReclaimPolicy': 'Retain'
+    })
+    spec['claimRef'] = ''
+
+def normalize_PodSpec_V1(spec):
+    set_dict_defaults(spec, {
+        'containers': [],
+        'dnsPolicy': 'ClusterFirst',
+        'restartPolicy': 'Always',
+        'securityContext': {},
+        'schedulerName': 'default-scheduler',
+        'terminationGracePeriodSeconds': 30,
+        'volumes': []
+    })
+    normalize_ContainerList_V1(spec['containers'])
+    normalize_VolumeList_V1(spec['volumes'])
 
     # If pod template uses hostNetwork then ports on containers have
     # hostPort which defaults to containerPort
-    if pod_template['spec'].get('hostNetwork', False):
-        for container in pod_template['spec']['containers']:
+    if spec.get('hostNetwork', False):
+        for container in spec['containers']:
             for port in container['ports']:
                 if 'hostPort' not in port:
                     port['hostPort'] = port['containerPort']
-    return pod_template
 
+def normalize_PodTemplateSpec_V1(pod_template):
+    set_dict_defaults(pod_template, {
+        'metadata': {},
+        'spec': {}
+    })
+    normalize_ObjectMeta_V1(pod_template['metadata'])
+    normalize_PodSpec_V1(pod_template['spec'])
+
+def normalize_PolicyRule_V1(rule):
+    for key in (
+        'apiGroups',
+        'nonResourceURLs',
+        'resourceNames',
+        'resources',
+        'verbs'
+    ):
+        if key in rule and type(rule[key]) is list:
+            rule[key] = set(rule[key])
+
+def normalize_Probe_V1(probe):
+    if probe == None:
+        return
+    set_dict_defaults(probe, {
+        'initialDelaySeconds': 30,
+        'periodSeconds': 10,
+        'successThreshold': 1,
+        'failureThreshold': 3
+    })
+    if 'httpGet' in probe:
+        normalize_HTTPGetAction_V1(probe['httpGet'])
+
+def normalize_ResourceRequirements_V1(resources):
+    if not resources:
+        return {}
+    if 'limits' in resources:
+        resources['limits'] = normalize_resource_units(resources['limits'])
+    if 'requests' in resources:
+        resources['requests'] = normalize_resource_units(resources['requests'])
+    return resources
+
+def normalize_Role_V1(role):
+    set_dict_defaults(role, {
+        'metadata': {},
+        'rules': []
+    })
+    normalize_ObjectMeta_V1(role['metadata'])
+    for rule in role['rules']:
+        normalize_PolicyRule_V1(rule)
+
+def normalize_Route_V1(route):
+    set_dict_defaults(route, {
+        'metadata': {},
+        'spec': {}
+    })
+    normalize_ObjectMeta_V1(route['metadata'])
+    normalize_RouteSpec_V1(route['spec'])
+    route['status'] = None
+
+    # If route host is generated, then need to blank out the host field to compare
+    if '' == route['spec'].get('host', '') \
+    or 'true' == route['metadata']['annotations'].get('openshift.io/host.generated'):
+         route['spec']['host'] = ''
+         route['metadata']['annotations']['openshift.io/host.generated'] = 'true'
+
+def normalize_RouteSpec_V1(spec):
+    set_dict_defaults(spec, {
+        'to': {},
+        'wildcardPolicy': 'None'
+    })
+    set_dict_defaults(spec['to'], {
+        'weight': 100
+    })
+
+def normalize_SecretVolumeSource_V1(value):
+    set_dict_defaults(value, {
+        'defaultMode': 0o644
+    })
+
+def normalize_SecurityContextConstraints_V1(scc):
+    # Sometimes SecurityContextConstraints come back with values of None
+    # rather than an empty list.
+    for key in (
+        'allowedCapabilities',
+        'defaultAddCapabilities',
+        'groups',
+        'requiredDropCapabilities',
+        'supplementalGroups',
+        'users',
+        'volumes'
+    ):
+        if scc.get(key, None) == None:
+            scc[key] = set()
+        else:
+            scc[key] = set(scc[key])
+
+def normalize_Service_V1(service):
+    set_dict_defaults(service, {
+        'metadata': {},
+        'spec': {}
+    })
+    service['status'] = None
+    normalize_ObjectMeta_V1(service['metadata'])
+    normalize_ServiceSpec_V1(service['spec'])
+
+    # Ignore dynamic cert signing annotations on secrets
+    if 'service.alpha.openshift.io/serving-cert-secret-name' in service['metadata']['annotations']:
+        service['metadata']['annotations']['service.alpha.openshift.io/serving-cert-signed-by'] = ''
+
+def normalize_ServicePort_V1(port):
+    set_dict_defaults(port, {
+        'protocol': 'TCP'
+    })
+
+def normalize_ServiceSpec_V1(spec):
+    set_dict_defaults(spec, {
+        'ports': [],
+        'sessionAffinity': 'None',
+        'type': 'ClusterIP'
+    })
+    if spec['sessionAffinity'] == 'ClientIP':
+        set_dict_defaults(spec, {
+            'sessionAffinityConfig': {}
+        })
+    for port in spec['ports']:
+        normalize_ServicePort_V1(port)
+    if 'sessionAffinityConfig' in spec:
+        normalize_SessionAffinityConfig_V1(spec['sessionAffinityConfig'])
+
+def normalize_SessionAffinityConfig_V1(config):
+    set_dict_defaults(config, {
+        'clientIP': {}
+    })
+    normalize_ClientIPConfig_V1(config['clientIP'])
+
+def normalize_StatefulSet_V1(stateful_set):
+    set_dict_defaults(stateful_set, {
+        'metadata': {},
+        'spec': {}
+    })
+    normalize_ObjectMeta_V1(stateful_set['metadata'])
+    normalize_StatefulSetSpec_V1(stateful_set['spec'])
+    stateful_set['status'] = None
+
+def normalize_StatefulSetSpec_V1(spec):
+    set_dict_defaults(spec, {
+        'replicas': 1,
+        'revisionHistoryLimit': 10,
+        'template': {},
+        'volumeClaimTemplates': []
+    })
+    normalize_PodTemplateSpec_V1(spec['template'])
+    for pvc in spec['volumeClaimTemplates']:
+        normalize_PersistentVolumeClaim_V1(pvc)
+
+def normalize_Volume_V1(volume):
+    if 'configMap' in volume:
+        normalize_ConfigMapVolumeSource_V1( volume['configMap'] )
+    elif 'hostPath' in volume:
+        normalize_HostPathVolumeSource_V1( volume['hostPath'] )
+    elif 'secret' in volume:
+        normalize_SecretVolumeSource_V1( volume['secret'] )
+
+def normalize_VolumeList_V1(volumes):
+    for volume in volumes:
+        normalize_Volume_V1(volume)
+
+def normalize_VolumeMountList_V1(volume_mount_list):
+    volume_mount_list.sort(key=lambda e: e['name'])
 
 class OpenShiftProvision:
     def __init__(self, module):
@@ -469,314 +937,59 @@ class OpenShiftProvision:
             )
 
     def normalize_resource_BuildConfig(self, resource):
-        merge_dict(
-            resource,
-            {
-                "metadata": {
-                    "annotations": {
-                        "template.alpha.openshift.io/wait-for-ready": "true"
-                    }
-                },
-                "spec": {
-                    "nodeSelector": None,
-                    "resources": {},
-                    "runPolicy": "Serial",
-                    "source": {
-                        "contextDir": "",
-                        "git": {
-                            "ref": ""
-                        }
-                    },
-                    "strategy": {
-                        "sourceStrategy": {
-                            "env": normalize_env_list,
-                            "from": {
-                                "namespace": ""
-                            }
-                        }
-                    },
-                    # Build config default imageChange trigger
-                    "triggers": [{
-                        "imageChange": {}
-                    }]
-                }
-            },
-            overwrite=False
-        )
-
+        normalize_BuildConfig_V1(resource)
 
     def normalize_resource_ClusterRole(self, resource):
-        for rule in resource.get('rules',[]):
-            sort_lists_in_dict(rule)
+        normalize_ClusterRole_V1(resource)
 
     def normalize_resource_CronJob(self, resource):
-        merge_dict(
-            resource,
-            {
-                "spec": {
-                    "jobTemplate": {
-                        "metadata": {
-                            "creationTimestamp": None
-                        },
-                        "spec": {
-                            "template": pod_template_defaults
-                        }
-                    }
-                }
-            },
-            overwrite=False
-        )
+        normalize_CronJob_V1beta1(resource)
 
     def normalize_resource_DaemonSet(self, resource):
-        merge_dict(
-            resource,
-            {
-                "spec": {
-                    "revisionHistoryLimit": 10,
-                    "template": pod_template_defaults
-                }
-            },
-            overwrite=False
-        )
+        normalize_DaemonSet_V1(resource)
 
     def normalize_resource_Deployment(self, resource):
-        resource["metadata"]["annotations"]["deployment.kubernetes.io/revision"] = 0
-        merge_dict(
-            resource,
-            {
-                "spec": {
-                    "progressDeadlineSeconds": 600,
-                    "revisionHistoryLimit": 10,
-                    "template": pod_template_defaults
-                }
-            },
-            overwrite=False
-        )
+        normalize_Deployment_V1(resource)
 
     def normalize_resource_DeploymentConfig(self, resource):
-        merge_dict(
-            resource,
-            {
-                "spec": {
-                    "revisionHistoryLimit": 10,
-                    "strategy": {
-                        "activeDeadlineSeconds": 21600,
-                        "recreateParams": {
-                            "timeoutSeconds": 600
-                        },
-                        "resources": {}
-                    },
-                    "template": pod_template_defaults,
-                    "test": False,
-                    "triggers": lambda triggers : self.deploymentconfig_trigger_defaults(triggers)
-                }
-            },
-            overwrite=False
-        )
-        # FIXME - Only clear image field in containers referenced by image change triggers
-        has_image_change_trigger = False
-        for trigger in resource['spec']['triggers']:
-            if trigger['type'] == 'ImageChange':
-                has_image_change_trigger = True
-        for container in resource['spec']['template']['spec']['containers']:
-            if has_image_change_trigger:
-                container['image'] = ''
+        # Before we can normalize the Deploymentconfig triggers we need to set
+        # the namespace on any image change triggers...
+        for trigger in resource['spec'].get('triggers', []):
+            if 'imageChangeParams' in trigger:
+                set_dict_defaults(trigger['imageChangeParams']['from'], {
+                    'namespace': self.namespace
+                })
+        normalize_DeploymentConfig_V1(resource)
 
     def normalize_resource_HorizontalPodAutoscaler(self, resource):
-        resource["metadata"]["annotations"]["autoscaling.alpha.kubernetes.io/conditions"] = ""
+        normalize_HorizontalPodAutoscaler(resource)
 
     def normalize_resource_ImageStream(self, resource):
-        merge_dict(
-            resource,
-            {
-                "metadata": {
-                    "annotations": {
-                        "openshift.io/image.dockerRepositoryCheck": ""
-                    }
-                },
-                "spec": {
-                    "tags": lambda tags : merge_dict_list(
-                        tags,
-                        {
-                            "generation": 0
-                        },
-                        overwrite=True
-                    )
-                }
-            },
-            overwrite=True
-        )
-        merge_dict(
-            resource,
-            {
-                "spec": {
-                    "dockerImageRepository": '',
-                    "lookupPolicy": {
-                        "local": False
-                    },
-                    "tags": imagestream_tags_defaults
-                }
-            },
-            overwrite=False
-        )
+        normalize_ImageStream_V1(resource)
 
     def normalize_resource_NetworkPolicy(self, resource):
-        merge_dict(
-            resource,
-            {
-                "spec": {
-                    "policyTypes": [ "Ingress" ],
-                    "podSelector": {}
-                }
-            },
-            overwrite=False
-        )
+        normalize_NetworkPolicy_V1(resource)
 
     def normalize_resource_PersistentVolume(self, resource):
-        merge_dict(
-            resource,
-            {
-                "metadata": {
-                    "finalizers": [
-                        "kubernetes.io/pv-protection"
-                    ]
-                },
-                "spec": {
-                    "persistentVolumeReclaimPolicy": "Retain"
-                }
-            },
-            overwrite=False
-        )
-        resource["metadata"]["annotations"]["pv.kubernetes.io/bound-by-controller"] = ""
-        resource["spec"]["claimRef"] = ""
+        normalize_PersistentVolume_V1(resource)
 
     def normalize_resource_PersistentVolumeClaim(self, resource):
-        merge_dict(
-            resource,
-            {
-                "metadata": {
-                    "finalizers": [
-                        "kubernetes.io/pvc-protection"
-                    ]
-                },
-                "spec": {}
-            },
-            overwrite=False
-        )
-        resource["metadata"]["annotations"]["pv.kubernetes.io/bind-completed"] = ""
-        resource["metadata"]["annotations"]["pv.kubernetes.io/bound-by-controller"] = ""
-        resource["metadata"]["annotations"]["volume.beta.kubernetes.io/storage-provisioner"] = ""
-        resource["spec"]["volumeName"] = ""
+        normalize_PersistentVolumeClaim_V1(resource)
 
     def normalize_resource_Role(self, resource):
-        for rule in resource.get('rules',[]):
-            sort_lists_in_dict(rule)
+        normalize_Role_V1(resource)
 
     def normalize_resource_Route(self, resource):
-        merge_dict(
-            resource,
-            {
-                "metadata": {
-                    "annotations": {
-                        "openshift.io/host.generated": "false"
-                    }
-                },
-                "spec": {
-                    "host": '',
-                    "to": {
-                        "weight": 100
-                    },
-                    "wildcardPolicy": "None"
-                }
-            },
-            overwrite=False
-        )
-        # If route host is generated, then need to blank out the host field to compare
-        if resource['spec']['host'] == '':
-            resource['metadata']['annotations']['openshift.io/host.generated'] = 'true'
-        if resource['metadata']['annotations']['openshift.io/host.generated'] == 'true':
-            resource['spec']['host'] = ''
+        normalize_Route_V1(resource)
 
     def normalize_resource_SecurityContextConstraints(self, resource):
-        # Sometimes SecurityContextConstraints come back with values of None
-        # rather than an empty list.
-        if resource.get('groups', None) == None:
-            resource['groups'] = []
-        if resource.get('users', None) == None:
-            resource['users'] = []
-        # List order in SCC are arbitrary
-        sort_lists_in_dict(resource)
+        normalize_SecurityContextConstraints_V1(resource)
 
     def normalize_resource_Service(self, resource):
-        merge_dict(
-            resource,
-            {
-                "spec": {
-                    "ports": port_list_defaults,
-                    "sessionAffinity": "None",
-                    "sessionAffinityConfig": {
-                        "clientIP": {
-                            "timeoutSeconds": 10800
-                        }
-                    },
-                    "type": "ClusterIP"
-                }
-            },
-            overwrite=False
-        )
-        if 'service.alpha.openshift.io/serving-cert-secret-name' in resource['metadata']['annotations']:
-            resource["metadata"]["annotations"]["service.alpha.openshift.io/serving-cert-signed-by"] = ""
+        normalize_Service_V1(resource)
 
     def normalize_resource_StatefulSet(self, resource):
-        merge_dict(
-            resource,
-            {
-                "spec": {
-                    "replicas": 1,
-                    "revisionHistoryLimit": 10,
-                    "template": pod_template_defaults,
-                    "volumeClaimTemplates": []
-                }
-            },
-            overwrite=False
-        )
-        merge_dict_list(
-            resource['spec']['volumeClaimTemplates'],
-            {
-                "metadata": {
-                    "creationTimestamp": ""
-                },
-                "status": ""
-            },
-            overwrite=True
-        )
-
-    # Needs to know the current namespace...
-    def deploymentconfig_trigger_defaults(self, triggers):
-        if not triggers:
-            return [ { "type": "ConfigChange" } ]
-        if not type(triggers) is list:
-            raise Exception("DeploymentConfig triggers must be a list")
-        for trigger in triggers:
-            if not type(trigger) is dict:
-                raise Exception("DeploymentConfig triggers must only include dict")
-            if 'type' not in trigger:
-                raise Exception("DeploymentConfig triggers must specify type")
-            if trigger['type'] == 'ImageChange':
-                merge_dict(
-                    trigger,
-                    {
-                        "imageChangeParams": {
-                            "from": {
-                                "namespace": self.namespace
-                            }
-                        }
-                    },
-                    overwrite=False
-                )
-                trigger['imageChangeParams']['lastTriggeredImage'] = ''
-        return triggers
-
+        normalize_StatefulSet_V1(resource)
 
     def comparison_fields(self):
         if self.resource['kind'] == 'ClusterRole':
@@ -793,7 +1006,6 @@ class OpenShiftProvision:
           return self.resource.keys()
         else:
           return ['metadata', 'spec']
-
 
     def compare_resource(self, resource, compare_to=None):
         if compare_to == None:
