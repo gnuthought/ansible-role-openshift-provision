@@ -105,8 +105,15 @@ def make_field_patch(field, current, config):
             for operation in compare_dict(path, value, other):
                 yield operation
         elif isinstance(value, list) and isinstance(other, list):
-            for operation in compare_list(path, value, other):
-                yield operation
+            if list_is_set(value):
+                for operation in compare_set_list(path, value, other):
+                    yield operation
+            elif list_has_keys(value):
+                for operation in compare_keyed_list(path, value, other):
+                    yield operation
+            else:
+                for operation in compare_list(path, value, other):
+                    yield operation
         else:
             yield {'op': 'test', 'path': '/'.join(path), 'value': value}
             yield {'op': 'replace', 'path': '/'.join(path), 'value': other}
@@ -139,25 +146,41 @@ def make_field_patch(field, current, config):
                 yield {'op': 'test', 'path': '/'.join(path + [str(idx)]), 'value': src[idx]}
                 yield {'op': 'remove', 'path': '/'.join(path + [str(idx)])}
 
+    def compare_keyed_list(path, src, dst):
+        key_name = src[-1]['__key_name__']
+        src_key_map = src[-1]['__key_map__']
+        dst_key_map = dst[-1]['__key_map__']
+        for src_idx in range(len(src)-2, -1, -1):
+            current = path + [str(src_idx)]
+            src_item = src[src_idx]
+            dst_idx = dst_key_map.get(src_item[key_name], None)
+            if dst_idx == None:
+                yield {'op': 'test', 'path': '/'.join(current), 'value': src_item}
+                yield {'op': 'remove', 'path': '/'.join(current)}
+            else:
+                for operation in compare_values(current, src_item, dst[dst_idx]):
+                    yield operation
+        for dst_item in dst[:-1]:
+            if dst_item[key_name] not in src_key_map:
+                yield {'op': 'add', 'path': '/'.join(path + ['-']), 'value': dst_item}
+
+    def compare_set_list(path, src, dst):
+        for src_idx in range(len(src)-2, -1, -1):
+            current = path + [str(src_idx)]
+            src_item = src[src_idx]
+            if src_item not in dst:
+                yield {'op': 'test', 'path': '/'.join(current), 'value': src_item}
+                yield {'op': 'remove', 'path': '/'.join(current)}
+        for dst_item in dst[:-1]:
+            if dst_item not in src:
+                yield {'op': 'add', 'path': '/'.join(path + ['-']), 'value': dst_item}
+
     return list(compare_values(['/' + field], current, config))
 
 def set_dict_defaults(d, default):
     for k, v in default.items():
         if k not in d:
             d[k] = v
-
-def sort_lists_in_dict(d):
-    """
-    Given a dictionary where some values are lists, sort those lists.
-
-    In many places in kubernetes object definitions lists are used in places
-    where sets are implied such as a list of users, groups, or environment
-    variables in which order is not important. This creates issues when
-    comparing resources.
-    """
-    for k, v in d.items():
-        if type(v) is list:
-            d[k] = sorted(set(v))
 
 def normalize_cpu_units(cpu):
     cpu = str(cpu)
@@ -225,30 +248,34 @@ def merge_dict(merged, patch, overwrite=True):
         elif overwrite or not k in merged:
             merged[k] = copy.deepcopy(v)
 
-def merge_dict_list(merged_list, patch, overwrite=True):
-    """
-    Given a list of dictionaries and a patch, call merge_dict for each
-    dictionary in the list.
-    """
-    if not merged_list:
-        return []
-    if not type(merged_list) is list:
-        raise Exception(
-            "Unable to merge {} with list".format(
-                type(merged_list).__name__
-            )
-        )
-    for entry in merged_list:
-        if type(entry) is dict:
-            merge_dict(entry, patch, overwrite=overwrite)
-        else:
-            raise Exception(
-                "Unable to merge item {} with dict".format(
-                    type(entry).__name__
-                )
-            )
-    #merged_list.sort(key=str)
-    return merged_list
+def mark_list_is_set(lst, key_name=None):
+    lst.append({
+        '__special_list_type__': 'set' 
+    })
+
+def list_is_set(lst):
+    return(
+        len(lst) != 0 and
+        type(lst[-1]) is dict and
+        'set' == lst[-1].get('__special_list_type__', None)
+    )
+
+def mark_list_with_keys(lst, key_name):
+    key_map = {}
+    for idx, item in enumerate(lst):
+        key_map[item[key_name]] = idx
+    lst.append({
+        '__special_list_type__': 'keyed',
+        '__key_map__': key_map,
+        '__key_name__': key_name
+    })
+
+def list_has_keys(lst):
+    return(
+        len(lst) != 0 and
+        type(lst[-1]) is dict and
+        'keyed' == lst[-1].get('__special_list_type__', None)
+    )
 
 def normalize_BuildConfig_V1(build_config):
     set_dict_defaults(build_config, {
@@ -327,6 +354,20 @@ def normalize_ClientIPConfig_V1(config):
         'timeoutSeconds': 10800
     })
 
+def normalize_ClusterResourceQuota_V1(quota):
+    set_dict_defaults(quota, {
+        'metadata': {},
+        'spec': {}
+    })
+    normalize_ObjectMeta_V1(quota['metadata'])
+    normalize_ClusterResourceQuotaSpec_V1(quota['spec'])
+
+def normalize_ClusterResourceQuotaSpec_V1(spec):
+    set_dict_defaults(spec, {
+        'quota': {}
+    })
+    normalize_ResourceQuotaSpec_V1(spec['quota'])
+
 def normalize_ClusterRole_V1(role):
     set_dict_defaults(role, {
         'aggregationRule': {},
@@ -356,8 +397,7 @@ def normalize_Container_V1(container):
     })
     normalize_EnvVars_V1(container['env'])
     normalize_Probe_V1(container['livenessProbe'])
-    for port in container['ports']:
-        normalize_ContainerPort_V1(port)
+    normalize_ContainerPortList_V1(container['ports'])
     normalize_ResourceRequirements_V1(container['resources'])
     normalize_VolumeMountList_V1(container['volumeMounts'])
     normalize_Probe_V1(container['readinessProbe'])
@@ -365,7 +405,7 @@ def normalize_Container_V1(container):
 def normalize_ContainerList_V1(container_list):
     for container in container_list:
         normalize_Container_V1(container)
-    container_list.sort(key=lambda e: e['name'])
+    mark_list_with_keys(container_list, 'name')
 
 def normalize_ContainerPort_V1(port):
     set_dict_defaults(port, {
@@ -375,6 +415,7 @@ def normalize_ContainerPort_V1(port):
 def normalize_ContainerPortList_V1(port_list):
     for port in port_list:
         normalize_ContainerPort_V1(port)
+    mark_list_with_keys(port_list, 'containerPort')
 
 def normalize_CronJob_V1beta1(cron_job):
     set_dict_defaults(cron_job, {
@@ -442,7 +483,7 @@ def normalize_DeploymentConfigSpec_V1(spec):
     for trigger in spec['triggers']:
         if trigger['type'] == 'ImageChange':
             image_change_trigger_container_names.extend(trigger['containerNames'])
-    for container in spec['template']['spec']['containers']:
+    for container in spec['template']['spec']['containers'][:-1]:
         if container['name'] in image_change_trigger_container_names:
             container['image'] = ''
 
@@ -484,7 +525,7 @@ def normalize_EnvVars_V1(env_list):
         if 'value' not in env \
         and 'valueFrom' not in env:
             env['value'] = ''
-    env_list.sort(key=lambda e: e['name'])
+    mark_list_with_keys(env_list, 'name')
 
 def normalize_HorizontalPodAutoscaler(autoscaler):
     set_dict_defaults(autoscaler, {
@@ -630,8 +671,8 @@ def normalize_PodSpec_V1(spec):
     # If pod template uses hostNetwork then ports on containers have
     # hostPort which defaults to containerPort
     if spec.get('hostNetwork', False):
-        for container in spec['containers']:
-            for port in container['ports']:
+        for container in spec['containers'][:-1]:
+            for port in container['ports'][:-1]:
                 if 'hostPort' not in port:
                     port['hostPort'] = port['containerPort']
 
@@ -651,8 +692,9 @@ def normalize_PolicyRule_V1(rule):
         'resources',
         'verbs'
     ):
-        if key in rule and type(rule[key]) is list:
-            rule[key] = set(rule[key])
+        if rule.get(key, None) == None:
+            rule[key] = []
+        mark_list_is_set(rule[key])
 
 def normalize_Probe_V1(probe):
     if probe == None:
@@ -665,6 +707,25 @@ def normalize_Probe_V1(probe):
     })
     if 'httpGet' in probe:
         normalize_HTTPGetAction_V1(probe['httpGet'])
+
+def normalize_ResourceQuota_V1(quota):
+    set_dict_defaults(quota, {
+        'metadata': {},
+        'spec': {}
+    })
+    normalize_ObjectMeta_V1(quota['metadata'])
+    normalize_ResourceQuotaSpec_V1(quota['spec'])
+
+def normalize_ResourceQuotaSpec_V1(spec):
+    set_dict_defaults(spec, {
+        'hard': {}
+    })
+    for item in ('requests.cpu', 'limits.cpu'):
+        if item in spec['hard']:
+            spec['hard'][item] = normalize_cpu_units(spec['hard'][item])
+    for item in ('requests.memory', 'limits.memory'):
+        if item in spec['hard']:
+            spec['hard'][item] = normalize_memory_units(spec['hard'][item])
 
 def normalize_ResourceRequirements_V1(resources):
     if not resources:
@@ -721,14 +782,12 @@ def normalize_SecurityContextConstraints_V1(scc):
         'defaultAddCapabilities',
         'groups',
         'requiredDropCapabilities',
-        'supplementalGroups',
         'users',
         'volumes'
     ):
         if scc.get(key, None) == None:
-            scc[key] = set()
-        else:
-            scc[key] = set(scc[key])
+            scc[key] = []
+        mark_list_is_set(scc[key])
 
 def normalize_Service_V1(service):
     set_dict_defaults(service, {
@@ -748,6 +807,11 @@ def normalize_ServicePort_V1(port):
         'protocol': 'TCP'
     })
 
+def normalize_ServicePortList_V1(port_list):
+    for port in port_list:
+        normalize_ServicePort_V1(port)
+    mark_list_with_keys(port_list, 'port')
+
 def normalize_ServiceSpec_V1(spec):
     set_dict_defaults(spec, {
         'ports': [],
@@ -758,8 +822,7 @@ def normalize_ServiceSpec_V1(spec):
         set_dict_defaults(spec, {
             'sessionAffinityConfig': {}
         })
-    for port in spec['ports']:
-        normalize_ServicePort_V1(port)
+    normalize_ServicePortList_V1(spec['ports'])
     if 'sessionAffinityConfig' in spec:
         normalize_SessionAffinityConfig_V1(spec['sessionAffinityConfig'])
 
@@ -800,9 +863,10 @@ def normalize_Volume_V1(volume):
 def normalize_VolumeList_V1(volumes):
     for volume in volumes:
         normalize_Volume_V1(volume)
+    mark_list_with_keys(volumes, 'name')
 
 def normalize_VolumeMountList_V1(volume_mount_list):
-    volume_mount_list.sort(key=lambda e: e['name'])
+    mark_list_with_keys(volume_mount_list, 'name')
 
 class OpenShiftProvision:
     def __init__(self, module):
@@ -939,6 +1003,9 @@ class OpenShiftProvision:
     def normalize_resource_BuildConfig(self, resource):
         normalize_BuildConfig_V1(resource)
 
+    def normalize_resource_ClusterResourceQuota(self, resource):
+        normalize_ClusterResourceQuota_V1(resource)
+
     def normalize_resource_ClusterRole(self, resource):
         normalize_ClusterRole_V1(resource)
 
@@ -975,6 +1042,9 @@ class OpenShiftProvision:
 
     def normalize_resource_PersistentVolumeClaim(self, resource):
         normalize_PersistentVolumeClaim_V1(resource)
+
+    def normalize_resource_ResourceQuota(self, resource):
+        normalize_ResourceQuota_V1(resource)
 
     def normalize_resource_Role(self, resource):
         normalize_Role_V1(resource)

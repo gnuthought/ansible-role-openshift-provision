@@ -4,9 +4,7 @@ metadata:
   name: test-clusterresourcequota
 spec:
   quota:
-    hard:
-      pods: "{{ quota_pods }}"
-      secrets: "{{ quota_secrets }}"
+    hard: {{ quota | to_json }}
   selector:
     annotations:
       openshift.io/requester: testuser

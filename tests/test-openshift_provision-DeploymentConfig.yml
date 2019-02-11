@@ -102,6 +102,27 @@
       connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_deploymentconfig }}"
+    register: do_update
+
+  - name: Check reported update patch
+    fail:
+      msg:
+        Update patch did not match expected
+        >>>
+        {{ update_patch | to_yaml }}
+        ===
+        {{ do_update.patch | to_yaml }}
+        <<<
+    vars:
+      update_patch:
+      - op: test
+        path: /spec/template/spec/containers/0/env/0
+        value:
+          name: AFOO
+          value: abar
+      - op: remove
+        path: /spec/template/spec/containers/0/env/0
+    when: do_update.patch != update_patch
 
   - name: Get DeploymentConfig
     command: >-

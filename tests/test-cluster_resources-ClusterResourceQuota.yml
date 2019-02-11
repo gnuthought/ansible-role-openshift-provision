@@ -18,14 +18,19 @@
   connection: local
   vars:
     provision_clusterresourcequota: test-clusterresourcequota.yml.j2
-    provision_clusterresourcequota_def: "{{ lookup('template', 'resources/' ~ provision_clusterresourcequota) | from_yaml }}"
-    quota_pods: 6
-    quota_secrets: 2
+    provision_clusterresourcequota_def: >-
+      {{ lookup('template', 'resources/' ~ provision_clusterresourcequota)
+       | from_yaml
+      }}
+    quota:
+      requests.cpu: '2'
+      requests.memory: 2Gi
+      limits.memory: 4Gi
 
   roles:
   - role: openshift-provision
-    openshift_clusters:
-    - cluster_resources:
+    openshift_provision:
+      cluster_resources:
       - "{{ provision_clusterresourcequota }}"
 
   tasks:
@@ -45,8 +50,14 @@
         {{ got_clusterresourcequota | to_yaml }}
         <<<
     vars:
-      got_clusterresourcequota: "{{ get_clusterresourcequota.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_clusterresourcequota: "{{ provision_clusterresourcequota_def | combine(ignore_differences, recursive=True) }}"
+      got_clusterresourcequota: >-
+        {{ get_clusterresourcequota.stdout | from_json
+         | combine(ignore_differences, recursive=True)
+        }}
+      cmp_clusterresourcequota: >-
+        {{ provision_clusterresourcequota_def
+         | combine(ignore_differences, recursive=True)
+        }}
     when: >-
       cmp_clusterresourcequota.metadata != got_clusterresourcequota.metadata or
       cmp_clusterresourcequota.spec != got_clusterresourcequota.spec
@@ -56,14 +67,19 @@
   connection: local
   vars:
     provision_clusterresourcequota: test-clusterresourcequota.yml.j2
-    provision_clusterresourcequota_def: "{{ lookup('template', 'resources/' ~ provision_clusterresourcequota) | from_yaml }}"
-    quota_pods: 8
-    quota_secrets: 3
+    provision_clusterresourcequota_def: >-
+      {{ lookup('template', 'resources/' ~ provision_clusterresourcequota)
+       | from_yaml
+      }}
+    quota:
+      requests.cpu: '4'
+      requests.memory: 4Gi
+      limits.memory: 8Gi
 
   roles:
   - role: openshift-provision
-    openshift_clusters:
-    - cluster_resources:
+    openshift_provision:
+      cluster_resources:
       - "{{ provision_clusterresourcequota }}"
 
   tasks:
@@ -72,9 +88,6 @@
       {{ test_oc_cmd }} export clusterresourcequota test-clusterresourcequota -o json
     register: get_clusterresourcequota
     changed_when: false
-
-    vars:
-      cmp_clusterresourcequota: "{{ provision_clusterresourcequota_def | combine(ignore_differences, recursive=True) }}"
 
   - name: Verify ClusterResourceQuota Update
     fail:
@@ -86,8 +99,14 @@
         {{ got_clusterresourcequota | to_yaml }}
         <<<
     vars:
-      got_clusterresourcequota: "{{ get_clusterresourcequota.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_clusterresourcequota: "{{ provision_clusterresourcequota_def | combine(ignore_differences, recursive=True) }}"
+      got_clusterresourcequota: >-
+        {{ get_clusterresourcequota.stdout | from_json
+         | combine(ignore_differences, recursive=True)
+        }}
+      cmp_clusterresourcequota: >-
+        {{ provision_clusterresourcequota_def
+         | combine(ignore_differences, recursive=True)
+        }}
     when: >-
       cmp_clusterresourcequota.metadata != got_clusterresourcequota.metadata or
       cmp_clusterresourcequota.spec != got_clusterresourcequota.spec

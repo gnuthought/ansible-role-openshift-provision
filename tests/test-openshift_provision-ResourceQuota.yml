@@ -12,28 +12,29 @@
           annotations:
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
+          namespace: ''
+          resourceVersion: ''
+          selfLink: ''
+          uid: ''
 
 - name: Test Provision
   hosts: localhost
   connection: local
   vars:
-    provision_resourcequota:
-      apiVersion: v1
-      kind: ResourceQuota
-      metadata:
-        name: test-resourcequota
-        labels:
-          testlabel: bar
-      spec:
-        hard:
-          requests.cpu: '2'
-          requests.memory: 10Gi
-          limits.memory: 10Gi
+  vars:
+    provision_resourcequota: >-
+      {{ lookup('template', 'resources/test-resourcequota.yml.j2')
+       | from_yaml
+      }}
+    quota:
+      requests.cpu: "2"
+      requests.memory: 2Gi
+      limits.memory: 4Gi
 
   roles:
   - role: openshift-provision
-    openshift_clusters:
-    - projects:
+    openshift_provision:
+      projects:
       - name: provision-test
 
   tasks:
@@ -45,7 +46,7 @@
 
   - name: Get ResourceQuota
     command: >-
-      {{ test_oc_cmd }} export resourcequota
+      {{ test_oc_cmd }} get resourcequota
       test-resourcequota -n provision-test -o json
     register: get_resourcequota
     changed_when: false
@@ -60,12 +61,31 @@
         {{ got_resourcequota | to_yaml }}
         <<<
     vars:
-      got_resourcequota: "{{ get_resourcequota.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_resourcequota: "{{ provision_resourcequota | combine(ignore_differences, recursive=True) }}"
+      got_resourcequota: >-
+        {{ get_resourcequota.stdout | from_json
+         | combine(ignore_differences, recursive=True)
+        }}
+      cmp_resourcequota: >-
+        {{ provision_resourcequota
+         | combine(ignore_differences, recursive=True)
+        }}
     when: >-
       cmp_resourcequota.metadata != got_resourcequota.metadata or
       cmp_resourcequota.spec != got_resourcequota.spec
 
+- name: Test Reprovision
+  hosts: localhost
+  connection: local
+  vars:
+    provision_resourcequota: >-
+      {{ lookup('template', 'resources/test-resourcequota.yml.j2')
+       | from_yaml
+      }}
+    quota:
+      requests.cpu: 2000m
+      requests.memory: 2048Mi
+      limits.memory: 4096Mi
+  tasks:
   - name: Check reprovision ResourceQuota
     openshift_provision:
       connection: "{{ openshift_connection }}"
@@ -81,18 +101,14 @@
   hosts: localhost
   connection: local
   vars:
-    provision_resourcequota:
-      apiVersion: v1
-      kind: ResourceQuota
-      metadata:
-        name: test-resourcequota
-        labels:
-          testlabel: bar
-      spec:
-        hard:
-          requests.cpu: '2'
-          requests.memory: 10Gi
-          limits.memory: 20Gi
+    provision_resourcequota: >-
+      {{ lookup('template', 'resources/test-resourcequota.yml.j2')
+       | from_yaml
+      }}
+    quota:
+      requests.cpu: "4"
+      requests.memory: 4Gi
+      limits.memory: 8Gi
 
   tasks:
   - name: Apply update to ResourceQuota
@@ -100,10 +116,42 @@
       connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_resourcequota }}"
+    register: do_update
+
+  - name: Check reported update patch
+    fail:
+      msg: |
+        Update patch did not match expected
+        >>>
+        {{ update_patch | to_yaml }}
+        ===
+        {{ do_update.patch | to_yaml }}
+        <<<
+    vars:
+      update_patch:
+      - op: test
+        path: /spec/hard/limits.memory
+        value: '4294967296'
+      - op: replace
+        path: /spec/hard/limits.memory
+        value: '8589934592'
+      - op: test
+        path: /spec/hard/requests.cpu
+        value: 2000m
+      - op: replace
+        path: /spec/hard/requests.cpu
+        value: 4000m
+      - op: test
+        path: /spec/hard/requests.memory
+        value: '2147483648'
+      - op: replace
+        path: /spec/hard/requests.memory
+        value: '4294967296'
+    when: do_update.patch != update_patch
 
   - name: Get ResourceQuota
     command: >-
-      {{ test_oc_cmd }} export resourcequota
+      {{ test_oc_cmd }} get resourcequota
       test-resourcequota -n provision-test -o json
     register: get_resourcequota
     changed_when: false
@@ -118,8 +166,14 @@
         {{ got_resourcequota | to_yaml }}
         <<<
     vars:
-      got_resourcequota: "{{ get_resourcequota.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_resourcequota: "{{ provision_resourcequota | combine(ignore_differences, recursive=True) }}"
+      got_resourcequota: >-
+        {{ get_resourcequota.stdout | from_json
+         | combine(ignore_differences, recursive=True)
+        }}
+      cmp_resourcequota: >-
+        {{ provision_resourcequota
+         | combine(ignore_differences, recursive=True)
+        }}
     when: >-
       cmp_resourcequota.metadata != got_resourcequota.metadata or
       cmp_resourcequota.spec != got_resourcequota.spec
@@ -127,22 +181,20 @@
 - name: Test Delete
   hosts: localhost
   connection: local
-  vars:
-    provision_resourcequota:
-      kind: ResourceQuota
-      metadata:
-        name: test-resourcequota
   tasks:
   - name: Delete ResourceQuota
     openshift_provision:
       action: delete
       namespace: provision-test
       connection: "{{ openshift_connection }}"
-      resource: "{{ provision_resourcequota }}"
+      resource:
+        kind: ResourceQuota
+        metadata:
+          name: test-resourcequota
 
   - name: Verify ResourceQuota Delete
     command: >-
-      {{ test_oc_cmd }} export resourcequota
+      {{ test_oc_cmd }} get resourcequota
       test-resourcequota -n provision-test -o json
     register: get_resourcequota
     failed_when: get_resourcequota.rc == 0

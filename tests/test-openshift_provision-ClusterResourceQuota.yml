@@ -12,6 +12,9 @@
           annotations:
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
+          resourceVersion: ''
+          selfLink: ''
+          uid: ''
 
 - name: Test Provision
   hosts: localhost
@@ -19,9 +22,12 @@
   vars:
     provision_clusterresourcequota: >-
       {{ lookup('template', 'resources/test-clusterresourcequota.yml.j2')
-       | from_yaml }}
-    quota_pods: 10
-    quota_secrets: 20
+       | from_yaml
+      }}
+    quota:
+      requests.cpu: "2"
+      requests.memory: 2Gi
+      limits.memory: 4Gi
 
   roles:
   - role: openshift-provision
@@ -34,7 +40,7 @@
 
   - name: Get ClusterResourceQuota
     command: >-
-      {{ test_oc_cmd }} export clusterresourcequota
+      {{ test_oc_cmd }} get clusterresourcequota
       test-clusterresourcequota -o json
     register: get_clusterresourcequota
     changed_when: false
@@ -49,12 +55,31 @@
         {{ got_clusterresourcequota | to_yaml }}
         <<<
     vars:
-      got_clusterresourcequota: "{{ get_clusterresourcequota.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_clusterresourcequota: "{{ provision_clusterresourcequota | combine(ignore_differences, recursive=True) }}"
+      got_clusterresourcequota: >-
+        {{ get_clusterresourcequota.stdout | from_json
+         | combine(ignore_differences, recursive=True)
+        }}
+      cmp_clusterresourcequota: >-
+        {{ provision_clusterresourcequota
+         | combine(ignore_differences, recursive=True)
+        }}
     when: >-
       cmp_clusterresourcequota.metadata != got_clusterresourcequota.metadata or
       cmp_clusterresourcequota.spec != got_clusterresourcequota.spec
 
+- name: Test Reprovision
+  hosts: localhost
+  connection: local
+  vars:
+    provision_clusterresourcequota: >-
+      {{ lookup('template', 'resources/test-clusterresourcequota.yml.j2')
+       | from_yaml
+      }}
+    quota:
+      requests.cpu: 2000m
+      requests.memory: 2048Mi
+      limits.memory: 4096Mi
+  tasks:
   - name: Check reprovision ClusterResourceQuota
     openshift_provision:
       connection: "{{ openshift_connection }}"
@@ -71,19 +96,54 @@
   vars:
     provision_clusterresourcequota: >-
       {{ lookup('template', 'resources/test-clusterresourcequota.yml.j2')
-       | from_yaml }}
-    quota_pods: 20
-    quota_secrets: 30
+       | from_yaml
+      }}
+    quota:
+      requests.cpu: "4"
+      requests.memory: 4Gi
+      limits.memory: 8Gi
 
   tasks:
   - name: Apply update to ClusterResourceQuota
     openshift_provision:
       connection: "{{ openshift_connection }}"
       resource: "{{ provision_clusterresourcequota }}"
+    register: do_update
+
+  - name: Check reported update patch
+    fail:
+      msg: |
+        Update patch did not match expected
+        >>>
+        {{ update_patch | to_yaml }}
+        ===
+        {{ do_update.patch | to_yaml }}
+        <<<
+    vars:
+      update_patch:
+      - op: test
+        path: /spec/quota/hard/limits.memory
+        value: '4294967296'
+      - op: replace
+        path: /spec/quota/hard/limits.memory
+        value: '8589934592'
+      - op: test
+        path: /spec/quota/hard/requests.cpu
+        value: 2000m
+      - op: replace
+        path: /spec/quota/hard/requests.cpu
+        value: 4000m
+      - op: test
+        path: /spec/quota/hard/requests.memory
+        value: '2147483648'
+      - op: replace
+        path: /spec/quota/hard/requests.memory
+        value: '4294967296'
+    when: do_update.patch != update_patch
 
   - name: Get ClusterResourceQuota
     command: >-
-      {{ test_oc_cmd }} export clusterresourcequota
+      {{ test_oc_cmd }} get clusterresourcequota
       test-clusterresourcequota -o json
     register: get_clusterresourcequota
     changed_when: false
@@ -98,8 +158,14 @@
         {{ got_clusterresourcequota | to_yaml }}
         <<<
     vars:
-      got_clusterresourcequota: "{{ get_clusterresourcequota.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_clusterresourcequota: "{{ provision_clusterresourcequota | combine(ignore_differences, recursive=True) }}"
+      got_clusterresourcequota: >-
+        {{ get_clusterresourcequota.stdout | from_json
+         | combine(ignore_differences, recursive=True)
+        }}
+      cmp_clusterresourcequota: >-
+        {{ provision_clusterresourcequota
+         | combine(ignore_differences, recursive=True)
+        }}
     when: >-
       cmp_clusterresourcequota.metadata != got_clusterresourcequota.metadata or
       cmp_clusterresourcequota.spec != got_clusterresourcequota.spec
@@ -119,7 +185,7 @@
 
   - name: Verify ClusterResourceQuota Delete
     command: >-
-      {{ test_oc_cmd }} export clusterresourcequota
+      {{ test_oc_cmd }} get clusterresourcequota
       test-clusterresourcequota -o json
     register: get_clusterresourcequota
     failed_when: get_clusterresourcequota.rc == 0
