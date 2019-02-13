@@ -1,8 +1,9 @@
+---
 apiVersion: v1
-kind: ClusterRole
+kind: Role
 metadata:
   creationTimestamp: null
-  name: test-clusterrole
+  name: test-role
 rules:
 {% for rule in rules %}
 - apiGroups: {{ rule.apiGroups | to_json }}

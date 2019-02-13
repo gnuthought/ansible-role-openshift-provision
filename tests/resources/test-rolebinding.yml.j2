@@ -1,0 +1,8 @@
+---
+apiVersion: authorization.openshift.io/v1
+kind: RoleBinding
+metadata:
+  name: test-rolebinding
+roleRef:
+  name: view
+subjects: {{ subjects | to_json }}

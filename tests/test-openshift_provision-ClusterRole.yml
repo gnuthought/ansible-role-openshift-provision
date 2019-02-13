@@ -12,6 +12,9 @@
           annotations:
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
+          resourceVersion: ''
+          selfLink: ''
+          uid: ''
 
 - name: Test Provision
   hosts: localhost
@@ -20,8 +23,16 @@
     provision_clusterrole: >-
       {{ lookup('template', 'resources/test-clusterrole.yml.j2')
        | from_yaml }}
-    clusternetwork_verbs:
-    - get
+    rules:
+    - apiGroups: ['']
+      resources: ['netnamespaces']
+      verbs: ['create','delete','get','list','update']
+    - apiGroups: ['']
+      resources: ['namespaces','projects']
+      verbs: ['get','list']
+    - apiGroups: ['network.openshift.io','']
+      resources: ['clusternetworks']
+      verbs: ['get','list']
 
   roles:
   - role: openshift-provision
@@ -34,7 +45,7 @@
 
   - name: Get ClusterRole
     command: >-
-      {{ test_oc_cmd }} export clusterrole
+      {{ test_oc_cmd }} get clusterrole
       test-clusterrole -o json
     register: get_clusterrole
     changed_when: false
@@ -49,11 +60,46 @@
         {{ got_clusterrole | to_yaml }}
         <<<
     vars:
-      got_clusterrole: "{{ get_clusterrole.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_clusterrole: "{{ provision_clusterrole | combine(ignore_differences, recursive=True) }}"
+      got_clusterrole: >-
+        {{ get_clusterrole.stdout | from_json
+         | combine(ignore_differences, recursive=True)
+        }}
+      cmp_clusterrole: >-
+        {{ provision_clusterrole
+         | combine(ignore_differences, recursive=True)
+        }}
     when: >-
       cmp_clusterrole.metadata != got_clusterrole.metadata or
       cmp_clusterrole.rules != got_clusterrole.rules
+
+- name: Test Reprovision
+  hosts: localhost
+  connection: local
+  vars:
+    provision_clusterrole: >-
+      {{ lookup('template', 'resources/test-clusterrole.yml.j2')
+       | from_yaml }}
+    rules:
+    - apiGroups: ['']
+      resources: ['netnamespaces']
+      verbs: ['get','list','create','delete','update']
+    - apiGroups: ['']
+      resources: ['projects','namespaces']
+      verbs: ['get','list']
+    - apiGroups: ['','network.openshift.io']
+      resources: ['clusternetworks']
+      verbs: ['get','list']
+
+  tasks:
+  - name: Check reprovision ClusterRole
+    openshift_provision:
+      connection: "{{ openshift_connection }}"
+      resource: "{{ provision_clusterrole }}"
+    register: reprovision_clusterrole
+
+  - fail:
+      msg: Reprovision indicated change to ClusterRole
+    when: reprovision_clusterrole.changed
 
   - name: Check reprovision ClusterRole
     openshift_provision:
@@ -72,22 +118,51 @@
     provision_clusterrole: >-
       {{ lookup('template', 'resources/test-clusterrole.yml.j2')
        | from_yaml }}
-    clusternetwork_verbs:
-    - create
-    - delete
-    - get
-    - list
-    - update
+    rules:
+    - apiGroups: ['network.openshift.io', '']
+      resources: ['netnamespaces']
+      verbs: ['create','delete','get','list','update']
+    - apiGroups: ['']
+      resources: ['namespaces','projects']
+      verbs: ['list']
+    - apiGroups: ['network.openshift.io','']
+      resources: ['clusternetworks','hostsubnets']
+      verbs: ['get','list']
 
   tasks:
   - name: Apply update to ClusterRole
     openshift_provision:
       connection: "{{ openshift_connection }}"
       resource: "{{ provision_clusterrole }}"
+    register: do_update
+
+  - name: Check reported update patch
+    fail:
+      msg: |
+        Update patch did not match expected
+        >>>
+        {{ update_patch | to_yaml }}
+        ===
+        {{ do_update.patch | to_yaml }}
+        <<<
+    vars:
+      update_patch:
+      - op: add
+        path: /rules/0/apiGroups/-
+        value: network.openshift.io
+      - op: test
+        path: /rules/1/verbs/0
+        value: get
+      - op: remove
+        path: /rules/1/verbs/0
+      - op: add
+        path: /rules/2/resources/-
+        value: hostsubnets
+    when: do_update.patch != update_patch
 
   - name: Get ClusterRole
     command: >-
-      {{ test_oc_cmd }} export clusterrole
+      {{ test_oc_cmd }} get clusterrole
       test-clusterrole -o json
     register: get_clusterrole
     changed_when: false
@@ -102,8 +177,14 @@
         {{ got_clusterrole | to_yaml }}
         <<<
     vars:
-      got_clusterrole: "{{ get_clusterrole.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_clusterrole: "{{ provision_clusterrole | combine(ignore_differences, recursive=True) }}"
+      got_clusterrole: >-
+        {{ get_clusterrole.stdout | from_json
+         | combine(ignore_differences, recursive=True)
+        }}
+      cmp_clusterrole: >-
+        {{ provision_clusterrole
+         | combine(ignore_differences, recursive=True)
+        }}
     when: >-
       cmp_clusterrole.metadata != got_clusterrole.metadata or
       cmp_clusterrole.rules != got_clusterrole.rules
@@ -123,7 +204,7 @@
 
   - name: Verify ClusterRole Delete
     command: >-
-      {{ test_oc_cmd }} export clusterrole
+      {{ test_oc_cmd }} get clusterrole
       test-clusterrole -o json
     register: get_clusterrole
     failed_when: get_clusterrole.rc == 0

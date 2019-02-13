@@ -1,0 +1,8 @@
+---
+apiVersion: authorization.openshift.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: test-clusterrolebinding
+roleRef:
+  name: cluster-reader
+subjects: {{ subjects | to_json }}

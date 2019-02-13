@@ -378,6 +378,15 @@ def normalize_ClusterRole_V1(role):
     for rule in role['rules']:
         normalize_PolicyRule_V1(rule)
 
+def normalize_ClusterRoleBinding_V1(role_binding):
+    set_dict_defaults(role_binding, {
+        'metadata': {},
+        'roleRef': {},
+        'subjects': []
+    })
+    normalize_ObjectMeta_V1(role_binding['metadata'])
+    mark_list_is_set(role_binding['subjects'])
+
 def normalize_ConfigMapVolumeSource_V1(value):
     set_dict_defaults(value, {
         'defaultMode': 0o644
@@ -745,6 +754,15 @@ def normalize_Role_V1(role):
     for rule in role['rules']:
         normalize_PolicyRule_V1(rule)
 
+def normalize_RoleBinding_V1(role_binding):
+    set_dict_defaults(role_binding, {
+        'metadata': {},
+        'roleRef': {},
+        'subjects': []
+    })
+    normalize_ObjectMeta_V1(role_binding['metadata'])
+    mark_list_is_set(role_binding['subjects'])
+
 def normalize_Route_V1(route):
     set_dict_defaults(route, {
         'metadata': {},
@@ -1009,6 +1027,9 @@ class OpenShiftProvision:
     def normalize_resource_ClusterRole(self, resource):
         normalize_ClusterRole_V1(resource)
 
+    def normalize_resource_ClusterRoleBinding(self, resource):
+        normalize_ClusterRoleBinding_V1(resource)
+
     def normalize_resource_CronJob(self, resource):
         normalize_CronJob_V1beta1(resource)
 
@@ -1049,6 +1070,9 @@ class OpenShiftProvision:
     def normalize_resource_Role(self, resource):
         normalize_Role_V1(resource)
 
+    def normalize_resource_RoleBinding(self, resource):
+        normalize_RoleBinding_V1(resource)
+
     def normalize_resource_Route(self, resource):
         normalize_Route_V1(resource)
 
@@ -1062,8 +1086,10 @@ class OpenShiftProvision:
         normalize_StatefulSet_V1(resource)
 
     def comparison_fields(self):
-        if self.resource['kind'] == 'ClusterRole':
+        if self.resource['kind'] in ['ClusterRole', 'Role']:
           return ['metadata', 'rules']
+        elif self.resource['kind'] in ['ClusterRoleBinding', 'RoleBinding']:
+          return ['metadata', 'roleRef', 'subjects']
         elif self.resource['kind'] in ['ConfigMap', 'Secret']:
           return ['metadata', 'data']
         elif self.resource['kind'] == 'Group':

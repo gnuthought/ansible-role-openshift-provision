@@ -12,15 +12,27 @@
           annotations:
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
+          resourceVersion: ''
+          selfLink: ''
+          uid: ''
 
 - name: Test Provision
   hosts: localhost
   connection: local
   vars:
     provision_clusterrole: test-clusterrole.yml.j2
-    provision_clusterrole_def: "{{ lookup('template', 'resources/' ~ provision_clusterrole) | from_yaml }}"
-    clusternetwork_verbs:
-    - get
+    provision_clusterrole_def: >-
+      {{ lookup('template', 'resources/' ~ provision_clusterrole) | from_yaml }}
+    rules:
+    - apiGroups: ['']
+      resources: ['netnamespaces']
+      verbs: ['create','delete','get','list','update']
+    - apiGroups: ['']
+      resources: ['namespaces','projects']
+      verbs: ['get','list']
+    - apiGroups: ['network.openshift.io','']
+      resources: ['clusternetworks']
+      verbs: ['get','list']
 
   roles:
   - role: openshift-provision
@@ -31,7 +43,7 @@
   tasks:
   - name: Get ClusterRole
     command: >-
-      {{ test_oc_cmd }} export clusterrole test-clusterrole -o json
+      {{ test_oc_cmd }} get clusterrole test-clusterrole -o json
     register: get_clusterrole
     changed_when: false
 
@@ -45,8 +57,12 @@
         {{ got_clusterrole | to_yaml }}
         <<<
     vars:
-      got_clusterrole: "{{ get_clusterrole.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_clusterrole: "{{ provision_clusterrole_def | combine(ignore_differences, recursive=True) }}"
+      got_clusterrole: >-
+        {{ get_clusterrole.stdout | from_json
+         | combine(ignore_differences, recursive=True) }}
+      cmp_clusterrole: >-
+        {{ provision_clusterrole_def
+         | combine(ignore_differences, recursive=True) }}
     when: >-
       cmp_clusterrole.metadata != got_clusterrole.metadata or
       cmp_clusterrole.rules != got_clusterrole.rules
@@ -56,11 +72,18 @@
   connection: local
   vars:
     provision_clusterrole: test-clusterrole.yml.j2
-    provision_clusterrole_def: "{{ lookup('template', 'resources/' ~ provision_clusterrole) | from_yaml }}"
-    clusternetwork_verbs:
-    - get
-    - list
-    - watch
+    provision_clusterrole_def: >-
+      {{ lookup('template', 'resources/' ~ provision_clusterrole) | from_yaml }}
+    rules:
+    - apiGroups: ['network.openshift.io', '']
+      resources: ['netnamespaces']
+      verbs: ['create','delete','get','list','update']
+    - apiGroups: ['']
+      resources: ['namespaces','projects']
+      verbs: ['list']
+    - apiGroups: ['network.openshift.io','']
+      resources: ['clusternetworks','hostsubnets']
+      verbs: ['get','list']
 
   roles:
   - role: openshift-provision
@@ -71,7 +94,7 @@
   tasks:
   - name: Get ClusterRole
     command: >-
-      {{ test_oc_cmd }} export clusterrole test-clusterrole -o json
+      {{ test_oc_cmd }} get clusterrole test-clusterrole -o json
     register: get_clusterrole
     changed_when: false
 
@@ -85,8 +108,12 @@
         {{ got_clusterrole | to_yaml }}
         <<<
     vars:
-      got_clusterrole: "{{ get_clusterrole.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_clusterrole: "{{ provision_clusterrole_def | combine(ignore_differences, recursive=True) }}"
+      got_clusterrole: >-
+        {{ get_clusterrole.stdout | from_json
+         | combine(ignore_differences, recursive=True) }}
+      cmp_clusterrole: >-
+        {{ provision_clusterrole_def
+         | combine(ignore_differences, recursive=True) }}
     when: >-
       cmp_clusterrole.metadata != got_clusterrole.metadata or
       cmp_clusterrole.rules != got_clusterrole.rules

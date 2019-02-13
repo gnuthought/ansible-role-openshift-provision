@@ -1,0 +1,189 @@
+---
+- name: Set Facts
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  tasks:
+  - include_tasks: setup-test.yml
+  - set_fact:
+      ignore_differences:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+          resourceVersion: ''
+          selfLink: ''
+          uid: ''
+
+- name: Test Provision
+  hosts: localhost
+  connection: local
+  vars:
+    provision_clusterrolebinding: >-
+      {{ lookup('template', 'resources/test-clusterrolebinding.yml.j2')
+       | from_yaml }}
+    subjects:
+    - kind: SystemGroup
+      name: system:serviceaccounts:default
+    - kind: User
+      name: alice
+
+  roles:
+  - role: openshift-provision
+
+  tasks:
+  - name: Provision ClusterRoleBinding
+    openshift_provision:
+      connection: "{{ openshift_connection }}"
+      resource: "{{ provision_clusterrolebinding }}"
+
+  - name: Get ClusterRoleBinding
+    command: >-
+      {{ test_oc_cmd }} get clusterrolebinding
+      test-clusterrolebinding -o json
+    register: get_clusterrolebinding
+    changed_when: false
+
+  - name: Verify ClusterRoleBinding
+    fail:
+      msg: |
+        ClusterRoleBinding not defined as expected
+        >>>
+        {{ cmp_clusterrolebinding | to_yaml }}
+        ===
+        {{ got_clusterrolebinding | to_yaml }}
+        <<<
+    vars:
+      got_clusterrolebinding: >-
+        {{ get_clusterrolebinding.stdout | from_json
+         | combine(ignore_differences, recursive=True)
+        }}
+      cmp_clusterrolebinding: >-
+        {{ provision_clusterrolebinding
+         | combine(ignore_differences, recursive=True)
+        }}
+    when: >-
+      cmp_clusterrolebinding.metadata != got_clusterrolebinding.metadata or
+      cmp_clusterrolebinding.roleRef != got_clusterrolebinding.roleRef or
+      cmp_clusterrolebinding.subjects != got_clusterrolebinding.subjects
+
+- name: Test Reprovision
+  hosts: localhost
+  connection: local
+  vars:
+    provision_clusterrolebinding: >-
+      {{ lookup('template', 'resources/test-clusterrolebinding.yml.j2')
+       | from_yaml }}
+    subjects:
+    - kind: User
+      name: alice
+    - kind: SystemGroup
+      name: system:serviceaccounts:default
+
+  tasks:
+  - name: Check reprovision ClusterRoleBinding
+    openshift_provision:
+      connection: "{{ openshift_connection }}"
+      resource: "{{ provision_clusterrolebinding }}"
+    register: reprovision_clusterrolebinding
+
+  - fail:
+      msg: Reprovision indicated change to ClusterRoleBinding
+    when: reprovision_clusterrolebinding.changed
+
+- name: Test Update
+  hosts: localhost
+  connection: local
+  vars:
+    provision_clusterrolebinding: >-
+      {{ lookup('template', 'resources/test-clusterrolebinding.yml.j2')
+       | from_yaml }}
+    subjects:
+    - kind: User
+      name: bob
+    - kind: SystemGroup
+      name: system:serviceaccounts:default
+
+  tasks:
+  - name: Apply update to ClusterRoleBinding
+    openshift_provision:
+      connection: "{{ openshift_connection }}"
+      resource: "{{ provision_clusterrolebinding }}"
+    register: do_update
+
+  - name: Check reported update patch
+    fail:
+      msg: |
+        Update patch did not match expected
+        >>>
+        {{ update_patch | to_yaml }}
+        ===
+        {{ do_update.patch | to_yaml }}
+        <<<
+    vars:
+      update_patch:
+      - op: test
+        path: /subjects/1
+        value:
+          kind: User
+          name: alice
+      - op: remove
+        path: /subjects/1
+      - op: add
+        path: /subjects/-
+        value:
+          kind: User
+          name: bob
+    when: do_update.patch != update_patch
+
+  - name: Get ClusterRoleBinding
+    command: >-
+      {{ test_oc_cmd }} get clusterrolebinding
+      test-clusterrolebinding -o json
+    register: get_clusterrolebinding
+    changed_when: false
+
+  - name: Verify Update ClusterRoleBinding
+    fail:
+      msg: |
+        ClusterRoleBinding not defined as expected
+        >>>
+        {{ cmp_clusterrolebinding | to_yaml }}
+        ===
+        {{ got_clusterrolebinding | to_yaml }}
+        <<<
+    vars:
+      got_clusterrolebinding: >-
+        {{ get_clusterrolebinding.stdout | from_json
+         | combine(ignore_differences, recursive=True)
+        }}
+      cmp_clusterrolebinding: >-
+        {{ provision_clusterrolebinding
+         | combine(ignore_differences, recursive=True)
+        }}
+    when: >-
+      cmp_clusterrolebinding.metadata != got_clusterrolebinding.metadata or
+      cmp_clusterrolebinding.roleRef != got_clusterrolebinding.roleRef or
+      cmp_clusterrolebinding.subjects != got_clusterrolebinding.subjects
+
+- name: Test Delete
+  hosts: localhost
+  connection: local
+  tasks:
+  - name: Delete ClusterRoleBinding
+    openshift_provision:
+      action: delete
+      connection: "{{ openshift_connection }}"
+      resource:
+        kind: ClusterRoleBinding
+        metadata:
+          name: test-clusterrolebinding
+
+  - name: Verify ClusterRoleBinding Delete
+    command: >-
+      {{ test_oc_cmd }} get clusterrolebinding
+      test-clusterrolebinding -o json
+    register: get_clusterrolebinding
+    failed_when: get_clusterrolebinding.rc == 0
+    changed_when: false
