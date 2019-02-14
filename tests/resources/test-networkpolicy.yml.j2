@@ -1,0 +1,28 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: test-networkpolicy
+spec:
+  podSelector: {{ pod_selector | to_json }}
+  policyTypes:
+{% if ingress_from is defined %}
+  - Ingress
+{% endif %}
+{% if egress_to is defined %}
+  - Egress
+{% endif %}
+{% if ingress_from is defined %}
+  ingress:
+  - from: {{ ingress_from | to_json }}
+{%   if ingress_ports is defined %}
+    ports: {{ ingress_ports | to_json }}
+{%   endif %}
+{% endif %}
+{% if egress_to is defined %}
+  egress:
+  - to: {{ egress_to | to_json }}
+{%   if egress_ports is defined %}
+    ports: {{ egress_ports | to_json }}
+{%   endif %}
+{% endif %}

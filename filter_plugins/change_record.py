@@ -1,40 +1,79 @@
-import json
 import re
+import yaml
+
+def is_connection_opt(s):
+    m = re.match(r'--[a-z-]+=', m)
+    return m and m.group(1) in (
+        'as',
+        'as-group',
+	'certificate-authority',
+        'client-certificate',
+        'client-key',
+        'cluster',
+        'config',
+        'context',
+        'insecure-skip-tls-verify',
+        'kubeconfig',
+        'match-server-version',
+        'request-timeout',
+        'server',
+        'token',
+        'user'
+    )
+
+def format_change_command(value):
+    cmd = [
+        item for item in value['cmd']
+        if not is_connection_opt(item)
+    ]
+    if cmd[0] == 'echo':
+        cmd.pop(0)
+    return {
+        'action': 'command',
+        'command': cmd
+    }
+
+def format_change_provision(value):
+    kind = value['resource']['kind']
+    change = {
+        'action': value['action'],
+        'kind': kind,
+        'name': value['resource']['metadata']['name']
+    }
+    if 'namespace' in value['resource']['metadata']:
+        change['namespace'] = value['resource']['metadata']['namespace']
+    if kind != 'Secret':
+        if value.get('patch', None):
+            change['patch'] = value['patch']
+        else:
+            change['resource'] = value['resource']
+    return change
+
+def record_change(change, change_record):
+    fh = open(change_record, 'a')
+    yaml.safe_dump(
+        change,
+        fh,
+        default_flow_style=False,
+        explicit_start=True
+    )
 
 def record_change_command(value, change_record=''):
     if change_record:
-        fh = open(change_record, 'a')
-        cmd = [
-            item for item in value['cmd']
-            if not item.startswith('--server=')
-            and not item.startswith('--token=')
-        ]
-        if cmd[0] == 'echo':
-            cmd.pop(0)
-        fh.write(
-            "---\n"
-            "action: command\n" +
-            'command: ' + json.dumps(cmd) + "\n"
+        record_change(
+            format_change_command(value),
+            change_record
         )
     return True
 
+
 def record_change_provision(value, change_record=''):
-    if not value['changed']:
-        return False
-    if not change_record:
-        return True
-    fh = open(change_record, 'a')
-    fh.write("---\n")
-    fh.write('action: ' + value['action'] + "\n")
-    fh.write('kind: ' + value['resource']['kind'] + "\n")
-    fh.write('name: ' + value['resource']['metadata']['name'] + "\n")
-    if 'namespace' in value['resource']['metadata']:
-        fh.write('namespace: ' + value['resource']['metadata']['namespace'] + "\n")
-    if value.get('patch', None):
-        fh.write('patch: ' + json.dumps(value['patch']) + "\n")
-    else:
-        fh.write('resource: ' + json.dumps(value['resource']) + "\n")
-    return True
+    if value['changed'] and change_record:
+        record_change(
+            format_change_provision(value),
+            change_record
+        )
+    return value['changed']
 
 class FilterModule(object):
     '''

@@ -115,21 +115,40 @@ def make_field_patch(field, current, config):
                 for operation in compare_list(path, value, other):
                     yield operation
         else:
-            yield {'op': 'test', 'path': '/'.join(path), 'value': value}
-            yield {'op': 'replace', 'path': '/'.join(path), 'value': other}
+            yield {
+                'op': 'test',
+                'path': '/'.join(path),
+                'value': strip_value(value)
+            }
+            yield {
+                'op': 'replace',
+                'path': '/'.join(path),
+                'value': strip_value(other)
+            }
 
     def compare_dict(path, src, dst):
         for key in src:
             if key not in dst:
-                yield {'op': 'test', 'path': '/'.join(path + [key]), 'value': src[key]}
-                yield {'op': 'remove', 'path': '/'.join(path + [key])}
+                yield {
+                    'op': 'test',
+                    'path': '/'.join(path + [key]),
+                    'value': strip_value(src[key])
+                }
+                yield {
+                    'op': 'remove',
+                    'path': '/'.join(path + [key])
+                }
                 continue
             current = path + [key]
             for operation in compare_values(current, src[key], dst[key]):
                 yield operation
         for key in dst:
             if key not in src:
-                yield {'op': 'add', 'path': '/'.join(path + [key]), 'value': dst[key]}
+                yield {
+                    'op': 'add',
+                    'path': '/'.join(path + [key]),
+                    'value': strip_value(dst[key])
+                }
 
     def compare_list(path, src, dst):
         lsrc, ldst = len(src), len(dst)
@@ -140,11 +159,22 @@ def make_field_patch(field, current, config):
         if lsrc < ldst:
             for idx in range(lsrc, ldst):
                 current = path + [str(idx)]
-                yield {'op': 'add', 'path': '/'.join(current), 'value': dst[idx]}
+                yield {
+                    'op': 'add',
+                    'path': '/'.join(current),
+                    'value': strip_value(dst[idx])
+                }
         elif lsrc > ldst:
             for idx in reversed(range(ldst, lsrc)):
-                yield {'op': 'test', 'path': '/'.join(path + [str(idx)]), 'value': src[idx]}
-                yield {'op': 'remove', 'path': '/'.join(path + [str(idx)])}
+                yield {
+                    'op': 'test',
+                    'path': '/'.join(path + [str(idx)]),
+                    'value': strip_value(src[idx])
+                }
+                yield {
+                    'op': 'remove',
+                    'path': '/'.join(path + [str(idx)])
+                }
 
     def compare_keyed_list(path, src, dst):
         key_name = src[-1]['__key_name__']
@@ -155,25 +185,47 @@ def make_field_patch(field, current, config):
             src_item = src[src_idx]
             dst_idx = dst_key_map.get(src_item[key_name], None)
             if dst_idx == None:
-                yield {'op': 'test', 'path': '/'.join(current), 'value': src_item}
-                yield {'op': 'remove', 'path': '/'.join(current)}
+                yield {
+                    'op': 'test',
+                    'path': '/'.join(current),
+                    'value': strip_value(src_item)
+                }
+                yield {
+                    'op': 'remove',
+                    'path': '/'.join(current)
+                }
             else:
                 for operation in compare_values(current, src_item, dst[dst_idx]):
                     yield operation
         for dst_item in dst[:-1]:
             if dst_item[key_name] not in src_key_map:
-                yield {'op': 'add', 'path': '/'.join(path + ['-']), 'value': dst_item}
+                yield {
+                    'op': 'add',
+                    'path': '/'.join(path + ['-']),
+                    'value': strip_value(dst_item)
+                }
 
     def compare_set_list(path, src, dst):
         for src_idx in range(len(src)-2, -1, -1):
             current = path + [str(src_idx)]
             src_item = src[src_idx]
             if src_item not in dst:
-                yield {'op': 'test', 'path': '/'.join(current), 'value': src_item}
-                yield {'op': 'remove', 'path': '/'.join(current)}
+                yield {
+                    'op': 'test',
+                    'path': '/'.join(current),
+                    'value': strip_value(src_item)
+                }
+                yield {
+                    'op': 'remove',
+                    'path': '/'.join(current)
+                }
         for dst_item in dst[:-1]:
             if dst_item not in src:
-                yield {'op': 'add', 'path': '/'.join(path + ['-']), 'value': dst_item}
+                yield {
+                    'op': 'add',
+                    'path': '/'.join(path + ['-']),
+                    'value': strip_value(dst_item)
+                }
 
     return list(compare_values(['/' + field], current, config))
 
@@ -269,6 +321,15 @@ def mark_list_with_keys(lst, key_name):
         '__key_map__': key_map,
         '__key_name__': key_name
     })
+
+def strip_value(lst):
+    """Return value stripped of any special mutations"""
+    if isinstance(lst, list) \
+    and len(lst) > 0 \
+    and type(lst[-1]) is dict \
+    and '__special_list_type__' in lst[-1]:
+        return lst[:-1]
+    return lst
 
 def list_has_keys(lst):
     return(
@@ -602,11 +663,46 @@ def normalize_NetworkPolicy_V1(policy):
     normalize_NetworkPolicySpec_V1(policy['spec'])
 
 def normalize_NetworkPolicySpec_V1(spec):
-    set_dict_defaults(policy, {
+    set_dict_defaults(spec, {
+        'egress': [],
+        'ingress': [],
         'podSelector': {},
         'policyTypes': ['Ingress']
     })
 
+    # "If no policyTypes are specified on a NetworkPolicy then by default
+    # Ingress will always be set and Egress will be set if the NetworkPolicy
+    # has any egress rules."
+    # https://kubernetes.io/docs/concepts/services-networking/network-policies/
+    if spec['egress'] and 'Egress' not in spec['policyTypes']:
+        spec['policyTypes'].append('Egress')
+
+    mark_list_is_set(spec['policyTypes'])
+    for egress in spec['egress']:
+        normalize_NetworkPolicyEgressRule_V1(egress)
+    for ingress in spec['egress']:
+        normalize_NetworkPolicyIngressRule_V1(ingress)
+
+def normalize_NetworkPolicyEgressRule_V1(rule):
+    if 'to' in rule:
+        mark_list_is_set(rule['to'])
+    if 'ports' in rule:
+        for port in rule['ports']:
+            normalize_NetworkPolicyPort_V1(port)
+        mark_list_is_set(rule['ports'])
+
+def normalize_NetworkPolicyIngressRule_V1(rule):
+    if 'from' in rule:
+        mark_list_is_set(rule['from'])
+    if 'ports' in rule:
+        for port in rule['ports']:
+            normalize_NetworkPolicyPort_V1(port)
+        mark_list_is_set(rule['ports'])
+
+def normalize_NetworkPolicyPort_V1(port):
+    set_dict_defaults(port, {
+        'protocol': 'TCP'
+    })
 
 def normalize_ObjectMeta_V1(metadata):
     set_dict_defaults(metadata, {

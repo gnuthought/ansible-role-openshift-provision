@@ -1,0 +1,272 @@
+---
+- name: Set Facts
+  hosts: localhost
+  connection: local
+  vars_files:
+  - login-creds.yml
+  tasks:
+  - include_tasks: setup-test.yml
+  - set_fact:
+      ignore_differences:
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: ''
+          creationTimestamp: null
+          generation: 0
+          namespace: ''
+          resourceVersion: ''
+          selfLink: ''
+          uid: ''
+
+- name: Test Provision
+  hosts: localhost
+  connection: local
+  vars:
+    provision_networkpolicy: >-
+      {{ lookup('template', 'resources/test-networkpolicy.yml.j2')
+       | from_yaml }}
+    pod_selector:
+      matchLabels:
+         role: frontend
+    igress_from:
+    - ipBlock:
+        cidr: 172.17.0.0/16
+        except:
+        - 172.17.1.0/24
+    - namespaceSelector:
+        matchLabels:
+          project: myproject
+    - podSelector:
+        matchLabels:
+          role: frontend
+    ingress_ports:
+    - protocol: TCP
+      port: 6379
+    egress_to:
+    - ipBlock:
+        cidr: 10.0.0.0/24
+    egress_ports:
+    - protocol: TCP
+      port: 5978
+
+  roles:
+  - role: openshift-provision
+    openshift_provision:
+      projects:
+      - name: provision-test
+
+  tasks:
+  - name: Provision NetworkPolicy
+    openshift_provision:
+      connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_networkpolicy }}"
+
+  - name: Get NetworkPolicy
+    command: >-
+      {{ test_oc_cmd }} get networkpolicy -n provision-test
+      test-networkpolicy -o json
+    register: get_networkpolicy
+    changed_when: false
+
+  - name: Verify NetworkPolicy
+    fail:
+      msg: |
+        NetworkPolicy not defined as expected
+        >>>
+        {{ cmp_networkpolicy | to_yaml }}
+        ===
+        {{ got_networkpolicy | to_yaml }}
+        <<<
+    vars:
+      got_networkpolicy: >-
+        {{ get_networkpolicy.stdout | from_json
+         | combine(ignore_differences, recursive=True)
+        }}
+      cmp_networkpolicy: >-
+        {{ provision_networkpolicy
+         | combine(ignore_differences, recursive=True)
+        }}
+    when: >-
+      cmp_networkpolicy.metadata != got_networkpolicy.metadata or
+      cmp_networkpolicy.spec != got_networkpolicy.spec
+
+- name: Test Reprovision
+  hosts: localhost
+  connection: local
+  vars:
+    provision_networkpolicy: >-
+      {{ lookup('template', 'resources/test-networkpolicy.yml.j2')
+       | from_yaml }}
+    pod_selector:
+      matchLabels:
+         role: frontend
+    igress_from:
+    - namespaceSelector:
+        matchLabels:
+          project: myproject
+    - podSelector:
+        matchLabels:
+          role: frontend
+    - ipBlock:
+        cidr: 172.17.0.0/16
+        except:
+        - 172.17.1.0/24
+    ingress_ports:
+    - port: 6379
+    egress_to:
+    - ipBlock:
+        cidr: 10.0.0.0/24
+    egress_ports:
+    - port: 5978
+
+  tasks:
+  - name: Check reprovision NetworkPolicy
+    openshift_provision:
+      connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_networkpolicy }}"
+    register: reprovision_networkpolicy
+
+  - fail:
+      msg: Reprovision indicated change to NetworkPolicy
+    when: reprovision_networkpolicy.changed
+
+  - name: Check reprovision NetworkPolicy
+    openshift_provision:
+      connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_networkpolicy }}"
+    register: reprovision_networkpolicy
+
+  - fail:
+      msg: Reprovision indicated change to NetworkPolicy
+    when: reprovision_networkpolicy.changed
+
+- name: Test Update
+  hosts: localhost
+  connection: local
+  vars:
+    provision_networkpolicy: >-
+      {{ lookup('template', 'resources/test-networkpolicy.yml.j2')
+       | from_yaml }}
+    pod_selector:
+      matchLabels:
+         role: web
+    igress_from:
+    - ipBlock:
+        cidr: 172.17.0.0/16
+        except:
+        - 172.17.1.0/24
+    - namespaceSelector:
+        matchLabels:
+          project: myproject
+    - podSelector:
+        matchLabels:
+          role: web
+    ingress_ports:
+    - protocol: TCP
+      port: 6379
+    egress_to:
+    - ipBlock:
+        cidr: 192.168.0.0/24
+    egress_ports:
+    - protocol: TCP
+      port: 5978
+    - protocol: TCP
+      port: 8443
+
+  tasks:
+  - name: Apply update to NetworkPolicy
+    openshift_provision:
+      connection: "{{ openshift_connection }}"
+      namespace: provision-test
+      resource: "{{ provision_networkpolicy }}"
+    register: do_update
+
+  - name: Check reported update patch
+    fail:
+      msg: |
+        Update patch did not match expected
+        >>>
+        {{ update_patch | to_yaml }}
+        ===
+        {{ do_update.patch | to_yaml }}
+        <<<
+    vars:
+      update_patch:
+      - op: test
+        path: /spec/egress/0/to/0
+        value:
+          ipBlock:
+            cidr: 10.0.0.0/24
+      - op: remove
+        path: /spec/egress/0/to/0
+      - op: add
+        path: /spec/egress/0/to/-
+        value:
+          ipBlock:
+            cidr: 192.168.0.0/24
+      - op: add
+        path: /spec/egress/0/ports/-
+        value:
+          port: 8443
+          protocol: TCP
+      - op: test
+        path: /spec/podSelector/matchLabels/role
+        value: frontend
+      - op: replace
+        path: /spec/podSelector/matchLabels/role
+        value: web
+    when: do_update.patch != update_patch
+
+  - name: Get NetworkPolicy
+    command: >-
+      {{ test_oc_cmd }} get networkpolicy -n provision-test
+      test-networkpolicy -o json
+    register: get_networkpolicy
+    changed_when: false
+
+  - name: Verify Update NetworkPolicy
+    fail:
+      msg: |
+        NetworkPolicy not defined as expected
+        >>>
+        {{ cmp_networkpolicy | to_yaml }}
+        ===
+        {{ got_networkpolicy | to_yaml }}
+        <<<
+    vars:
+      got_networkpolicy: >-
+        {{ get_networkpolicy.stdout | from_json
+         | combine(ignore_differences, recursive=True)
+        }}
+      cmp_networkpolicy: >-
+        {{ provision_networkpolicy
+         | combine(ignore_differences, recursive=True)
+        }}
+    when: >-
+      cmp_networkpolicy.metadata != got_networkpolicy.metadata or
+      cmp_networkpolicy.spec != got_networkpolicy.spec
+
+- name: Test Delete
+  hosts: localhost
+  connection: local
+  tasks:
+  - name: Delete NetworkPolicy
+    openshift_provision:
+      action: delete
+      namespace: provision-test
+      connection: "{{ openshift_connection }}"
+      resource:
+        kind: NetworkPolicy
+        metadata:
+          name: test-networkpolicy
+
+  - name: Verify NetworkPolicy Delete
+    command: >-
+      {{ test_oc_cmd }} get networkpolicy -n provision-test
+      test-networkpolicy -o json
+    register: get_networkpolicy
+    failed_when: get_networkpolicy.rc == 0
+    changed_when: false
