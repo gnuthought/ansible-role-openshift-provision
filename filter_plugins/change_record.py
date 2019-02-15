@@ -2,7 +2,7 @@ import re
 import yaml
 
 def is_connection_opt(s):
-    m = re.match(r'--[a-z-]+=', s)
+    m = re.match(r'--([a-z-]+)=', s)
     return m and m.group(1) in (
         'as',
         'as-group',
