@@ -2,7 +2,7 @@ import re
 import yaml
 
 def is_connection_opt(s):
-    m = re.match(r'--([a-z-]+)=', s)
+    m = re.match(r'--([a-z-]+)(=|$)', s)
     return m and m.group(1) in (
         'as',
         'as-group',
@@ -23,7 +23,7 @@ def is_connection_opt(s):
 
 def format_change_command(value):
     cmd = [
-        item for item in value['cmd']
+        str(item) for item in value['cmd']
         if not is_connection_opt(item)
     ]
     if cmd[0] == 'echo':
@@ -65,7 +65,6 @@ def record_change_command(value, change_record=''):
             change_record
         )
     return True
-
 
 def record_change_provision(value, change_record=''):
     if value['changed'] and change_record:
