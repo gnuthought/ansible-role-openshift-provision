@@ -51,9 +51,9 @@
   check_mode: false
   changed_when: false
   failed_when: >-
-  - get_cluster_vars.rc != 0
-  - '(NotFound)' not in get_cluster_vars.stderr
-  - '(Forbidden)' not in get_cluster_vars.stderr
+    get_cluster_vars.rc != 0 and
+    '(NotFound)' not in get_cluster_vars.stderr and
+    '(Forbidden)' not in get_cluster_vars.stderr
 
 - name: Set fact for cluster
   set_fact:
