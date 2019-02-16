@@ -446,6 +446,7 @@ def normalize_ClusterRoleBinding_V1(role_binding):
         'subjects': []
     })
     normalize_ObjectMeta_V1(role_binding['metadata'])
+    normalize_RoleRef_V1(role_binding['roleRef'])
     mark_list_is_set(role_binding['subjects'])
 
 def normalize_ConfigMapVolumeSource_V1(value):
@@ -857,7 +858,14 @@ def normalize_RoleBinding_V1(role_binding):
         'subjects': []
     })
     normalize_ObjectMeta_V1(role_binding['metadata'])
+    normalize_RoleRef_V1(role_binding['roleRef'])
     mark_list_is_set(role_binding['subjects'])
+
+def normalize_RoleRef_V1(ref):
+    set_dict_defaults(ref, {
+        'apiGroup': 'rbac.authorization.k8s.io',
+        'kind': 'ClusterRole'
+    })
 
 def normalize_Route_V1(route):
     set_dict_defaults(route, {
