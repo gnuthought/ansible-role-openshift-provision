@@ -771,6 +771,13 @@ def normalize_PodSpec_V1(spec):
         'terminationGracePeriodSeconds': 30,
         'volumes': []
     })
+
+    # ServiceAccount is deprecated in favor of serviceAccountName
+    if 'serviceAccountName' in spec:
+        spec['serviceAccount'] = spec['serviceAccountName']
+    elif 'serviceAccount' in spec:
+        spec['serviceAccountName'] = spec['serviceAccount']
+
     normalize_ContainerList_V1(spec['containers'])
     normalize_VolumeList_V1(spec['volumes'])
 
