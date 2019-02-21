@@ -4,8 +4,31 @@ openshift-provision
 An Ansible role for provisioning resources within OpenShift clusters.
 
 This role provides comprehensive OpenShift cluster resource provisioning
-using a single declarative variable structure or using the
-`openshift_provision` Ansible module provided.
+using a declarative variable structure with multi-level resource definition
+lookups and template automation.
+
+The openshift-provision ansible role may be used directly or using a
+containerized deployment pattern provided by the
+[openshift-provision-manager](https://github.com/gnuthought/openshift-provision-manager).
+
+Project Goals
+-------------
+
+From core resource types such as Deployments and Services to CustomResourceDefinitions,
+OpenShift resource management should include:
+
+* Templating that integrates into the developer workflow
+
+* Resource agnostic configuration, non-opinionated tooling that can be used to
+  manage any type of resource.
+
+* Simple repeatable (idempotent) deployment of complex resource definitions
+
+* Ability to converge to desired state no matter how the state was altered
+
+* Accurate reports of changes applied to resources
+
+* Non-destructive state checking with divergence reporting
 
 Installation
 ------------
