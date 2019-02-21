@@ -14,21 +14,34 @@ containerized deployment pattern provided by the
 Project Goals
 -------------
 
-From core resource types such as Deployments and Services to CustomResourceDefinitions,
-OpenShift resource management should include:
+Management of OpenShift resources should be:
 
-* Templating that integrates into the developer workflow
+* **Agnostic** - allow management of any resource or custom resource type should
+  be managable to configure any desired state.
 
-* Resource agnostic configuration, non-opinionated tooling that can be used to
-  manage any type of resource.
+* **Easy** - easy things should be easy...
 
-* Simple repeatable (idempotent) deployment of complex resource definitions
+* **Flexible** - ... and hard things should be possible.
 
-* Ability to converge to desired state no matter how the state was altered
+* **Compatible** - compatible with tools already in development workflow such
+  as OpenShift templates (Helm charts support is on the project roadmap).
 
-* Accurate reports of changes applied to resources
+* **Idempotent** - possible to run the tool repeatedly without changing the
+  state.
 
-* Non-destructive state checking with divergence reporting
+* **Robust** - able to converge from any configuration state, even when the
+  resource was managed by hand.
+
+* **Reportable** - able to produce accurate reports of what is changed.
+
+* **Auditable** - able to produce a report of differences of current state from
+  desired state without changing anything.
+
+* **Traceable** - resources configured by the management system should be
+  obvious (feature is on the roadmap).
+
+* **Stateful** - resources from previous processing should be tracked in a way
+  to allow rollback and cleanup (feature is on the roadmap).
 
 Installation
 ------------
