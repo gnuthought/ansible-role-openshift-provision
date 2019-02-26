@@ -1018,6 +1018,7 @@ class OpenShiftProvision:
             self.namespace = self.resource['metadata']['namespace']
         elif 'namespace' in module.params:
             self.namespace = module.params['namespace']
+            self.resource['metadata']['namespace'] = self.namespace
 
         connection = module.params['connection']
         if 'oc_cmd' in connection:
