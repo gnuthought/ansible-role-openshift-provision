@@ -5,3 +5,5 @@ openshift_resource_path:
 - "{{ playbook_dir }}"
 
 openshift_provision_change_record: ''
+
+openshift_provision_cluster_vars: {}
