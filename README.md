@@ -208,10 +208,7 @@ resources must define `metadata.name`.
 
 List of cluster role assignments. Each entry is a dictionary containing:
 
-* `role` - Name of role managed. This is *not* the name name of rolebinding,
-  but rather the name of the role referenced by the role binding. Assignment
-  and removal of roles uses `oc adm policy` commands which do not specify the
-  name of role bindings. Required
+* `role` - Name of cluster role for which role bindings are managed. Required
 
 * `users` - List of user names that should be granted access to this cluster
   role. Optional
@@ -341,10 +338,9 @@ resource. Values for `action` are the same as described above for
 
 List of project role assignments. Each entry is a dictionary containing:
 
-* `role` - Name of role managed. This is *not* the name name of rolebinding,
-  but rather the name of the role referenced by the role binding. Assignment
-  and removal of roles uses `oc policy` commands which do not specify the
-  name of role bindings. Required
+* `role` - Names the role to be managed. This can be the name of a ClusterRole
+  or the name of a namespace Role given as `{{namespace}}/{{rolename}}`.
+  Required
 
 * `users` - List of user names that should be granted access to this project
   role. Optional

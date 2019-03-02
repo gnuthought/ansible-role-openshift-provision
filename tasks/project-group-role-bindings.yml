@@ -3,7 +3,16 @@
   command: >
     {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} adm policy -n {{ project.name }} add-role-to-group
-    {{ ocp_role_name }} {{ ocp_group_name }}
+    {% if '/' in ocp_role_name %}
+    --role-namespace={{ ocp_role_name.split('/')[0] }}
+    {{ ocp_role_name.split('/')[1] }}
+    {% else %}
+    {{ ocp_role_name }}
+    {% endif %}
+    {{ ocp_group_name }}
+    {% if openshift_provision_openshift_version|version_compare('v3.9', '>=') %}
+    --rolebinding-name={{ ocp_role_name | replace('/', '-') }}
+    {% endif %}
   with_nested:
   - "{{ group_role.roles | default([group_role.role]) | default([]) }}"
   - "{{ group_role.groups | default([group_role.group] if group_role.group is defined else []) }}"
@@ -14,7 +23,15 @@
       {{ group_role_ent[0].name if group_role_ent[0] is mapping else group_role_ent[0] }}
     ocp_group_name: >-
       {{ group_role_ent[1].name if group_role_ent[1] is mapping else group_role_ent[1] }}
-    current_role_groups_query: "items[?roleRef.name=='{{ ocp_role_name }}'].groupNames[]"
+    current_role_groups_query: "items[?{{ roleref_query }}].groupNames[]"
+    roleref_query: >-
+      {% if '/' in ocp_role_name -%}
+      roleRef.namespace=='{{ ocp_role_name.split('/')[0] }}'
+      && roleRef.name=='{{ ocp_role_name.split('/')[1] }}'
+      {%- else -%}
+      roleRef.name=='{{ ocp_role_name }}'
+      {%- endif %}
+    #'
     current_role_groups: >-
       {{ current_role_bindings | json_query(current_role_groups_query) }}
   when: ocp_group_name not in current_role_groups
@@ -33,7 +50,15 @@
     ocp_role_name: "{{ role_ent.name if role_ent is mapping else role_ent }}"
     ocp_groups: >-
       {{ group_role.groups | default([group_role.group] if group_role.group is defined else []) }}
-    current_role_groups_query: "items[?roleRef.name=='{{ ocp_role_name }}'].groupNames[]"
+    current_role_groups_query: "items[?{{ roleref_query }}].groupNames[]"
+    roleref_query: >-
+      {% if '/' in ocp_role_name -%}
+      roleRef.namespace=='{{ ocp_role_name.split('/')[0] }}'
+      && roleRef.name=='{{ ocp_role_name.split('/')[1] }}'
+      {%- else -%}
+      roleRef.name=='{{ ocp_role_name }}'
+      {%- endif %}
+    #'
     current_role_groups: >-
       {{ current_role_bindings | json_query(current_role_groups_query) }}
   when: >

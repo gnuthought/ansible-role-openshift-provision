@@ -3,9 +3,15 @@
   command: >-
     {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} adm policy -n {{ project.name }} add-role-to-user
-    {{ ocp_role_name }} {{ ocp_user_name }}
+    {% if '/' in ocp_role_name %}
+    --role-namespace={{ ocp_role_name.split('/')[0] }}
+    {{ ocp_role_name.split('/')[1] }}
+    {% else %}
+    {{ ocp_role_name }}
+    {% endif %}
+    {{ ocp_user_name }}
     {% if openshift_provision_openshift_version|version_compare('v3.9', '>=') %}
-    --rolebinding-name={{ ocp_role_name }}
+    --rolebinding-name={{ ocp_role_name | replace('/', '-') }}
     {% endif %}
   with_nested:
   - "{{ user_role.roles | default([user_role.role]) }}"
@@ -17,7 +23,15 @@
       {{ user_role_ent[0].name if user_role_ent[0] is mapping else user_role_ent[0] }}
     ocp_user_name: >-
       {{ user_role_ent[1].name if user_role_ent[1] is mapping else user_role_ent[1] }}
-    current_role_users_query: "items[?roleRef.name=='{{ ocp_role_name }}'].userNames[]"
+    current_role_users_query: "items[?{{ roleref_query }}].userNames[]"
+    roleref_query: >-
+      {% if '/' in ocp_role_name -%}
+      roleRef.namespace=='{{ ocp_role_name.split('/')[0] }}'
+      && roleRef.name=='{{ ocp_role_name.split('/')[1] }}'
+      {%- else -%}
+      roleRef.name=='{{ ocp_role_name }}'
+      {%- endif %}
+    #'
     current_role_users: >-
       {{ current_role_bindings | json_query(current_role_users_query) }}
   when: ocp_user_name not in current_role_users
@@ -36,7 +50,15 @@
     ocp_role_name: "{{ role_ent.name if role_ent is mapping else role_ent }}"
     ocp_users: >-
        {{ user_role.users | default([user_role.user] if user_role.user is defined else []) }}
-    current_role_users_query: "items[?roleRef.name=='{{ ocp_role_name }}'].userNames[]"
+    current_role_users_query: "items[?{{ roleref_query }}].userNames[]"
+    roleref_query: >-
+      {% if '/' in ocp_role_name -%}
+      roleRef.namespace=='{{ ocp_role_name.split('/')[0] }}'
+      && roleRef.name=='{{ ocp_role_name.split('/')[1] }}'
+      {%- else -%}
+      roleRef.name=='{{ ocp_role_name }}'
+      {%- endif %}
+    #'
     current_role_users: >-
       {{ current_role_bindings | json_query(current_role_users_query) }}
   when: >-
