@@ -3,25 +3,25 @@
 # This allows items like cluster roles to be defined within cluster_resources.
 
 - name: Handle cluster_resources
-  include_tasks: resource.yml
-  static: false
+  include_tasks: cluster-resources.yml
   with_items: "{{ openshift_cluster.cluster_resources | default([]) }}"
   vars:
     resource_path: "{{ openshift_cluster.resource_path | default(openshift_resource_path) }}"
-    resource_entry: >-
-      {% if resource_item is mapping %}{{
-      resource_item
-      }}{% elif resource_item is match('.*\.j2') %}{{
-      lookup('template', lookup('first_found', {'files':resource_item, 'paths': resource_path})) | from_yaml
-      }}{% else %}{{
-      lookup('file', lookup('first_found', {'files':resource_item, 'paths': resource_path})) | from_yaml
-      }}{% endif %}
+    resource_list: >-
+      {%- if resource_item is mapping -%}
+      {{ [resource_item] }}
+      {%- else -%}
+      {{ lookup(
+           'template' if resource_item.endswith('.j2') else 'file',
+           lookup('first_found', {'files':resource_item, 'paths': resource_path})
+         ) | yaml_to_resource_list
+      }}
+      {%- endif -%}
   loop_control:
     loop_var: resource_item
 
 - name: Handle cluster process_templates
   include_tasks: process-template.yml
-  static: false
   with_items: "{{ openshift_cluster.process_templates | default([]) }}"
   loop_control:
     loop_var: template
@@ -48,18 +48,20 @@
 # allows creation of resources in multiple projects in a specific order by
 # specifying the namespace in the resource metadata.
 - name: Handle cluster level resources
-  include_tasks: resource.yml
+  include_tasks: cluster-resources.yml
   static: false
-  with_items: "{{ openshift_cluster.resources | default([]) }}"
+  with_items: "{{ openshift_cluster.cluster_resources | default([]) }}"
   vars:
     resource_path: "{{ openshift_cluster.resource_path | default(openshift_resource_path) }}"
-    resource_entry: >-
-      {% if resource_item is mapping %}{{
-      resource_item
-      }}{% elif resource_item is match('.*\.j2') %}{{
-      lookup('template', lookup('first_found', {'files':resource_item, 'paths': resource_path})) | from_yaml
-      }}{% else %}{{
-      lookup('file', lookup('first_found', {'files':resource_item, 'paths': resource_path})) | from_yaml
-      }}{% endif %}
+    resource_list: >-
+      {%- if resource_item is mapping -%}
+      {{ [resource_item] }}
+      {%- else -%}
+      {{ lookup(
+           'template' if resource_item.endswith('.j2') else 'file',
+           lookup('first_found', {'files':resource_item, 'paths': resource_path})
+         ) | yaml_to_resource_list
+      }}
+      {%- endif -%}
   loop_control:
     loop_var: resource_item

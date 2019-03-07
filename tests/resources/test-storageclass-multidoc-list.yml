@@ -1,0 +1,24 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  labels:
+    performance: standard
+    zone: zone1
+  name: test-storageclass-sc1
+parameters:
+  type: pd-standard
+  zone: us-east1-a
+provisioner: kubernetes.io/gce-pd
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  labels:
+    performance: standard
+    zone: zone2
+  name: test-storageclass-sc2
+parameters:
+  type: pd-standard
+  zone: us-east1-b
+provisioner: kubernetes.io/gce-pd

@@ -1,6 +1,5 @@
 ---
-- name: >-
-    Provision {{ resource.kind }} {{ resource.metadata.name }} in {{ project.name }}
+- name: Provision resources in {{ project.name }}
   openshift_provision:
     action: "{{ provision_action }}"
     patch_type: >-
@@ -13,6 +12,9 @@
       oc_cmd: "{{ oc_cmd }}"
     namespace: "{{ project.name }}"
     resource: "{{ resource }}"
+  with_items: "{{ resource_list }}"
+  loop_control:
+    loop_var: resource
   vars:
     provision_action: >-
       {{

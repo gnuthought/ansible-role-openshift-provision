@@ -173,38 +173,39 @@
   when: >-
     project.service_accounts is defined
 
-- name: Handle project role bindings
+- name: Handle project role bindings for {{ project.name }}
   include_tasks: project-role-bindings.yml
   when: >-
     project.role_bindings is defined or
     project.user_to_role is defined or
     project.group_to_role is defined
 
-- name: Handle project imagestreams
+- name: Handle project imagestreams for {{ project.name }}
   include_tasks: project-imagestreams.yml
   when: >-
     project.imagestreams is defined
 
-- name: Handle project resources
-  include_tasks: project-resource.yml
+- name: Handle project resources for {{ project.name }}
+  include_tasks: project-resources.yml
   static: false
   with_items: "{{ project.resources | default([]) }}"
   vars:
     resource_path: "{{ project.resource_path | default(cluster_resource_path) }}"
-    resource_entry: >-
-      {% if resource_item is mapping %}{{
-      resource_item
-      }}{% elif resource_item is match('.*\.j2') %}{{
-      lookup('template', lookup('first_found', {'files':resource_item, 'paths': resource_path})) | from_yaml
-      }}{% else %}{{
-      lookup('file', lookup('first_found', {'files':resource_item, 'paths':resource_path})) | from_yaml
-      }}{% endif %}
+    resource_list: >-
+      {%- if resource_item is mapping -%}
+      {{ [resource_item] }}
+      {%- else -%}
+      {{ lookup(
+           'template' if resource_item.endswith('.j2') else 'file',
+           lookup('first_found', {'files':resource_item, 'paths': resource_path})
+         ) | yaml_to_resource_list
+      }}
+      {%- endif -%}
   loop_control:
     loop_var: resource_item
 
 - name: Handle project templates
   include_tasks: process-template.yml
-  static: false
   # Allow "process_templates" to also be specified as "templates" for
   # compatibility with ansible-stacks.
   with_items: >

@@ -10,7 +10,7 @@
     {{ ocp_role_name }}
     {% endif %}
     {{ ocp_group_name }}
-    {% if openshift_provision_openshift_version|version_compare('v3.9', '>=') %}
+    {% if openshift_provision_openshift_version is version_compare('v3.9', '>=') %}
     --rolebinding-name={{ ocp_role_name | replace('/', '-') }}
     {% endif %}
   with_nested:

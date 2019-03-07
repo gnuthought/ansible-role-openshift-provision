@@ -20,10 +20,10 @@
   hosts: localhost
   connection: local
   vars:
-    provision_storageclass_list: test-storageclass-list.yml
-    provision_storageclass_list_def: "{{ lookup('file', 'resources/' ~ provision_storageclass_list) | from_yaml }}"
-    provision_storageclass_sc1_def: "{{ provision_storageclass_list_def['items'][0] }}"
-    provision_storageclass_sc2_def: "{{ provision_storageclass_list_def['items'][1] }}"
+    provision_storageclass_list: test-storageclass-multidoc-list.yml
+    provision_storageclass_list_def: "{{ lookup('file', 'resources/' ~ provision_storageclass_list) | yaml_to_resource_list }}"
+    provision_storageclass_sc1_def: "{{ provision_storageclass_list_def[0] }}"
+    provision_storageclass_sc2_def: "{{ provision_storageclass_list_def[1] }}"
 
   roles:
   - role: openshift-provision
