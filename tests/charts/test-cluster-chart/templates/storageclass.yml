@@ -1,0 +1,9 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: test-storageclass-{{ .Values.storage_type }}
+  labels:
+    test-storageclass: "true"
+parameters:
+  type: {{ .Values.storage_type }}
+provisioner: kubernetes.io/gce-pd

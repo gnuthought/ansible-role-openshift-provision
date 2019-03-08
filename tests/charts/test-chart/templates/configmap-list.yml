@@ -1,0 +1,27 @@
+{{- if .Values.configmap }}
+apiVersion: v1
+kind: List
+items:
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: {{ .Values.configmap.name }}-a
+    labels:
+      test-label: {{ .Values.label }}
+  data:
+{{-   range $key, $val := .Values.configmap.data }}
+    {{ $key }}: |-
+{{ $val | indent 6}}
+{{-   end }}
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: {{ .Values.configmap.name }}-b
+    labels:
+      test-label: {{ .Values.label }}
+  data:
+{{-   range $key, $val := .Values.configmap.data }}
+    {{ $key }}: |-
+{{ $val | indent 6}}
+{{-   end }}
+{{- end -}}

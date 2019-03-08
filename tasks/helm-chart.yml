@@ -1,0 +1,117 @@
+---
+## DESCRIPTION
+#
+# Process helm chart and manage objects.
+#
+# Called from tasks/project.yml
+#
+## VARIABLES
+#
+# `project` - project in which to process template with keys:
+#   `name` - project name
+#
+# `helm_chart` - template information with keys:
+#   `name` - template release name (optional)
+#   `action` - provision action (optional, default: 'apply')
+#   `chart` - chart to template, may be local path or chart name
+#   `chart_values` - values for chart processing
+#   `fetch` - options used for helm fetch (optional)
+#     `chart` - chart argument to fetch
+#     `ca_file` - verify certificates of HTTPS-enabled servers using this CA bundle
+#     `cert_file` - identify HTTPS client using this SSL certificate file
+#     `devel` - boolean, use development versions
+#     `key_file` - identify HTTPS client using this SSL key file
+#     `password` - chart repository password
+#     `repo` - chart repository url where to locate the requested chart
+#     `username` - chart repository username
+#     `version` - specific version of a chart. Without this, the latest version is fetched
+#
+## Example
+#
+# `helm_chart: { "name": "test", "fetch": { "chart": "stable/mysql" } }
+
+- name: Create temporary directory for helm chart
+  tempfile:
+    state: directory
+  register: tempdir
+  check_mode: false
+  changed_when: false
+
+- name: Fetch helm chart
+  command: >-
+    helm fetch 
+    {% if 'ca_file' in helm_chart.fetch %}--ca-file {{ helm_chart.fetch.ca_file | quote }}{% endif %}
+    {% if 'cert_file' in helm_chart.fetch %}--cert-file {{ helm_chart.fetch.cert_file | quote }}{% endif %}
+    {% if helm_chart.fetch.devel | default(False) | bool %}--devel{% endif %}
+    {% if 'key_file' in helm_chart.fetch %}--key-file {{ helm_chart.fetch.key_file | quote }}{% endif %}
+    {% if 'password' in helm_chart.fetch %}--password {{ helm_chart.fetch.password | quote }}{% endif %}
+    {% if 'repo' in helm_chart.fetch %}--repo {{ helm_chart.fetch.repo | quote }}{% endif %}
+    {% if 'username' in helm_chart.fetch %}--username {{ helm_chart.fetch.username | quote }}{% endif %}
+    {% if 'version' in helm_chart.fetch %}--version {{ helm_chart.fetch.version | quote }}{% endif %}
+    --untar
+    --untardir {{ tempdir.path }}
+    {{ helm_chart.fetch.chart | default(helm_chart.chart) }}
+  when: helm_chart.fetch is defined
+  check_mode: false
+  changed_when: false
+
+- name: Write helm chart values to values.yaml
+  copy:
+    content: "{{ helm_chart.chart_values | default({}) | to_json }}"
+    dest: "{{ tempdir.path }}/values.yaml"
+  check_mode: false
+  changed_when: false
+
+- name: Process helm chart template
+  command: >-
+    helm template
+    --values {{ tempdir.path }}/values.yaml
+    {% if project is defined %}--namespace {{ project.name | quote }}{% endif %}
+    {{ chart_path }}
+  vars:
+    chart_path: >-
+      {%- if helm_chart.fetch is defined -%}
+      {{ tempdir.path }}/{{ helm_chart.chart | default(helm_chart.fetch.chart) | basename }}
+      {%- else -%}
+      {{ helm_chart.chart }}
+      {%- endif -%}
+  check_mode: false
+  changed_when: false
+  register: process_helm_template
+
+- name: Template resources
+  openshift_provision:
+    action: "{{ provision_action }}"
+    patch_type: "{{ provision_patch_type }}"
+    connection:
+      oc_cmd: "{{ oc_cmd }}"
+    namespace: "{{ project.name if project is defined else '' }}"
+    resource: "{{ item }}"
+  with_items: "{{ process_helm_template.stdout | yaml_to_resource_list }}"
+  vars:
+    provision_action: >-
+      {{ item
+      | json_query('metadata.annotations."openshift-provision/action"')
+      | default(item.action, true)
+      | default(helm_chart.action, true)
+      | default('apply', true)
+      }}
+    provision_patch_type: >-
+      {{ item
+      | json_query('metadata.annotations."openshift-provision/patch-type"')
+      | default(item.patch_type, true)
+      | default(helm_chart.patch_type, true)
+      | default('strategic', true)
+      }}
+  when: provision_action != 'ignore'
+  register: provision
+  changed_when: >-
+    provision | record_change_provision(change_record)
+
+- name: Cleanup temporary directory for helm
+  file:
+    path: "{{ tempdir.path }}"
+    state: absent
+  register: tempdir
+  check_mode: false
+  changed_when: false

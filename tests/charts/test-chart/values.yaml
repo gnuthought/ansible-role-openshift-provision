@@ -1,0 +1,8 @@
+---
+configmap:
+  name: bar
+  data:
+    a: alice
+    b: bob
+
+label: foo

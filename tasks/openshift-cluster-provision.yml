@@ -26,6 +26,12 @@
   loop_control:
     loop_var: template
 
+- name: Handle cluster helm_charts
+  include_tasks: helm-chart.yml
+  with_items: "{{ openshift_cluster.helm_charts | default([]) }}"
+  loop_control:
+    loop_var: helm_chart
+
 - name: Handle groups
   include_tasks: group.yml
   with_items: "{{ openshift_cluster.groups | default([]) }}"

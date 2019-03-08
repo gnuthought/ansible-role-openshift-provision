@@ -216,3 +216,9 @@
     }}
   loop_control:
     loop_var: template
+
+- name: Handle project helm_charts
+  include_tasks: helm-chart.yml
+  with_items: "{{ project.helm_charts | default([]) }}"
+  loop_control:
+    loop_var: helm_chart

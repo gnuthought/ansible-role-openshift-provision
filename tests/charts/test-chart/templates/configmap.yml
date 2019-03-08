@@ -1,0 +1,13 @@
+{{- if .Values.configmap }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configmap.name }}
+  labels:
+    test-label: {{ .Values.label }}
+data:
+{{-   range $key, $val := .Values.configmap.data }}
+  {{ $key }}: |-
+{{ $val | indent 4}}
+{{-   end }}
+{{- end -}}

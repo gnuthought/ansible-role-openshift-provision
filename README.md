@@ -43,6 +43,18 @@ Management of OpenShift resources should be:
 * **Stateful** - resources from previous processing should be tracked in a way
   to allow rollback and cleanup (feature is on the roadmap).
 
+
+Contact
+-------
+
+Whether looking to contribute or just looking for some info, you can find us
+on ...
+
+Slack: https://openshift-provision.slack.com/messages/CGT87EPTN/
+
+Trello: https://trello.com/b/icRRuDUS/openshift-provision
+
+
 Installation
 ------------
 
@@ -157,6 +169,9 @@ Top level definition of how to manage a cluster:
 
 * `groups` - List of OpenShift groups to create along with group membership,
   described below
+
+* `helm_charts` - Helm chart templates to deploy to the cluster. Note that
+  helm charts can also be managed at the project level.
 
 * `process_templates` - Templates to process to create resources at the
   cluster level, described below
@@ -276,6 +291,8 @@ that list is processed by `openshift_provision`.
    created by `oc create imagestream NAME`. For more sophisticated imagestream
    creation a full definition may be provided within `resources`
 
+* `helm_charts` - Helm chart templates to deploy to the project namespace.
+
 * `join_pod_network` - Name of target project to which this project network
   should be joined for use with multi-tenant SDN
 
@@ -357,6 +374,32 @@ List of project role assignments. Each entry is a dictionary containing:
 
 * `remove_unlisted_groups` - Same as `remove_unlisted`, but specifically
   targeting groups. Optional, default "false"
+
+### `helm_charts`
+
+Helm charts are supported as a means of templating resources into the cluster.
+Helm support is provided without tiller or helm lifecycle hooks. Only fetching
+and templating helm charts is supported. If full helm lifecycle management is
+required then openshift-provision may be leveraged to deploy tiller into the
+cluster.
+
+The value of `helm_charts` should be a list of dictionaries where each
+dictionary contains:
+
+* `name` - template release name, Optional
+* `action` - provision action, Optional, default: 'apply'
+* `chart` - chart to template, may be local path or chart name
+* `chart_values` - values for chart processing
+* `fetch` - options used for helm fetch, Optional
+  * `chart` - chart argument to `helm fetch`
+  * `ca_file` - verify certificates of HTTPS-enabled servers using this CA bundle
+  * `cert_file` - identify HTTPS client using this SSL certificate file
+  * `devel` - boolean, use development versions
+  * `key_file` - identify HTTPS client using this SSL key file
+  * `password` - chart repository password
+  * `repo` - chart repository url where to locate the requested chart
+  * `username` - chart repository username
+  * `version` - specific version of a chart. Without this, the latest version is fetched
 
 ### `resources`
 
