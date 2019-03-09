@@ -50,7 +50,7 @@ Contact
 Whether looking to contribute or just looking for some info, you can find us
 on ...
 
-Slack: https://openshift-provision.slack.com/
+Slack: https://gnuthought.slack.com/messages/openshift-provision/
 
 Trello: https://trello.com/b/icRRuDUS/openshift-provision
 
