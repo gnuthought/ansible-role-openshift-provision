@@ -43,7 +43,7 @@
   tasks:
   - name: Get ClusterRole
     command: >-
-      {{ test_oc_cmd }} get clusterrole test-clusterrole -o json
+      {{ test_oc_cmd }} get clusterrole.authorization.openshift.io test-clusterrole -o json
     register: get_clusterrole
     changed_when: false
 
@@ -94,7 +94,7 @@
   tasks:
   - name: Get ClusterRole
     command: >-
-      {{ test_oc_cmd }} get clusterrole test-clusterrole -o json
+      {{ test_oc_cmd }} get clusterrole.authorization.openshift.io test-clusterrole -o json
     register: get_clusterrole
     changed_when: false
 

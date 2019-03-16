@@ -1,0 +1,18 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  name: test-service
+spec:
+  ports:
+{% for port in service_ports %}
+  - name: {{ port.name }}
+    port: {{ port.port }}
+    protocol: {{ port.protocol | default('TCP') }}
+    targetPort: {{ port.target_port | default(port.port) }}
+{% endfor %}
+  selector:
+    test-app: appname
+  sessionAffinity: ClientIP
+  type: ClusterIP

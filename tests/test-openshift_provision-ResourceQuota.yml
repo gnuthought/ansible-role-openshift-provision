@@ -21,7 +21,6 @@
   hosts: localhost
   connection: local
   vars:
-  vars:
     provision_resourcequota: >-
       {{ lookup('template', 'resources/test-resourcequota.yml.j2')
        | from_yaml
@@ -191,6 +190,9 @@
         kind: ResourceQuota
         metadata:
           name: test-resourcequota
+
+  - pause:
+      seconds: 1
 
   - name: Verify ResourceQuota Delete
     command: >-

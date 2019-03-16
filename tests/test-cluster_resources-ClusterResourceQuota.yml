@@ -12,6 +12,8 @@
           annotations:
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
+          selfLink: null
+        status: null
 
 - name: Test Provision
   hosts: localhost
@@ -36,7 +38,7 @@
   tasks:
   - name: Get ClusterResourceQuota
     command: >-
-      {{ test_oc_cmd }} export clusterresourcequota test-clusterresourcequota -o json
+      {{ test_oc_cmd }} get --export clusterresourcequota test-clusterresourcequota -o json
     register: get_clusterresourcequota
     changed_when: false
 
@@ -85,7 +87,7 @@
   tasks:
   - name: Get ClusterResourceQuota
     command: >-
-      {{ test_oc_cmd }} export clusterresourcequota test-clusterresourcequota -o json
+      {{ test_oc_cmd }} get --export clusterresourcequota test-clusterresourcequota -o json
     register: get_clusterresourcequota
     changed_when: false
 
@@ -110,3 +112,7 @@
     when: >-
       cmp_clusterresourcequota.metadata != got_clusterresourcequota.metadata or
       cmp_clusterresourcequota.spec != got_clusterresourcequota.spec
+
+  - name: Cleanup
+    command: >-
+      {{ test_oc_cmd }} delete clusterresourcequota test-clusterresourcequota

@@ -4,7 +4,7 @@ metadata:
   labels:
     foo: "{{ test_label }}"
   name: test-persistentvolume
-{% if openshift_version is version_compare('v3.10', '>=') %}
+{% if test_openshift_version is version_compare('v3.10', '>=') %}
   finalizers: [kubernetes.io/pv-protection]
 {% endif %}
 spec:

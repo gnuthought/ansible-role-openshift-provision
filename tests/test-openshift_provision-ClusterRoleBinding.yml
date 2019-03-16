@@ -40,7 +40,7 @@
 
   - name: Get ClusterRoleBinding
     command: >-
-      {{ test_oc_cmd }} get clusterrolebinding
+      {{ test_oc_cmd }} get clusterrolebinding.authorization.openshift.io
       test-clusterrolebinding -o json
     register: get_clusterrolebinding
     changed_when: false
@@ -66,7 +66,8 @@
     when: >-
       cmp_clusterrolebinding.metadata != got_clusterrolebinding.metadata or
       cmp_clusterrolebinding.roleRef != got_clusterrolebinding.roleRef or
-      cmp_clusterrolebinding.subjects != got_clusterrolebinding.subjects
+      cmp_clusterrolebinding.subjects|sort(attribute='name') !=
+        got_clusterrolebinding.subjects|sort(attribute='name')
 
 - name: Test Reprovision
   hosts: localhost
@@ -89,7 +90,9 @@
     register: reprovision_clusterrolebinding
 
   - fail:
-      msg: Reprovision indicated change to ClusterRoleBinding
+      msg: |-
+        Reprovision indicated change to ClusterRoleBinding
+        {{ reprovision_clusterrolebinding }}
     when: reprovision_clusterrolebinding.changed
 
 - name: Test Update
@@ -139,7 +142,7 @@
 
   - name: Get ClusterRoleBinding
     command: >-
-      {{ test_oc_cmd }} get clusterrolebinding
+      {{ test_oc_cmd }} get clusterrolebinding.authorization.openshift.io
       test-clusterrolebinding -o json
     register: get_clusterrolebinding
     changed_when: false
@@ -165,7 +168,8 @@
     when: >-
       cmp_clusterrolebinding.metadata != got_clusterrolebinding.metadata or
       cmp_clusterrolebinding.roleRef != got_clusterrolebinding.roleRef or
-      cmp_clusterrolebinding.subjects != got_clusterrolebinding.subjects
+      cmp_clusterrolebinding.subjects|sort(attribute='name') !=
+        got_clusterrolebinding.subjects|sort(attribute='name')
 
 - name: Test Delete
   hosts: localhost
@@ -180,9 +184,12 @@
         metadata:
           name: test-clusterrolebinding
 
+  - pause:
+      seconds: 1
+
   - name: Verify ClusterRoleBinding Delete
     command: >-
-      {{ test_oc_cmd }} get clusterrolebinding
+      {{ test_oc_cmd }} get clusterrolebinding.authorization.openshift.io
       test-clusterrolebinding -o json
     register: get_clusterrolebinding
     failed_when: get_clusterrolebinding.rc == 0

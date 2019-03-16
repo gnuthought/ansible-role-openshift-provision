@@ -17,7 +17,6 @@
           resourceVersion: 0
           selfLink: ''
           uid: ''
-          namespace: ''
 
 - name: Test Provision
   hosts: localhost
@@ -51,8 +50,12 @@
         {{ got_buildconfig | to_yaml }}
         <<<
     vars:
-      got_buildconfig: "{{ get_buildconfig.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_buildconfig: "{{ provision_buildconfig_def | combine(ignore_differences, recursive=True) }}"
+      got_buildconfig: >-
+        {{ get_buildconfig.stdout | from_json
+         | combine(ignore_differences, recursive=True) }}
+      cmp_buildconfig: >-
+        {{ provision_buildconfig_def
+         | combine(ignore_differences, recursive=True) }}
     when: >-
       cmp_buildconfig.metadata != got_buildconfig.metadata or
       cmp_buildconfig.spec != got_buildconfig.spec
@@ -89,8 +92,16 @@
         {{ got_buildconfig | to_yaml }}
         <<<
     vars:
-      got_buildconfig: "{{ get_buildconfig.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_buildconfig: "{{ provision_buildconfig_def | combine(ignore_differences, recursive=True) }}"
+      got_buildconfig: >-
+        {{ get_buildconfig.stdout | from_json
+         | combine(ignore_differences, recursive=True) }}
+      cmp_buildconfig: >-
+        {{ provision_buildconfig_def
+         | combine(ignore_differences, recursive=True) }}
     when: >-
       cmp_buildconfig.metadata != got_buildconfig.metadata or
       cmp_buildconfig.spec != got_buildconfig.spec
+
+  - name: Cleanup
+    command: >-
+      {{ test_oc_cmd }} delete buildconfig test-buildconfig -n provision-test

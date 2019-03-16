@@ -31,9 +31,29 @@
   check_mode: false
   changed_when: false
 
+- when: >-
+    'Client Version' in get_version.stdout
+  block:
+  - name: Get OpenShift 4.x version
+    command: >-
+      {{ test_oc_cmd }} get clusterversions version
+      -o jsonpath={.status.desired.version}
+    register: get_cluster_version
+    check_mode: false
+    changed_when: false
+
+  - name: Set OpenShift 4.x version facts
+    set_fact:
+      test_oc_version: >-
+        {{ get_version.stdout | regex_replace('(.|\s)*Client Version.*GitVersion:"(.*)"(.|\s)*', '\2') }}
+      test_openshift_version: 
+        v{{ get_cluster_version.stdout }}
+
 - name: Set version facts
+  when: >-
+    'Client Version' not in get_version.stdout
   set_fact:
-    oc_version: >-
+    test_oc_version: >-
       {{ get_version.stdout | regex_replace('(.|\s)*oc (\S+)(.|\s)*', '\2') }}
-    openshift_version: >-
+    test_openshift_version: >-
       {{ get_version.stdout | regex_replace('(.|\s)*openshift (\S+)(.|\s)*', '\2') }}

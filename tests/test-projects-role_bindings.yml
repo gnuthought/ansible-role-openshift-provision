@@ -1,30 +1,17 @@
----
 - name: Set Facts
   hosts: localhost
   connection: local
   vars_files:
   - login-creds.yml
   tasks:
+  - include_tasks: setup-test.yml
   - set_fact:
-      test_oc_cmd: >-
-        oc
-        {% if openshift_connection_certificate_authority is defined %}
-        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
-        {% endif %}
-        {% if openshift_connection_insecure_skip_tls_verify is defined %}
-        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
-        {% endif %}
-        {% if openshift_connection_server is defined %}
-        --server={{ openshift_connection_server | quote }}
-        {% endif %}
-        {% if openshift_connection_token is defined %}
-        --token={{ openshift_connection_token | quote }}
-        {% endif %}
       ignore_differences:
         metadata:
           annotations:
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
+          selfLink: null
 
 - name: Test Provision
   hosts: localhost
@@ -39,7 +26,7 @@
   - role: openshift-provision
     openshift_clusters:
     - projects:
-      - name: testproj
+      - name: provision-test
         role_bindings:
         - role: edit
           users: "{{ edit_users }}"
@@ -49,7 +36,7 @@
   tasks:
   - name: Get project RoleBindings
     command: >-
-      {{ test_oc_cmd }} export rolebinding -n testproj -o json
+      {{ test_oc_cmd }} get --export rolebinding -n provision-test -o json
     register: get_rolebindings
     changed_when: false
 
@@ -63,7 +50,7 @@
         {{ got_users | to_yaml }}
         <<<
     vars:
-      role_users_query: "items[?roleRef.name=='edit'].userNames[]"
+      role_users_query: "items[?roleRef.name=='edit'].subjects[]|[?kind=='User'].name"
       got_users: >-
         {{ get_rolebindings.stdout | from_json | json_query(role_users_query) | sort }}
     when:
@@ -79,7 +66,7 @@
         {{ got_groups | to_yaml }}
         <<<
     vars:
-      role_groups_query: "items[?roleRef.name=='edit'].groupNames[]"
+      role_groups_query: "items[?roleRef.name=='edit'].subjects[]|[?kind=='Group' || kind=='SystemGroup'].name"
       got_groups: >-
         {{ get_rolebindings.stdout | from_json | json_query(role_groups_query) | sort }}
     when:
@@ -98,7 +85,7 @@
   - role: openshift-provision
     openshift_clusters:
     - projects:
-      - name: testproj
+      - name: provision-test
         role_bindings:
         - role: edit
           users: "{{ edit_users }}"
@@ -108,7 +95,7 @@
   tasks:
   - name: Get project RoleBindings
     command: >-
-      {{ test_oc_cmd }} export rolebinding -n testproj -o json
+      {{ test_oc_cmd }} get --export rolebinding -n provision-test -o json
     register: get_rolebindings
     changed_when: false
 
@@ -122,7 +109,7 @@
         {{ got_users | to_yaml }}
         <<<
     vars:
-      role_users_query: "items[?roleRef.name=='edit'].userNames[]"
+      role_users_query: "items[?roleRef.name=='edit'].subjects[]|[?kind=='User'].name"
       got_users: >-
         {{ get_rolebindings.stdout | from_json | json_query(role_users_query) | sort }}
     when:
@@ -138,7 +125,7 @@
         {{ got_groups | to_yaml }}
         <<<
     vars:
-      role_groups_query: "items[?roleRef.name=='edit'].groupNames[]"
+      role_groups_query: "items[?roleRef.name=='edit'].subjects[]|[?kind=='Group' || kind=='SystemGroup'].name"
       got_groups: >-
         {{ get_rolebindings.stdout | from_json | json_query(role_groups_query) | sort }}
     when:

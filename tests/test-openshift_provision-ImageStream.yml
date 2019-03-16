@@ -206,6 +206,7 @@
     openshift_provision:
       connection: "{{ openshift_connection }}"
       namespace: provision-test
+      action: replace
       resource: "{{ provision_imagestream }}"
 
   - name: Get ImageStream
@@ -247,9 +248,12 @@
       connection: "{{ openshift_connection }}"
       resource: "{{ provision_imagestream }}"
 
+  - pause:
+      seconds: 1
+
   - name: Verify ImageStream Delete
     command: >-
-      {{ test_oc_cmd }} export imagestream
+      {{ test_oc_cmd }} get imagestream
       test-imagestream -n provision-test -o json
     register: get_imagestream
     failed_when: get_imagestream.rc == 0

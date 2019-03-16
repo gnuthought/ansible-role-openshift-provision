@@ -131,6 +131,9 @@
         metadata:
           name: test-deployment
 
+  - pause:
+      seconds: 1
+
   - name: Verify Deployment Delete
     command: >-
       {{ test_oc_cmd }} get deployment

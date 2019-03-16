@@ -12,6 +12,7 @@
           annotations:
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
+          selfLink: null
 
 - name: Test Provision
   hosts: localhost
@@ -30,7 +31,7 @@
   tasks:
   - name: Get PersistentVolume
     command: >-
-      {{ test_oc_cmd }} export persistentvolume test-persistentvolume -o json
+      {{ test_oc_cmd }} get --export persistentvolume test-persistentvolume -o json
     register: get_persistentvolume
     changed_when: false
 
@@ -67,7 +68,7 @@
   tasks:
   - name: Get PersistentVolume
     command: >-
-      {{ test_oc_cmd }} export persistentvolume test-persistentvolume -o json
+      {{ test_oc_cmd }} get --export persistentvolume test-persistentvolume -o json
     register: get_persistentvolume
     changed_when: false
 

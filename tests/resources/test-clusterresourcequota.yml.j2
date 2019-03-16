@@ -1,4 +1,8 @@
+{% if test_openshift_version is version_compare('v4', '>=') %}
+apiVersion: quota.openshift.io/v1
+{% else %}
 apiVersion: v1
+{% endif %}
 kind: ClusterResourceQuota
 metadata:
   name: test-clusterresourcequota

@@ -43,7 +43,7 @@ spec:
       resources:
         requests:
           storage: 1Gi
-{% if openshift_version is version_compare('v3.7', '>=') %}
+{% if test_openshift_version is version_compare('v3.7', '>=') %}
   podManagementPolicy: OrderedReady
   revisionHistoryLimit: 10
   updateStrategy:

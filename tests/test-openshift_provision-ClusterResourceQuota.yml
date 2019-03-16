@@ -183,6 +183,9 @@
         metadata:
           name: test-clusterresourcequota
 
+  - pause:
+      seconds: 1
+
   - name: Verify ClusterResourceQuota Delete
     command: >-
       {{ test_oc_cmd }} get clusterresourcequota

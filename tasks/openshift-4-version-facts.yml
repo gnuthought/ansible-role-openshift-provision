@@ -1,0 +1,15 @@
+---
+- name: Get clusterversion version
+  command: >-
+    {{ oc_cmd }} get clusterversions version
+    -o jsonpath={.status.desired.version}
+  register: get_cluster_version
+  check_mode: false
+  changed_when: false
+
+- name: Set OpenShift version facts
+  set_fact:
+    openshift_provision_oc_version: >-
+      {{ oc_version_output | regex_replace('(.|\s)*Client Version.*GitVersion:"(.*)"(.|\s)*', '\2') }}
+    openshift_provision_openshift_version: 
+      v{{ get_cluster_version.stdout }}

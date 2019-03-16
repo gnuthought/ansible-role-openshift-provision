@@ -3,14 +3,14 @@ allowHostIPC: true
 allowHostNetwork: true
 allowHostPID: true
 allowHostPorts: true
-{% if oc_version is version('v3.11', '>=') %}
+{% if test_oc_version is version('v3.11', '>=') %}
 allowPrivilegeEscalation: true
 {% endif %}
 allowPrivilegedContainer: true
 allowedCapabilities:
 - '*'
 apiVersion: security.openshift.io/v1
-{% if oc_version is version('v3.9', '>=') %}
+{% if test_oc_version is version('v3.9', '>=') %}
 defaultAddCapabilities: null
 {% else %}
 defaultAddCapabilities: []
@@ -32,7 +32,7 @@ metadata:
   name: test-securitycontextconstraints
 priority: null
 readOnlyRootFilesystem: false
-{% if oc_version is version('v3.9', '>=') %}
+{% if test_oc_version is version('v3.9', '>=') %}
 requiredDropCapabilities: null
 {% else %}
 requiredDropCapabilities: []

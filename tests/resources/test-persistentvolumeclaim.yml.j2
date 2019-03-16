@@ -6,7 +6,7 @@ metadata:
   annotations:
     openshift-provision/action: replace
   name: test-persistentvolumeclaim
-{% if openshift_version is version_compare('v3.10', '>=') %}
+{% if test_openshift_version is version_compare('v3.10', '>=') %}
   finalizers: [kubernetes.io/pvc-protection]
 {% endif %}
 spec:

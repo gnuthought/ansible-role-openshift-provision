@@ -11,10 +11,22 @@
   loop_control:
     loop_var: cluster_role_binding
   vars:
-    current_cluster_role_bindings: "{{ get_cluster_role_bindings.stdout | from_json }}"
-    current_cluster_role_users_query: "items[?roleRef.name=='{{ cluster_role_binding.role }}'].userNames[]"
+    current_cluster_role_bindings: >-
+      {{ get_cluster_role_bindings.stdout | from_json }}
+    roleref_query: "roleRef.name=='{{ cluster_role_binding.role }}'"
+    current_cluster_role_users_query: >-
+      items[?{{ roleref_query }}].subjects[]|[?kind=='User'].name
     current_cluster_role_users: >
-      {{ current_cluster_role_bindings | json_query(current_cluster_role_users_query) }}
-    current_cluster_role_groups_query: "items[?roleRef.name=='{{ cluster_role_binding.role }}'].groupNames[]"
+      {{ current_cluster_role_bindings
+       | json_query(current_cluster_role_users_query)
+      }}
+    current_cluster_role_groups_query: >-
+      items[?{{ roleref_query }}].subjects[]|[?kind=='Group' || kind=='SystemGroup'].name
     current_cluster_role_groups: >
       {{ current_cluster_role_bindings | json_query(current_cluster_role_groups_query) }}
+    current_cluster_role_service_accounts_query: >-
+      items[?{{ roleref_query }}].subjects[]|[?kind=='ServiceAccount'].name
+    current_cluster_role_service_accounts: >
+      {{ current_cluster_role_bindings
+       | json_query(current_cluster_role_service_accounts_query)
+      }}

@@ -47,7 +47,7 @@
 
   - name: Get Role
     command: >-
-      {{ test_oc_cmd }} get role -n provision-test
+      {{ test_oc_cmd }} get role.authorization.openshift.io -n provision-test
       test-role -o json
     register: get_role
     changed_when: false
@@ -163,7 +163,7 @@
 
   - name: Get Role
     command: >-
-      {{ test_oc_cmd }} get role -n provision-test
+      {{ test_oc_cmd }} get role.authorization.openshift.io -n provision-test
       test-role -o json
     register: get_role
     changed_when: false
@@ -204,9 +204,12 @@
         metadata:
           name: test-role
 
+  - pause:
+      seconds: 1
+
   - name: Verify Role Delete
     command: >-
-      {{ test_oc_cmd }} get role -n provision-test
+      {{ test_oc_cmd }} get role.authorization.openshift.io -n provision-test
       test-role -o json
     register: get_role
     failed_when: get_role.rc == 0

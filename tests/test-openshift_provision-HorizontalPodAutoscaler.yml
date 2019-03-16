@@ -125,6 +125,9 @@
         metadata:
           name: test-horizontalpodautoscaler
 
+  - pause:
+      seconds: 1
+
   - name: Verify HorizontalPodAutoscaler Delete
     command: >-
       {{ test_oc_cmd }} get horizontalpodautoscaler

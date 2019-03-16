@@ -154,6 +154,9 @@
         metadata:
           name: test-buildconfig
 
+  - pause:
+      seconds: 1
+
   - name: Verify BuildConfig Delete
     command: >-
       {{ test_oc_cmd }} get --export buildconfig

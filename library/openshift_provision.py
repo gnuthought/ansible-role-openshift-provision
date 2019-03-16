@@ -447,6 +447,8 @@ def normalize_ClusterRoleBinding_V1(role_binding):
     })
     normalize_ObjectMeta_V1(role_binding['metadata'])
     normalize_RoleRef_V1(role_binding['roleRef'])
+    for subject in role_binding['subjects']:
+        normalize_Subject_V1(subject)
     mark_list_is_set(role_binding['subjects'])
 
 def normalize_ConfigMapVolumeSource_V1(value):
@@ -462,6 +464,7 @@ def normalize_Container_V1(container):
         'ports': [],
         'readinessProbe': None,
         'resources': {},
+        'securityContext': {},
         'terminationMessagePath': '/dev/termination-log',
         'terminationMessagePolicy': 'File',
         'volumeMounts': []
@@ -470,6 +473,7 @@ def normalize_Container_V1(container):
     normalize_Probe_V1(container['livenessProbe'])
     normalize_ContainerPortList_V1(container['ports'])
     normalize_ResourceRequirements_V1(container['resources'])
+    normalize_SecurityContext_V1(container['securityContext'])
     normalize_VolumeMountList_V1(container['volumeMounts'])
     normalize_Probe_V1(container['readinessProbe'])
 
@@ -655,6 +659,23 @@ def normalize_JobTemplateSpec_V1beta1(spec):
     normalize_ObjectMeta_V1(spec['metadata'])
     normalize_JobSpec_V1(spec['spec'])
 
+def normalize_LimitRange_V1(limit_range):
+    set_dict_defaults(limit_range, {
+        'metadata': {},
+        'spec': {}
+    })
+    normalize_ObjectMeta_V1(limit_range['metadata'])
+    normalize_LimitRangeSpec_V1(limit_range['spec'])
+
+def normalize_LimitRangeSpec_V1(spec):
+    set_dict_defaults(spec, {
+        'limits': []
+    })
+    for limit in spec['limits']:
+        for name, value in limit.items():
+            if name not in ('type', 'maxLimitRequestRatio'):
+                normalize_resource_units(value)
+
 def normalize_NetworkPolicy_V1(policy):
     set_dict_defaults(policy, {
         'metadata': {},
@@ -753,6 +774,9 @@ def normalize_PersistentVolumeClaim_V1(pvc):
     pvc['metadata']['annotations']['volume.beta.kubernetes.io/storage-provisioner'] = ''
 
 def normalize_PersistentVolumeClaimSpec_V1(spec):
+    set_dict_defaults(spec, {
+        'dataSource': None
+    })
     spec['volumeName'] = ''
 
 def normalize_PersistentVolumeSpec_V1(spec):
@@ -808,6 +832,12 @@ def normalize_PolicyRule_V1(rule):
         if rule.get(key, None) == None:
             rule[key] = []
         mark_list_is_set(rule[key])
+    # Openshift policy rules may have attributeRestrictions, but these seem
+    # to always be null? Remove for comparison.
+    if 'attributeRestrictions' in rule and rule['attributeRestrictions'] == None:
+        del rule['attributeRestrictions']
+    
+    
 
 def normalize_Probe_V1(probe):
     if probe == None:
@@ -866,6 +896,8 @@ def normalize_RoleBinding_V1(role_binding):
     })
     normalize_ObjectMeta_V1(role_binding['metadata'])
     normalize_RoleRef_V1(role_binding['roleRef'])
+    for subject in role_binding['subjects']:
+        normalize_Subject_V1(subject)
     mark_list_is_set(role_binding['subjects'])
 
 def normalize_RoleRef_V1(ref):
@@ -901,6 +933,12 @@ def normalize_RouteSpec_V1(spec):
 def normalize_SecretVolumeSource_V1(value):
     set_dict_defaults(value, {
         'defaultMode': 0o644
+    })
+
+def normalize_SecurityContext_V1(securityContext):
+    set_dict_defaults(securityContext, {
+        'privileged': False,
+        'procMount': 'Default'
     })
 
 def normalize_SecurityContextConstraints_V1(scc):
@@ -980,6 +1018,15 @@ def normalize_StatefulSetSpec_V1(spec):
     normalize_PodTemplateSpec_V1(spec['template'])
     for pvc in spec['volumeClaimTemplates']:
         normalize_PersistentVolumeClaim_V1(pvc)
+
+def normalize_Subject_V1(subject):
+    # Reconcile differences between OpenShift and kube group subjects
+    # Remove apiGroup if set to default
+    if subject.get('apiGroup','') == 'rbac.authorization.k8s.io':
+        del subject['apiGroup']
+    # OpenShift uses SystemGroup when kubernetes uses Group
+    if subject.get('kind','') == 'SystemGroup':
+        subject['kind'] = 'Group'
 
 def normalize_Volume_V1(volume):
     if 'configMap' in volume:
@@ -1166,6 +1213,9 @@ class OpenShiftProvision:
 
     def normalize_resource_ImageStream(self, resource):
         normalize_ImageStream_V1(resource)
+
+    def normalize_resource_LimitRange(self, resource):
+        normalize_LimitRange_V1(resource)
 
     def normalize_resource_NetworkPolicy(self, resource):
         normalize_NetworkPolicy_V1(resource)

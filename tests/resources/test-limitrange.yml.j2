@@ -1,0 +1,32 @@
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: test-limitrange
+spec:
+  limits:
+{% if pod_max is defined or pod_min is defined %}
+  - type: Pod
+{%   if pod_max is defined %}
+    max: {{ pod_max | to_json }}
+{%   endif %}
+{%   if pod_min is defined %}
+    min: {{ pod_min | to_json }}
+{%   endif %}
+{% endif %}
+  - type: Container
+{% if container_default is defined %}
+    default: {{ container_default | to_json }}
+{% endif %}
+{% if container_default_request is defined %}
+    defaultRequest: {{ container_default_request | to_json }}
+{% endif %}
+{% if container_max is defined %}
+    max: {{ container_max | to_json }}
+{%   endif %}
+{% if container_min is defined %}
+    min: {{ container_min | to_json }}
+{% endif %}
+{% if container_max_ratio is defined %}
+    maxLimitRequestRatio: {{ container_max_ratio | to_json }}
+{% endif %}

@@ -117,6 +117,9 @@
         metadata:
           name: test-storageclass
 
+  - pause:
+      seconds: 1
+
   - name: Verify StorageClass Delete
     command: >-
       {{ test_oc_cmd }} get storageclass

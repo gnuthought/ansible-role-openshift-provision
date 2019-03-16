@@ -7,30 +7,34 @@
   failed_when: false
   register: get_role_bindings
 
-- name: Handle users in role_bindings
-  include_tasks: project-user-role-bindings.yml
-  static: false
+- name: Handle project role_bindings
+  include_tasks: project-role-binding.yml
   with_items: "{{ project.role_bindings | default([]) }}"
-  when: >
-    user_role.users is defined or
-    user_role.user is defined or
-    user_role.remove_unlisted_users | default(false) | bool or
-    user_role.remove_unlisted | default(false) | bool
-  vars:
-    current_role_bindings: "{{ get_role_bindings.stdout | from_json }}"
   loop_control:
-    loop_var: user_role
-
-- name: Handle groups in role_bindings
-  include_tasks: project-group-role-bindings.yml
-  static: false
-  with_items: "{{ project.role_bindings | default([]) }}"
-  when: >
-    group_role.groups is defined or
-    group_role.group is defined or
-    group_role.remove_unlisted_groups | default(false) | bool or
-    group_role.remove_unlisted | default(false) | bool
+    loop_var: role_binding
   vars:
-    current_role_bindings: "{{ get_role_bindings.stdout | from_yaml }}"
-  loop_control:
-    loop_var: group_role
+    current_role_bindings: >-
+      {{ get_role_bindings.stdout | from_json }}
+    roleref_query: >-
+      {% if '/' in role_binding.role -%}
+      roleRef.namespace=='{{ role_binding.role.split('/')[0] }}' &&
+      roleRef.name=='{{ role_binding.role.split('/')[1] }}'
+      {%- else -%}
+      roleRef.name=='{{ role_binding.role }}'
+      {%- endif %}
+    current_role_users_query: >-
+      items[?{{ roleref_query }}].subjects[]|[?kind=='User'].name
+    current_role_users: >
+      {{ current_role_bindings
+       | json_query(current_role_users_query)
+      }}
+    current_role_groups_query: >-
+      items[?{{ roleref_query }}].subjects[]|[?kind=='Group' || kind=='SystemGroup'].name
+    current_role_groups: >
+      {{ current_role_bindings | json_query(current_role_groups_query) }}
+    current_role_service_accounts_query: >-
+      items[?{{ roleref_query }}].subjects[]|[?kind=='ServiceAccount'].name
+    current_role_service_accounts: >
+      {{ current_role_bindings
+       | json_query(current_role_service_accounts_query)
+      }}

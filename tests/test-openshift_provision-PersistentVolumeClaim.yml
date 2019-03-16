@@ -16,7 +16,9 @@
             volume.beta.kubernetes.io/storage-provisioner: ''
           creationTimestamp: null
           finalizers: null
+          selfLink: null
         spec:
+          dataSource: null
           storageClassName: ''
           volumeName: ''
 
@@ -45,7 +47,7 @@
 
   - name: Get PersistentVolumeClaim
     command: >-
-      {{ test_oc_cmd }} export persistentvolumeclaim
+      {{ test_oc_cmd }} get --export persistentvolumeclaim
       test-persistentvolumeclaim -n provision-test -o json
     register: get_persistentvolumeclaim
     changed_when: false
@@ -97,7 +99,7 @@
 
   - name: Get PersistentVolumeClaim
     command: >-
-      {{ test_oc_cmd }} export persistentvolumeclaim
+      {{ test_oc_cmd }} get --export persistentvolumeclaim
       test-persistentvolumeclaim -n provision-test -o json
     register: get_persistentvolumeclaim
     changed_when: false
@@ -132,9 +134,12 @@
         metadata:
           name: test-persistentvolumeclaim
 
+  - pause:
+      seconds: 1
+
   - name: Verify PersistentVolumeClaim Delete
     command: >-
-      {{ test_oc_cmd }} get persistentvolumeclaim
+      {{ test_oc_cmd }} get --export persistentvolumeclaim
       test-persistentvolumeclaim -n provision-test -o json
     register: get_persistentvolumeclaim
     failed_when: get_persistentvolumeclaim.rc == 0

@@ -5,61 +5,38 @@
   vars_files:
   - login-creds.yml
   tasks:
+  - include_tasks: setup-test.yml
   - set_fact:
-      test_oc_cmd: >-
-        oc
-        {% if openshift_connection_certificate_authority is defined %}
-        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
-        {% endif %}
-        {% if openshift_connection_insecure_skip_tls_verify is defined %}
-        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
-        {% endif %}
-        {% if openshift_connection_server is defined %}
-        --server={{ openshift_connection_server | quote }}
-        {% endif %}
-        {% if openshift_connection_token is defined %}
-        --token={{ openshift_connection_token | quote }}
-        {% endif %}
       ignore_differences:
         metadata:
           annotations:
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
+          generation: 0
+          namespace: ''
+          resourceVersion: 0
+          selfLink: ''
+          uid: ''
 
 - name: Test Provision
   hosts: localhost
   connection: local
   vars:
-    provision_route:
-      apiVersion: v1
-      kind: Route
-      metadata:
-        annotations:
-          openshift.io/host.generated: "true"
-        creationTimestamp: null
-        name: test-route
-      spec:
-        host: test-route.example.com
-        tls:
-          termination: passthrough
-        to:
-          kind: Service
-          name: test-service
-          weight: 100
-        wildcardPolicy: None
-
+    provision_route: test-route.yml.j2
+    provision_route_def: "{{ lookup('template', 'resources/' ~ provision_route) | from_yaml }}"
+    route_service_name: test-route-service
   roles:
   - role: openshift-provision
     openshift_clusters:
     - projects:
-      - name: testproj
+      - name: provision-test
         resources:
         - "{{ provision_route }}"
 
   tasks:
   - name: Get Route
     command: >-
-      {{ test_oc_cmd }} export route test-route -n testproj -o json
+      {{ test_oc_cmd }} get route test-route -n provision-test -o json
     register: get_route
     changed_when: false
 
@@ -73,8 +50,12 @@
         {{ got_route | to_yaml }}
         <<<
     vars:
-      got_route: "{{ get_route.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_route: "{{ provision_route | combine(ignore_differences, recursive=True) }}"
+      got_route: >-
+        {{ get_route.stdout | from_json
+         | combine(ignore_differences, recursive=True) }}
+      cmp_route: >-
+        {{ provision_route_def
+         | combine(ignore_differences, recursive=True) }}
     when: >-
       cmp_route.metadata != got_route.metadata or
       cmp_route.spec != got_route.spec
@@ -83,36 +64,21 @@
   hosts: localhost
   connection: local
   vars:
-    provision_route:
-      apiVersion: v1
-      kind: Route
-      metadata:
-        annotations:
-          openshift.io/host.generated: "true"
-        creationTimestamp: null
-        name: test-route
-      spec:
-        host: test-route.example.com
-        tls:
-          termination: passthrough
-        to:
-          kind: Service
-          name: test-service-foo
-          weight: 200
-        wildcardPolicy: None
-
+    provision_route: test-route.yml.j2
+    provision_route_def: "{{ lookup('template', 'resources/' ~ provision_route) | from_yaml }}"
+    route_service_name: test-update-route-service
   roles:
   - role: openshift-provision
     openshift_clusters:
     - projects:
-      - name: testproj
+      - name: provision-test
         resources:
         - "{{ provision_route }}"
 
   tasks:
   - name: Get Route
     command: >-
-      {{ test_oc_cmd }} export route test-route -n testproj -o json
+      {{ test_oc_cmd }} get route test-route -n provision-test -o json
     register: get_route
     changed_when: false
 
@@ -126,8 +92,16 @@
         {{ got_route | to_yaml }}
         <<<
     vars:
-      got_route: "{{ get_route.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_route: "{{ provision_route | combine(ignore_differences, recursive=True) }}"
+      got_route: >-
+        {{ get_route.stdout | from_json
+         | combine(ignore_differences, recursive=True) }}
+      cmp_route: >-
+        {{ provision_route_def
+         | combine(ignore_differences, recursive=True) }}
     when: >-
       cmp_route.metadata != got_route.metadata or
       cmp_route.spec != got_route.spec
+
+  - name: Cleanup
+    command: >-
+      {{ test_oc_cmd }} delete route test-route -n provision-test

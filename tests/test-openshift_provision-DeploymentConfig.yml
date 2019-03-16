@@ -13,6 +13,7 @@
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
           generation: 0
+          selfLink: null
         spec:
           revisionHistoryLimit: 10
           template:
@@ -44,7 +45,7 @@
 
   - name: Get DeploymentConfig
     command: >-
-      {{ test_oc_cmd }} export deploymentconfig
+      {{ test_oc_cmd }} get --export deploymentconfig
       test-deploymentconfig -n provision-test -o json
     register: get_deploymentconfig
     changed_when: false
@@ -126,7 +127,7 @@
 
   - name: Get DeploymentConfig
     command: >-
-      {{ test_oc_cmd }} export deploymentconfig
+      {{ test_oc_cmd }} get --export deploymentconfig
       test-deploymentconfig -n provision-test -o json
     register: get_deploymentconfig
     changed_when: false
@@ -164,9 +165,12 @@
       connection: "{{ openshift_connection }}"
       resource: "{{ provision_deploymentconfig }}"
 
+  - pause:
+      seconds: 1
+
   - name: Verify DeploymentConfig Delete
     command: >-
-      {{ test_oc_cmd }} export deploymentconfig
+      {{ test_oc_cmd }} get --export deploymentconfig
       test-deploymentconfig -n provision-test -o json
     register: get_deploymentconfig
     failed_when: get_deploymentconfig.rc == 0

@@ -12,6 +12,7 @@
           annotations:
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
+          selfLink: null
         spec:
           sessionAffinityConfig:
             clientIP:
@@ -21,22 +22,12 @@
   hosts: localhost
   connection: local
   vars:
-    provision_service:
-      apiVersion: v1
-      kind: Service
-      metadata:
-        creationTimestamp: null
-        name: test-service
-      spec:
-        ports:
-        - name: 8023-tcp
-          port: 8023
-          protocol: TCP
-          targetPort: 8023
-        selector:
-          test-app: appname
-        sessionAffinity: ClientIP
-        type: ClusterIP
+    provision_service: >-
+      {{ lookup('template', 'resources/test-service.yml.j2')
+       | from_yaml }}
+    service_ports:
+    - name: 8080-tcp
+      port: 8080
 
   roles:
   - role: openshift-provision
@@ -53,7 +44,7 @@
 
   - name: Get Service
     command: >-
-      {{ test_oc_cmd }} export service
+      {{ test_oc_cmd }} get --export service
       test-service -n provision-test -o json
     register: get_service
     changed_when: false
@@ -91,27 +82,14 @@
   hosts: localhost
   connection: local
   vars:
-    provision_service:
-      apiVersion: v1
-      kind: Service
-      metadata:
-        creationTimestamp: null
-        name: test-service
-      spec:
-        ports:
-        # FIXME, handle random ordering
-        - name: 8023-tcp
-          port: 8023
-          protocol: TCP
-          targetPort: 8023
-        - name: 8093-tcp
-          port: 8093
-          protocol: TCP
-          targetPort: 8093
-        selector:
-          test-app: appname
-        sessionAffinity: ClientIP
-        type: ClusterIP
+    provision_service: >-
+      {{ lookup('template', 'resources/test-service.yml.j2')
+       | from_yaml }}
+    service_ports:
+    - name: 8080-tcp
+      port: 8080
+    - name: 8081-tcp
+      port: 8081
 
   tasks:
   - name: Apply update to Service
@@ -122,7 +100,7 @@
 
   - name: Get Service
     command: >-
-      {{ test_oc_cmd }} export service
+      {{ test_oc_cmd }} get --export service
       test-service -n provision-test -o json
     register: get_service
     changed_when: false
@@ -160,9 +138,12 @@
       connection: "{{ openshift_connection }}"
       resource: "{{ provision_service }}"
 
+  - pause:
+      seconds: 1
+
   - name: Verify Service Delete
     command: >-
-      {{ test_oc_cmd }} export service
+      {{ test_oc_cmd }} get --export service
       test-service -n provision-test -o json
     register: get_service
     failed_when: get_service.rc == 0

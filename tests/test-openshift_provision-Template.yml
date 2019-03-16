@@ -12,6 +12,7 @@
           annotations:
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
+          selfLink: null
 
 - name: Test Provision
   hosts: localhost
@@ -36,7 +37,7 @@
 
   - name: Get Template
     command: >-
-      {{ test_oc_cmd }} export template
+      {{ test_oc_cmd }} get --export template
       test-template -n provision-test -o json
     register: get_template
     changed_when: false
@@ -88,7 +89,7 @@
 
   - name: Get Template
     command: >-
-      {{ test_oc_cmd }} export template
+      {{ test_oc_cmd }} get --export template
       test-template -n provision-test -o json
     register: get_template
     changed_when: false
@@ -125,9 +126,12 @@
         metadata:
           name: test-template
 
+  - pause:
+      seconds: 1
+
   - name: Verify Template Delete
     command: >-
-      {{ test_oc_cmd }} export template
+      {{ test_oc_cmd }} get --export template
       test-template -n provision-test -o json
     register: get_template
     failed_when: get_template.rc == 0

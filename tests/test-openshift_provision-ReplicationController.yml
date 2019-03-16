@@ -13,6 +13,7 @@
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
           generation: 0
+          selfLink: null
         spec:
           template:
             metadata:
@@ -22,60 +23,11 @@
   hosts: localhost
   connection: local
   vars:
-    provision_replicationcontroller:
-      apiVersion: v1
-      kind: ReplicationController
-      metadata:
-        labels:
-          provision-test: openshift-provision
-        name: test-replicationcontroller
-      spec:
-        replicas: 1
-        selector:
-          replicationcontroller: test-replicationcontroller
-        template:
-          metadata:
-            labels:
-              replicationcontroller: test-replicationcontroller
-              provision-test: "true"
-          spec:
-            containers:
-            - image: registry.access.redhat.com/rhscl/httpd-24-rhel7:latest
-              imagePullPolicy: IfNotPresent
-              livenessProbe:
-                failureThreshold: 3
-                httpGet:
-                  path: /
-                  port: 8080
-                  scheme: HTTP
-                initialDelaySeconds: 30
-                periodSeconds: 10
-                successThreshold: 1
-                timeoutSeconds: 3
-              name: httpd-example
-              readinessProbe:
-                failureThreshold: 3
-                httpGet:
-                  path: /
-                  port: 8080
-                  scheme: HTTP
-                initialDelaySeconds: 5
-                periodSeconds: 15
-                successThreshold: 2
-                timeoutSeconds: 5
-              resources:
-                requests:
-                  cpu: 100m
-                  memory: 256Mi
-              securityContext:
-                privileged: false
-              terminationMessagePath: /dev/termination-log
-              terminationMessagePolicy: File
-            dnsPolicy: ClusterFirst
-            restartPolicy: Always
-            schedulerName: default-scheduler
-            securityContext: {}
-            terminationGracePeriodSeconds: 30
+    provision_replicationcontroller: >-
+      {{ lookup('template', 'resources/test-replicationcontroller.yml.j2')
+       | from_yaml }}
+    image_pull_policy: IfNotPresent
+    readiness_probe_delay: 5
 
   roles:
   - role: openshift-provision
@@ -92,7 +44,7 @@
 
   - name: Get ReplicationController
     command: >-
-      {{ test_oc_cmd }} export replicationcontroller
+      {{ test_oc_cmd }} get --export replicationcontroller
       test-replicationcontroller -n provision-test -o json
     register: get_replicationcontroller
     changed_when: false
@@ -107,8 +59,12 @@
         {{ got_replicationcontroller | to_yaml }}
         <<<
     vars:
-      got_replicationcontroller: "{{ get_replicationcontroller.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_replicationcontroller: "{{ provision_replicationcontroller | combine(ignore_differences, recursive=True) }}"
+      got_replicationcontroller: >-
+        {{ get_replicationcontroller.stdout | from_json
+         | combine(ignore_differences, recursive=True) }}
+      cmp_replicationcontroller: >-
+        {{ provision_replicationcontroller
+         | combine(ignore_differences, recursive=True) }}
     when: >-
       cmp_replicationcontroller.metadata != got_replicationcontroller.metadata or
       cmp_replicationcontroller.spec != got_replicationcontroller.spec
@@ -128,59 +84,11 @@
   hosts: localhost
   connection: local
   vars:
-    provision_replicationcontroller:
-      apiVersion: v1
-      kind: ReplicationController
-      metadata:
-        labels:
-          provision-test: openshift-provision
-        name: test-replicationcontroller
-      spec:
-        replicas: 1
-        selector:
-          replicationcontroller: test-replicationcontroller
-        template:
-          metadata:
-            labels:
-              replicationcontroller: test-replicationcontroller
-          spec:
-            containers:
-            - image: registry.access.redhat.com/rhscl/httpd-24-rhel7:latest
-              imagePullPolicy: IfNotPresent
-              livenessProbe:
-                failureThreshold: 3
-                httpGet:
-                  path: /
-                  port: 8080
-                  scheme: HTTP
-                initialDelaySeconds: 30
-                periodSeconds: 10
-                successThreshold: 1
-                timeoutSeconds: 3
-              name: httpd-example
-              readinessProbe:
-                failureThreshold: 3
-                httpGet:
-                  path: /
-                  port: 8080
-                  scheme: HTTP
-                initialDelaySeconds: 3
-                periodSeconds: 10
-                successThreshold: 1
-                timeoutSeconds: 3
-              resources:
-                requests:
-                  cpu: 100m
-                  memory: 256Mi
-              securityContext:
-                privileged: false
-              terminationMessagePath: /dev/termination-log
-              terminationMessagePolicy: File
-            dnsPolicy: ClusterFirst
-            restartPolicy: Always
-            schedulerName: default-scheduler
-            securityContext: {}
-            terminationGracePeriodSeconds: 30
+    provision_replicationcontroller: >-
+      {{ lookup('template', 'resources/test-replicationcontroller.yml.j2')
+       | from_yaml }}
+    image_pull_policy: Always
+    readiness_probe_delay: 10
 
   tasks:
   - name: Apply update to ReplicationController
@@ -188,10 +96,36 @@
       connection: "{{ openshift_connection }}"
       namespace: provision-test
       resource: "{{ provision_replicationcontroller }}"
+    register: do_update
+
+  - name: Check reported update patch
+    fail:
+      msg: |
+        Update patch did not match expected
+        >>>
+        {{ update_patch | to_yaml }}
+        ===
+        {{ do_update.patch | to_yaml }}
+        <<<
+    vars:
+      update_patch:
+      - op: test
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: IfNotPresent
+      - op: replace
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: Always
+      - op: test
+        path: /spec/template/spec/containers/0/readinessProbe/initialDelaySeconds
+        value: 5
+      - op: replace
+        path: /spec/template/spec/containers/0/readinessProbe/initialDelaySeconds
+        value: 10
+    when: do_update.patch != update_patch
 
   - name: Get ReplicationController
     command: >-
-      {{ test_oc_cmd }} export replicationcontroller
+      {{ test_oc_cmd }} get --export replicationcontroller
       test-replicationcontroller -n provision-test -o json
     register: get_replicationcontroller
     changed_when: false
@@ -206,8 +140,12 @@
         {{ got_replicationcontroller | to_yaml }}
         <<<
     vars:
-      got_replicationcontroller: "{{ get_replicationcontroller.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_replicationcontroller: "{{ provision_replicationcontroller | combine(ignore_differences, recursive=True) }}"
+      got_replicationcontroller: >-
+        {{ get_replicationcontroller.stdout | from_json
+         | combine(ignore_differences, recursive=True) }}
+      cmp_replicationcontroller: >-
+        {{ provision_replicationcontroller
+         | combine(ignore_differences, recursive=True) }}
     when: >-
       cmp_replicationcontroller.metadata != got_replicationcontroller.metadata or
       cmp_replicationcontroller.spec != got_replicationcontroller.spec
@@ -215,23 +153,24 @@
 - name: Test Delete
   hosts: localhost
   connection: local
-  vars:
-    provision_replicationcontroller:
-      apiVersion: extensions/v1beta1
-      kind: ReplicationController
-      metadata:
-        name: test-replicationcontroller
   tasks:
   - name: Delete ReplicationController
     openshift_provision:
       action: delete
       namespace: provision-test
       connection: "{{ openshift_connection }}"
-      resource: "{{ provision_replicationcontroller }}"
+      resource:
+        apiVersion: extensions/v1beta1
+        kind: ReplicationController
+        metadata:
+          name: test-replicationcontroller
+
+  - pause:
+      seconds: 1
 
   - name: Verify ReplicationController Delete
     command: >-
-      {{ test_oc_cmd }} export replicationcontroller
+      {{ test_oc_cmd }} get --export replicationcontroller
       test-replicationcontroller -n provision-test -o json
     register: get_replicationcontroller
     failed_when: get_replicationcontroller.rc == 0

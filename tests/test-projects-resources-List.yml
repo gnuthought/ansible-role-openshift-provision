@@ -33,6 +33,7 @@
           annotations:
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
+          selfLink: null
 
 - name: Test Provision
   hosts: localhost
@@ -55,13 +56,13 @@
   tasks:
   - name: Get Service
     command: >-
-      {{ test_oc_cmd }} export service test-list-statefulset -n provision-test -o json
+      {{ test_oc_cmd }} get --export service test-list-statefulset -n provision-test -o json
     register: get_service
     changed_when: false
 
   - name: Get StatefulSet
     command: >-
-      {{ test_oc_cmd }} get statefulset test-list-statefulset -n provision-test -o json
+      {{ test_oc_cmd }} get --export statefulset test-list-statefulset -n provision-test -o json
     register: get_statefulset
     changed_when: false
 
@@ -118,13 +119,13 @@
   tasks:
   - name: Get Service
     command: >-
-      {{ test_oc_cmd }} export service test-list-statefulset -n provision-test -o json
+      {{ test_oc_cmd }} get --export service test-list-statefulset -n provision-test -o json
     register: get_service
     changed_when: false
 
   - name: Get StatefulSet
     command: >-
-      {{ test_oc_cmd }} get statefulset test-list-statefulset -n provision-test -o json
+      {{ test_oc_cmd }} get --export statefulset test-list-statefulset -n provision-test -o json
     register: get_statefulset
     changed_when: false
 

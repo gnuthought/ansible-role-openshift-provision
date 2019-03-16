@@ -5,73 +5,58 @@
   vars_files:
   - login-creds.yml
   tasks:
+  - include_tasks: setup-test.yml
   - set_fact:
-      test_oc_cmd: >-
-        oc
-        {% if openshift_connection_certificate_authority is defined %}
-        --certificate-authority={{ openshift_connection_certificate_authority | quote }}
-        {% endif %}
-        {% if openshift_connection_insecure_skip_tls_verify is defined %}
-        --insecure-skip-tls-verify={{ openshift_connection_insecure_skip_tls_verify | quote }}
-        {% endif %}
-        {% if openshift_connection_server is defined %}
-        --server={{ openshift_connection_server | quote }}
-        {% endif %}
-        {% if openshift_connection_token is defined %}
-        --token={{ openshift_connection_token | quote }}
-        {% endif %}
       ignore_differences:
         metadata:
           annotations:
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
+          generation: 0
+          namespace: ''
+          resourceVersion: 0
+          selfLink: ''
+          uid: ''
 
 - name: Test Provision
   hosts: localhost
   connection: local
   vars:
-    provision_limitrange:
-      apiVersion: v1
-      kind: LimitRange
-      metadata:
-        name: test-limitrange
-      spec:
-        limits:
-        - type: Pod
-          max:
-            cpu: "2"
-            memory: "1Gi"
-          min:
-            cpu: "200m"
-            memory: "6Mi"
-        - type: Container
-          max:
-            cpu: "2"
-            memory: "1Gi"
-          min:
-            cpu: "100m"
-            memory: "4Mi"
-          default:
-            cpu: "300m"
-            memory: "200Mi"
-          defaultRequest:
-            cpu: "200m"
-            memory: "100Mi"
-          maxLimitRequestRatio:
-            cpu: "10"
+    provision_limitrange: test-limitrange.yml.j2
+    provision_limitrange_def: "{{ lookup('template', 'resources/' ~ provision_limitrange) | from_yaml }}"
+    pod_max:
+      cpu: "2"
+      memory: 1Gi
+    pod_min:
+      cpu: 200m
+      memory: 6Mi
+    container_max:
+      cpu: "2"
+      memory: 1Gi
+    container_min:
+      cpu: 100m
+      memory: 4Mi
+    container_default:
+      cpu: 300m
+      memory: 200Mi
+    container_default_request:
+      cpu: 200m
+      memory: 100Mi
+    container_max_ratio:
+      cpu: "10"
 
   roles:
   - role: openshift-provision
     openshift_clusters:
     - projects:
-      - name: testproj
+      - name: provision-test
         resources:
         - "{{ provision_limitrange }}"
 
   tasks:
   - name: Get LimitRange
     command: >-
-      {{ test_oc_cmd }} export limitrange test-limitrange -n testproj -o json
+      {{ test_oc_cmd }} get limitrange test-limitrange -n provision-test -o json
     register: get_limitrange
     changed_when: false
 
@@ -85,8 +70,12 @@
         {{ got_limitrange | to_yaml }}
         <<<
     vars:
-      got_limitrange: "{{ get_limitrange.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_limitrange: "{{ provision_limitrange | combine(ignore_differences, recursive=True) }}"
+      got_limitrange: >-
+        {{ get_limitrange.stdout | from_json
+         | combine(ignore_differences, recursive=True) }}
+      cmp_limitrange: >-
+        {{ provision_limitrange_def
+         | combine(ignore_differences, recursive=True) }}
     when: >-
       cmp_limitrange.metadata != got_limitrange.metadata or
       cmp_limitrange.spec != got_limitrange.spec
@@ -95,48 +84,41 @@
   hosts: localhost
   connection: local
   vars:
-    provision_limitrange:
-      apiVersion: v1
-      kind: LimitRange
-      metadata:
-        name: test-limitrange
-      spec:
-        limits:
-        - type: Pod
-          max:
-            cpu: "2"
-            memory: "1Gi"
-          min:
-            cpu: "200m"
-            memory: "6Mi"
-        - type: Container
-          max:
-            cpu: "3"
-            memory: "2Gi"
-          min:
-            cpu: "100m"
-            memory: "4Mi"
-          default:
-            cpu: "300m"
-            memory: "200Mi"
-          defaultRequest:
-            cpu: "200m"
-            memory: "100Mi"
-          maxLimitRequestRatio:
-            cpu: "10"
+    provision_limitrange: test-limitrange.yml.j2
+    provision_limitrange_def: "{{ lookup('template', 'resources/' ~ provision_limitrange) | from_yaml }}"
+    pod_max:
+      cpu: "3"
+      memory: 1Gi
+    pod_min:
+      cpu: 200m
+      memory: 6Mi
+    container_max:
+      cpu: 2400m
+      memory: 1Gi
+    container_min:
+      cpu: 100m
+      memory: 4Mi
+    container_default:
+      cpu: 300m
+      memory: 200Mi
+    container_default_request:
+      cpu: 200m
+      memory: 100Mi
+    container_max_ratio:
+      cpu: "10"
 
   roles:
   - role: openshift-provision
     openshift_clusters:
     - projects:
-      - name: testproj
+      - name: provision-test
         resources:
         - "{{ provision_limitrange }}"
 
   tasks:
   - name: Get LimitRange
     command: >-
-      {{ test_oc_cmd }} export limitrange test-limitrange -n testproj -o json
+      {{ test_oc_cmd }} get limitrange test-limitrange -n provision-test -o json
     register: get_limitrange
     changed_when: false
 
@@ -150,8 +132,12 @@
         {{ got_limitrange | to_yaml }}
         <<<
     vars:
-      got_limitrange: "{{ get_limitrange.stdout | from_json | combine(ignore_differences, recursive=True) }}"
-      cmp_limitrange: "{{ provision_limitrange | combine(ignore_differences, recursive=True) }}"
+      got_limitrange: >-
+        {{ get_limitrange.stdout | from_json
+         | combine(ignore_differences, recursive=True) }}
+      cmp_limitrange: >-
+        {{ provision_limitrange_def
+         | combine(ignore_differences, recursive=True) }}
     when: >-
       cmp_limitrange.metadata != got_limitrange.metadata or
       cmp_limitrange.spec != got_limitrange.spec

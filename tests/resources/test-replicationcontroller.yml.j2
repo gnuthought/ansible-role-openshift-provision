@@ -1,0 +1,57 @@
+---
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  labels:
+    provision-test: openshift-provision
+  name: test-replicationcontroller
+spec:
+  replicas: 1
+  selector:
+    replicationcontroller: test-replicationcontroller
+  template:
+    metadata:
+      labels:
+        replicationcontroller: test-replicationcontroller
+        provision-test: "true"
+    spec:
+      containers:
+      - image: registry.access.redhat.com/rhscl/httpd-24-rhel7:latest
+        imagePullPolicy: {{ image_pull_policy | default('IfNotPresent') }}
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 3
+        name: httpd-example
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: {{ readiness_probe_delay | default(5) }}
+          periodSeconds: 15
+          successThreshold: 2
+          timeoutSeconds: 5
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        securityContext:
+          privileged: false
+{% if test_openshift_version is version_compare('v4', '>=') %}
+          procMount: Default
+{% endif %}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30

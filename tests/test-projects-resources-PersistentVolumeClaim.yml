@@ -15,7 +15,9 @@
             pv.kubernetes.io/bound-by-controller: ''
             volume.beta.kubernetes.io/storage-provisioner: ''
           creationTimestamp: null
+          selfLink: null
         spec:
+          dataSource: ''
           storageClassName: ''
           volumeName: ''
 
@@ -41,7 +43,7 @@
   tasks:
   - name: Get PersistentVolumeClaim
     command: >-
-      {{ test_oc_cmd }} export persistentvolumeclaim test-persistentvolumeclaim -n provision-test -o json
+      {{ test_oc_cmd }} get --export persistentvolumeclaim test-persistentvolumeclaim -n provision-test -o json
     register: get_persistentvolumeclaim
     changed_when: false
 
@@ -83,7 +85,7 @@
   tasks:
   - name: Get PersistentVolumeClaim
     command: >-
-      {{ test_oc_cmd }} export persistentvolumeclaim test-persistentvolumeclaim -n provision-test -o json
+      {{ test_oc_cmd }} get --export persistentvolumeclaim test-persistentvolumeclaim -n provision-test -o json
     register: get_persistentvolumeclaim
     changed_when: false
 

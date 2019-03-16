@@ -13,6 +13,7 @@
             kubectl.kubernetes.io/last-applied-configuration: ''
           creationTimestamp: null
           finalizers: null
+          selfLink: null
         spec:
           persistentVolumeReclaimPolicy: ''
 
@@ -36,7 +37,7 @@
 
   - name: Get PersistentVolume
     command: >-
-      {{ test_oc_cmd }} export persistentvolume
+      {{ test_oc_cmd }} get --export persistentvolume
       test-persistentvolume -o json
     register: get_persistentvolume
     changed_when: false
@@ -86,7 +87,7 @@
 
   - name: Get PersistentVolume
     command: >-
-      {{ test_oc_cmd }} export persistentvolume
+      {{ test_oc_cmd }} get --export persistentvolume
       test-persistentvolume -o json
     register: get_persistentvolume
     changed_when: false
@@ -120,9 +121,12 @@
         metadata:
           name: test-persistentvolume
 
+  - pause:
+      seconds: 1
+
   - name: Verify PersistentVolume Delete
     command: >-
-      {{ test_oc_cmd }} export persistentvolume
+      {{ test_oc_cmd }} get --export persistentvolume
       test-persistentvolume -o json
     register: get_persistentvolume
     failed_when: get_persistentvolume.rc == 0

@@ -119,6 +119,9 @@
         metadata:
           name: test-securitycontextconstraints
 
+  - pause:
+      seconds: 1
+
   - name: Verify SecurityContextConstraints Delete
     command: >-
       {{ test_oc_cmd }} get --export securitycontextconstraints

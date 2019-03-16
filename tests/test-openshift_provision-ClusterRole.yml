@@ -30,7 +30,7 @@
     - apiGroups: ['']
       resources: ['namespaces','projects']
       verbs: ['get','list']
-    - apiGroups: ['network.openshift.io','']
+    - apiGroups: ['','network.openshift.io']
       resources: ['clusternetworks']
       verbs: ['get','list']
 
@@ -45,7 +45,7 @@
 
   - name: Get ClusterRole
     command: >-
-      {{ test_oc_cmd }} get clusterrole
+      {{ test_oc_cmd }} get clusterrole.authorization.openshift.io
       test-clusterrole -o json
     register: get_clusterrole
     changed_when: false
@@ -98,7 +98,9 @@
     register: reprovision_clusterrole
 
   - fail:
-      msg: Reprovision indicated change to ClusterRole
+      msg: |-
+        Reprovision indicated change to ClusterRole
+        {{ reprovision_clusterrole.patch }}
     when: reprovision_clusterrole.changed
 
   - name: Check reprovision ClusterRole
@@ -162,7 +164,7 @@
 
   - name: Get ClusterRole
     command: >-
-      {{ test_oc_cmd }} get clusterrole
+      {{ test_oc_cmd }} get clusterrole.authorization.openshift.io
       test-clusterrole -o json
     register: get_clusterrole
     changed_when: false
@@ -202,9 +204,12 @@
         metadata:
           name: test-clusterrole
 
+  - pause:
+      seconds: 1
+
   - name: Verify ClusterRole Delete
     command: >-
-      {{ test_oc_cmd }} get clusterrole
+      {{ test_oc_cmd }} get clusterrole.authorization.openshift.io
       test-clusterrole -o json
     register: get_clusterrole
     failed_when: get_clusterrole.rc == 0

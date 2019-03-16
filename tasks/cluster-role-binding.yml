@@ -2,14 +2,25 @@
 - name: Grant user cluster role {{ cluster_role_binding.role }}
   command: >-
     {% if ansible_check_mode %}echo{% endif %}
-    {{ oc_cmd }} adm policy add-cluster-role-to-user {{ cluster_role_binding.role }} {{ user }}
+    {{ oc_cmd }} adm policy add-cluster-role-to-user
+    {{ cluster_role_binding.role }} {{ user }}
     {% if openshift_provision_openshift_version is version_compare('v3.9', '>=') %}
     --rolebinding-name={{ cluster_role_binding.role }}
     {% endif %}
   with_items: "{{ cluster_role_binding.users | default([]) }}"
   loop_control:
     loop_var: user
-  when: user not in current_cluster_role_users
+  when: >-
+    user in current_cluster_role_users
+    or (
+      user|match('system:serviceaccount:') and
+      {
+        'kind': 'ServiceAccount',
+        'name': user.split(':')[3],
+        'namespace': user.split(':')[2],
+      } in current_cluster_role_service_accounts
+    )
+  #'
   check_mode: false
   register: command
   changed_when: >-
@@ -32,7 +43,8 @@
 - name: Remove unlisted users from cluster role {{ cluster_role_binding.role }}
   command: >
     {% if ansible_check_mode %}echo{% endif %}
-    {{ oc_cmd }} adm policy remove-cluster-role-from-user {{ cluster_role_binding.role }} {{ user }}
+    {{ oc_cmd }} adm policy remove-cluster-role-from-user
+    {{ cluster_role_binding.role }} {{ user }}
   with_items: "{{ current_cluster_role_users }}"
   loop_control:
     loop_var: user
@@ -40,6 +52,26 @@
     ( cluster_role_binding.remove_unlisted | default(false) | bool or
       cluster_role_binding.remove_unlisted_users | default(false) | bool ) and
     user not in cluster_role_binding.users | default([])
+  check_mode: false
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)
+
+- name: Remove unlisted service accounts from cluster role {{ cluster_role_binding.role }}
+  command: >
+    {% if ansible_check_mode %}echo{% endif %}
+    {{ oc_cmd }} adm policy remove-cluster-role-from-user
+    {{ cluster_role_binding.role }} {{ service_account_string }}
+  with_items: "{{ current_cluster_role_service_accounts }}"
+  loop_control:
+    loop_var: service_account
+  vars:
+    service_account_string: >-
+      system:serviceaccount:{{ service_account.namespace }}:{{ service_account.name }}
+  when: >
+    ( cluster_role_binding.remove_unlisted | default(false) | bool or
+      cluster_role_binding.remove_unlisted_users | default(false) | bool ) and
+    service_account_string not in cluster_role_binding.users | default([])
   check_mode: false
   register: command
   changed_when: >-
