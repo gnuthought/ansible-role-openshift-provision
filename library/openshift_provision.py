@@ -557,7 +557,9 @@ def normalize_DeploymentConfigSpec_V1(spec):
     image_change_trigger_container_names = []
     for trigger in spec['triggers']:
         if trigger['type'] == 'ImageChange':
-            image_change_trigger_container_names.extend(trigger['containerNames'])
+            image_change_trigger_container_names.extend(
+                trigger.get('imageChangeParams', {}).get('containerNames', [])
+            )
     for container in spec['template']['spec']['containers'][:-1]:
         if container['name'] in image_change_trigger_container_names:
             container['image'] = ''
