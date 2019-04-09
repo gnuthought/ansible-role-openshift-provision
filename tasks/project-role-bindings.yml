@@ -33,7 +33,7 @@
     current_role_groups: >
       {{ current_role_bindings | json_query(current_role_groups_query) }}
     current_role_service_accounts_query: >-
-      items[?{{ roleref_query }}].subjects[]|[?kind=='ServiceAccount'].name
+      items[?{{ roleref_query }}].subjects[]|[?kind=='ServiceAccount']
     current_role_service_accounts: >
       {{ current_role_bindings
        | json_query(current_role_service_accounts_query)
