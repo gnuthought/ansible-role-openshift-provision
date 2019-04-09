@@ -11,16 +11,17 @@
   loop_control:
     loop_var: user
   when: >-
-    user in current_cluster_role_users
-    or (
-      user|match('system:serviceaccount:') and
+    (
+      user is match('system:serviceaccount:') and
       {
         'kind': 'ServiceAccount',
         'name': user.split(':')[3],
-        'namespace': user.split(':')[2],
-      } in current_cluster_role_service_accounts
+        'namespace': user.split(':')[2]
+      } not in current_cluster_role_service_accounts
+    ) or (
+      user is not match('system:serviceaccount:') and
+      user not in current_cluster_role_users
     )
-  #'
   check_mode: false
   register: command
   changed_when: >-

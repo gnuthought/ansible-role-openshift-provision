@@ -17,14 +17,16 @@
   loop_control:
     loop_var: user
   when: >-
-    user not in current_role_users
-    and (
-      user is not match('system:serviceaccount:') or
+    (
+      user is match('system:serviceaccount:') and
       {
         'kind': 'ServiceAccount',
         'name': user.split(':')[3],
-        'namespace': user.split(':')[2],
-      } in current_role_service_accounts
+        'namespace': user.split(':')[2]
+      } not in current_role_service_accounts
+    ) or (
+      user is not match('system:serviceaccount:') and
+      user not in current_role_users
     )
   check_mode: false
   register: command
