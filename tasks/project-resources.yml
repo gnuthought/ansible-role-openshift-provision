@@ -24,5 +24,8 @@
       }}
   when: provision_action != 'ignore'
   register: provision
+  until: provision.rc == 0
+  retries: 3
+  delay: 10
   changed_when: >-
     provision | record_change_provision(change_record)
