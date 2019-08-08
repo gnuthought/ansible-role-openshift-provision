@@ -525,7 +525,7 @@ Example resources file:
             SOURCE_REPOSITORY_URL: https://github.com/openshift/httpd-ex.git
 
         resources:
-        - appVersion: v1
+        - apiVersion: v1
           kind: ResourceQuota
           metadata:
             name: compute
@@ -535,7 +535,7 @@ Example resources file:
               requests.memory: "50Gi"
               limits.cpu: "20"
               limits.memory: "50Gi"
-        - appVersion: v1
+        - apiVersion: v1
           kind: LimitRange
           metadata:
             name: compute
