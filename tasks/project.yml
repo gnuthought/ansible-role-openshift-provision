@@ -156,14 +156,12 @@
 
 - name: Handle project join_pod_network
   include_tasks: project-pod-network.yml
-  static: no
   when:
   - project.join_pod_network is defined
   - project.join_pod_network != ''
 
 - name: Handle project multicast_enabled
   include_tasks: project-multicast.yml
-  static: no
   when:
   - project.multicast_enabled is defined
   - project.multicast_enabled != ''
@@ -187,7 +185,6 @@
 
 - name: Handle project resources for {{ project.name }}
   include_tasks: project-resources.yml
-  static: false
   with_items: "{{ project.resources | default([]) }}"
   vars:
     resource_path: "{{ project.resource_path | default(cluster_resource_path) }}"

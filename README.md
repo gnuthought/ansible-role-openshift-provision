@@ -59,7 +59,7 @@ Installation
 ------------
 
 ```
-ansible-galaxy install https://github.com/gnuthought/ansible-role-openshift-provision/archive/master.tar.gz#/openshift-provision
+ansible-galaxy install https://github.com/gnuthought/ansible-role-openshift-provision/archive/master.tar.gz#/openshift_provision
 ```
 
 Requirements
