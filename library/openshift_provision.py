@@ -305,7 +305,7 @@ def merge_dict(merged, patch, overwrite=True):
 
 def mark_list_is_set(lst, key_name=None):
     lst.append({
-        '__special_list_type__': 'set' 
+        '__special_list_type__': 'set'
     })
 
 def list_is_set(lst):
@@ -841,8 +841,8 @@ def normalize_PolicyRule_V1(rule):
     # to always be null? Remove for comparison.
     if 'attributeRestrictions' in rule and rule['attributeRestrictions'] == None:
         del rule['attributeRestrictions']
-    
-    
+
+
 
 def normalize_Probe_V1(probe):
     if probe == None:
@@ -1058,6 +1058,7 @@ class OpenShiftProvision:
         self.patch = None
         self.patch_type = module.params['patch_type']
         self.resource = module.params['resource']
+        self.generate_resources = module.params['generate_resources']
 
         if not 'kind' in self.resource:
             raise Exception('resource must define kind')
@@ -1396,13 +1397,15 @@ class OpenShiftProvision:
         if self.action == 'create':
             if current_resource:
                 self.resource = current_resource
-                return
+                if not self.generate_resources:
+                    return
         elif self.action == 'apply':
             if current_resource != None:
                 patch = self.compare_resource(current_resource)
                 if not patch:
                     self.resource = current_resource
-                    return
+                    if not self.generate_resources:
+                        return
                 # If current resource does not match last_applied_configuration
                 # then we must switch to replace mode or risk unexpected behavior
                 if( current_resource_version
@@ -1416,7 +1419,8 @@ class OpenShiftProvision:
             patch = self.check_patch(current_resource)
             if not patch:
                 self.resource = current_resource
-                return
+                if not self.generate_resources:
+                    return
         elif self.action == 'replace':
             if current_resource == None:
                 self.action = 'create'
@@ -1424,10 +1428,12 @@ class OpenShiftProvision:
                 patch = self.compare_resource(current_resource)
                 if not patch:
                     self.resource = current_resource
-                    return
+                    if not self.generate_resources:
+                        return
         elif self.action == 'delete':
             if current_resource == None:
-                return
+                if not self.generate_resources:
+                    return
         elif self.action == 'ignore':
             return
 
@@ -1440,6 +1446,21 @@ class OpenShiftProvision:
         # Handle check mode by returning without performing action
         self.changed = True
         if self.module.check_mode:
+            return
+
+        if self.generate_resources:
+            if not self.namespace:
+                scope = "cluster"
+            else:
+                scope = self.namespace
+
+            if not os.path.exists('./manifests'):
+                os.mkdir('./manifests')
+
+            resource_filename = "%s_%s_%s.json" % (scope, self.resource['kind'], self.resource['metadata']['name'])
+            resource_file = open("./manifests/" + resource_filename, 'w')
+            resource_file.write(str(json.dumps(self.resource)))
+            resource_file.close()
             return
 
         # Perform action on resource
@@ -1496,6 +1517,11 @@ def run_module():
         },
         # Useful when testing...
         'fail_on_change': {
+            'type': 'bool',
+            'default': False
+        },
+        # Use role as resource generator instead of provisioner
+        'generate_resources': {
             'type': 'bool',
             'default': False
         }
