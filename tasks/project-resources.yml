@@ -12,6 +12,7 @@
       oc_cmd: "{{ oc_cmd }}"
     namespace: "{{ project.name }}"
     resource: "{{ resource }}"
+    generate_resources: "{{ generate_resources }}"
   with_items: "{{ resource_list }}"
   loop_control:
     loop_var: resource

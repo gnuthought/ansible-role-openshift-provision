@@ -11,6 +11,7 @@
     connection:
       oc_cmd: "{{ oc_cmd }}"
     resource: "{{ resource }}"
+    generate_resources: "{{ generate_resources }}"
   with_items: "{{ resource_list }}"
   loop_control:
     loop_var: resource
