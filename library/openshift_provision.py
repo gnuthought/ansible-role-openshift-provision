@@ -1520,6 +1520,7 @@ def run_module():
         # Use role as resource generator instead of provisioner
         'generate_resources': {
             'type': 'bool',
+            'required': False,
             'default': False
         }
     }
