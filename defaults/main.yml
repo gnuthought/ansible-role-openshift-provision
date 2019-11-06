@@ -7,3 +7,5 @@ openshift_resource_path:
 openshift_provision_change_record: ''
 
 openshift_provision_cluster_vars: {}
+
+generate_resources: false
