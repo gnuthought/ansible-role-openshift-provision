@@ -39,7 +39,7 @@
 
 - name: Fetch helm chart
   command: >-
-    helm fetch 
+    helm fetch
     {% if 'ca_file' in helm_chart.fetch %}--ca-file {{ helm_chart.fetch.ca_file | quote }}{% endif %}
     {% if 'cert_file' in helm_chart.fetch %}--cert-file {{ helm_chart.fetch.cert_file | quote }}{% endif %}
     {% if helm_chart.fetch.devel | default(False) | bool %}--devel{% endif %}
@@ -87,6 +87,7 @@
       oc_cmd: "{{ oc_cmd }}"
     namespace: "{{ project.name if project is defined else '' }}"
     resource: "{{ item }}"
+    generate_resources: "{{ generate_resources }}"
   with_items: "{{ process_helm_template.stdout | yaml_to_resource_list }}"
   vars:
     provision_action: >-

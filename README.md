@@ -59,7 +59,7 @@ Installation
 ------------
 
 ```
-ansible-galaxy install https://github.com/gnuthought/ansible-role-openshift-provision/archive/master.tar.gz#/openshift-provision
+ansible-galaxy install https://github.com/gnuthought/ansible-role-openshift-provision/archive/master.tar.gz#/openshift_provision
 ```
 
 Requirements
@@ -89,6 +89,11 @@ variables from the file specified.
 
 Role Variables
 --------------
+
+* `generate_resources` - A flag to generate resources as json files
+  rather than provisioning them. Defaults to `False`. See
+  [additional notes on the generate_resources flag](#Additional-notes-on-the-generate_resources-flag)
+  for more details.
 
 * `oc_cmd_base` - The base `oc` command. Defaults to "oc", but can be set to
   specify a different path or add custom options
@@ -408,6 +413,21 @@ specified above for `projects[*].resources` with the
 addition that each entry here must specify `metadata.namespace` to specify
 the target project for the resource.
 
+### Additional notes on the `generate_resources` flag
+
+* All files will be created in a directory named `manifests` in the format
+  `<scope>_<kind>_<name>.json` where:
+  * `scope` is "cluster" for a cluster resource, or the target namespace name
+  * `kind` is the Kubernetes resource kind
+  * `name` is the metadata name for the resource
+* If a project does not exist, this role will still attempt to create the project.
+* Modification actions to a resource requires the resource to exist so it can be
+  used for comparison.
+* If service accounts, role bindings, and cluster role bindings are defined as
+  `service_accounts`, `role_bindings`, and `cluster_role_bindings` variables,
+  the role will attempt to apply them. If you want them to be generated, you
+  would have to define them as you would any other resource.
+
 Example Playbook with Provisioning by Role Variables
 ----------------------------------------------------
 
@@ -525,7 +545,7 @@ Example resources file:
             SOURCE_REPOSITORY_URL: https://github.com/openshift/httpd-ex.git
 
         resources:
-        - appVersion: v1
+        - apiVersion: v1
           kind: ResourceQuota
           metadata:
             name: compute
@@ -535,7 +555,7 @@ Example resources file:
               requests.memory: "50Gi"
               limits.cpu: "20"
               limits.memory: "50Gi"
-        - appVersion: v1
+        - apiVersion: v1
           kind: LimitRange
           metadata:
             name: compute

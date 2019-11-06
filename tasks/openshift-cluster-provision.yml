@@ -55,7 +55,6 @@
 # specifying the namespace in the resource metadata.
 - name: Handle cluster level resources
   include_tasks: cluster-resources.yml
-  static: false
   with_items: "{{ openshift_cluster.cluster_resources | default([]) }}"
   vars:
     resource_path: "{{ openshift_cluster.resource_path | default(openshift_resource_path) }}"

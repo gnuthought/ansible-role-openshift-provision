@@ -13,6 +13,7 @@
     action: apply
     connection:
       oc_cmd: "{{ oc_cmd }}"
+    generate_resources: "{{ generate_resources }}"
     resource:
       apiVersion: v1
       kind: Group
