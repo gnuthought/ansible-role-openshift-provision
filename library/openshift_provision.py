@@ -230,9 +230,12 @@ def make_field_patch(field, current, config):
     return list(compare_values(['/' + field], current, config))
 
 def set_dict_defaults(d, default):
-    for k, v in default.items():
-        if k not in d:
-            d[k] = v
+    if d is None:
+        d = default.items()
+    else: 
+        for k, v in default.items():
+            if k not in d:
+                d[k] = v
 
 def normalize_cpu_units(cpu):
     cpu = str(cpu)
