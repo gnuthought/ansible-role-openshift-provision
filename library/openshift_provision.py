@@ -8,6 +8,8 @@ import tempfile
 import traceback
 import types
 
+from ansible.module_utils.basic import AnsibleModule
+
 DOCUMENTATION = '''
 ---
 module: openshift_provision
@@ -89,8 +91,6 @@ resource:
   description: Resource definition
   type: dict
 '''
-
-from ansible.module_utils.basic import AnsibleModule
 
 def make_field_patch(field, current, config):
     """

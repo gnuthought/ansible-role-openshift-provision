@@ -6,6 +6,7 @@ import re
 import traceback
 import copy
 
+from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = '''
 ---
@@ -96,8 +97,6 @@ session:
 token:
 '''
 
-from ansible.module_utils.basic import AnsibleModule
-
 class OpenShiftProvision:
     def __init__(self, module):
         self.module = module
@@ -123,16 +122,16 @@ class OpenShiftProvision:
             self.oc_cmd += ['--' + opt.replace('_', '-') + '=' + connection[opt]]
 
     def merge_dict(self, merged, patch):
-        for k, v in patch.items():
-            if type(v) is dict:
-                if not k in merged:
-                    merged[k] = copy.deepcopy(v)
-                elif type(merged[k]) is dict:
-                    self.merge_dict(merged[k], v)
+        for key, value in patch.items():
+            if type(value) is dict:
+                if not key in merged:
+                    merged[key] = copy.deepcopy(value)
+                elif type(merged[key]) is dict:
+                    self.merge_dict(merged[key], value)
                 else:
                     raise "Unable to merge " + type(merged[key]) + " with dict"
             else:
-                merged[k] = copy.deepcopy(v)
+                merged[key] = copy.deepcopy(value)
 
     def merge(self, source, patch):
         merged = copy.deepcopy(source)
