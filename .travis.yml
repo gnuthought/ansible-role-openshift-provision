@@ -12,8 +12,8 @@ addons:
     - python-pip
 
 install:
-  # Install ansible
-  - pip install ansible
+  # Install requirements
+  - pip install -r requirements.txt
 
   # Check ansible version
   - ansible --version
@@ -22,6 +22,7 @@ install:
   - printf '[defaults]\nroles_path=../' >ansible.cfg
 
 script:
+  - pylint_runner
   # Basic role syntax check
   - ansible-playbook tests/test.yml -i tests/inventory --syntax-check
 
