@@ -371,7 +371,7 @@ def run_module():
         oc_cmd += [session['server']]
 
         module.run_command(oc_cmd, check_rc=True)
-        (rc, stdout, stderr) = module.run_command(['oc','whoami','-t'], check_rc=True)
+        (rc, stdout, stderr) = module.run_command(['oc', 'whoami', '-t'], check_rc=True)
         session['token'] = stdout.strip()
 
     except Exception as e:

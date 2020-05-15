@@ -66,7 +66,7 @@ def record_change(change, change_record):
                 json.dumps(
                     v,
                     indent=2,
-                    separators=(',',': ')
+                    separators=(',', ': ')
                 ).replace("\n", "\n  ")
             ))
 

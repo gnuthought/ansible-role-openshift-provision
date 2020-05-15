@@ -232,7 +232,7 @@ def make_field_patch(field, current, config):
 def set_dict_defaults(d, default):
     if d is None:
         d = default.items()
-    else: 
+    else:
         for k, v in default.items():
             if k not in d:
                 d[k] = v
@@ -252,7 +252,7 @@ def normalize_memory_units(memory):
         return str(int(memory[:-1]) / 1000)
     elif memory[-2:] == 'Ki':
         return str(int(memory[:-2]) * 1024)
-    elif memory[-1:] in ['k','K']:
+    elif memory[-1:] in ['k', 'K']:
         return str(int(memory[:-1]) * 1000)
     elif memory[-2:] == 'Mi':
         return str(int(memory[:-2]) * 1024 ** 2)
@@ -638,7 +638,7 @@ def normalize_ImageStream_V1(image_stream):
 def normalize_ImageStreamSpec_V1(spec):
     set_dict_defaults(spec, {
         'dockerImageRepository': '',
-        'lookupPolicy': { 'local': False },
+        'lookupPolicy': {'local': False},
         'tags': []
     })
     for tag in spec['tags']:
@@ -646,7 +646,7 @@ def normalize_ImageStreamSpec_V1(spec):
 
 def normalize_ImageStreamTag_V1(tag):
     set_dict_defaults(tag, {
-        'referencePolicy': { 'type': 'Source' }
+        'referencePolicy': {'type': 'Source'}
     })
     tag['generation'] = 0
 
@@ -1027,19 +1027,19 @@ def normalize_StatefulSetSpec_V1(spec):
 def normalize_Subject_V1(subject):
     # Reconcile differences between OpenShift and kube group subjects
     # Remove apiGroup if set to default
-    if subject.get('apiGroup','') == 'rbac.authorization.k8s.io':
+    if subject.get('apiGroup', '') == 'rbac.authorization.k8s.io':
         del subject['apiGroup']
     # OpenShift uses SystemGroup when kubernetes uses Group
-    if subject.get('kind','') == 'SystemGroup':
+    if subject.get('kind', '') == 'SystemGroup':
         subject['kind'] = 'Group'
 
 def normalize_Volume_V1(volume):
     if 'configMap' in volume:
-        normalize_ConfigMapVolumeSource_V1( volume['configMap'] )
+        normalize_ConfigMapVolumeSource_V1(volume['configMap'])
     elif 'hostPath' in volume:
-        normalize_HostPathVolumeSource_V1( volume['hostPath'] )
+        normalize_HostPathVolumeSource_V1(volume['hostPath'])
     elif 'secret' in volume:
-        normalize_SecretVolumeSource_V1( volume['secret'] )
+        normalize_SecretVolumeSource_V1(volume['secret'])
 
 def normalize_VolumeList_V1(volumes):
     for volume in volumes:
@@ -1078,7 +1078,7 @@ class OpenShiftProvision:
             self.oc_cmd = connection['oc_cmd'].split()
         else:
             self.oc_cmd = ['oc']
-        for opt in ['server','certificate_authority','token']:
+        for opt in ['server', 'certificate_authority', 'token']:
             if opt in connection:
                 self.oc_cmd += ['--' + opt.replace('_', '-') + '=' + connection[opt]]
         if 'insecure_skip_tls_verify' in connection:
@@ -1284,7 +1284,7 @@ class OpenShiftProvision:
                     "op": "test",
                     "path": "/" + field,
                     "value": current[field]
-                },{
+                }, {
                     "op": "remove",
                     "path": "/" + field
                 }])
@@ -1364,7 +1364,7 @@ class OpenShiftProvision:
         if not resource:
             return None, None
 
-        metadata = resource.get('metadata',{})
+        metadata = resource.get('metadata', {})
         resource_version = metadata \
             .get('resourceVersion', None)
         last_applied_configuration = metadata \
@@ -1408,7 +1408,7 @@ class OpenShiftProvision:
                         return
                 # If current resource does not match last_applied_configuration
                 # then we must switch to replace mode or risk unexpected behavior
-                if( current_resource_version
+                if(current_resource_version
                 and current_last_applied_configuration
                 and not self.compare_resource(
                     current_resource, json.loads(current_last_applied_configuration)
@@ -1540,16 +1540,16 @@ def run_module():
     except Exception as e:
         module.fail_json(
             msg=str(e),
-            action = provisioner.action,
+            action=provisioner.action,
             traceback=traceback.format_exc().split('\n'),
             resource=provisioner.resource
         )
 
     module.exit_json(
-        action = provisioner.action,
-        changed = provisioner.changed,
-        patch = provisioner.patch,
-        resource = provisioner.resource
+        action=provisioner.action,
+        changed=provisioner.changed,
+        patch=provisioner.patch,
+        resource=provisioner.resource
     )
 
 def main():
