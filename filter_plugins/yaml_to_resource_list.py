@@ -1,5 +1,5 @@
-import yaml
 import re
+import yaml
 
 def yaml_to_resource_list(value):
     resource_list = []
@@ -7,7 +7,7 @@ def yaml_to_resource_list(value):
         resource = yaml.load(yaml_doc)
         if resource:
             if resource.get('kind', '') == 'List':
-                resource_list.extend(resource.get('items',[]))
+                resource_list.extend(resource.get('items', []))
             else:
                 resource_list.append(resource)
     return resource_list
