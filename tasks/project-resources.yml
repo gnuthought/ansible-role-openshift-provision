@@ -16,6 +16,10 @@
   with_items: "{{ resource_list }}"
   loop_control:
     loop_var: resource
+    label:
+      - Namespace - "{{ project.name }}"
+      - Resource_kind - "{{ resource.kind }}"
+      - Resource_name  - "{{ resource.metadata.name }}"
   vars:
     provision_action: >-
       {{
