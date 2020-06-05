@@ -661,7 +661,9 @@ def normalize_JobTemplateSpec_V1beta1(spec):
         'metadata': {},
         'spec': {}
     })
-    normalize_ObjectMeta_V1(spec['metadata'])
+    if spec['metadata']:
+        normalize_ObjectMeta_V1(spec['metadata'])
+
     normalize_JobSpec_V1(spec['spec'])
 
 def normalize_LimitRange_V1(limit_range):
