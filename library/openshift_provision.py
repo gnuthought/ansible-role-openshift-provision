@@ -231,7 +231,7 @@ def make_field_patch(field, current, config):
 
 def set_dict_defaults(d, default):
     if d is None:
-        d = default.items()
+        d = default
     else:
         for k, v in default.items():
             if k not in d:
@@ -661,9 +661,7 @@ def normalize_JobTemplateSpec_V1beta1(spec):
         'metadata': {},
         'spec': {}
     })
-    if spec['metadata']:
-        normalize_ObjectMeta_V1(spec['metadata'])
-
+    normalize_ObjectMeta_V1(spec['metadata'])
     normalize_JobSpec_V1(spec['spec'])
 
 def normalize_LimitRange_V1(limit_range):
@@ -734,18 +732,19 @@ def normalize_NetworkPolicyPort_V1(port):
     })
 
 def normalize_ObjectMeta_V1(metadata):
-    set_dict_defaults(metadata, {
-        'annotations': {}
-    })
-    metadata.update({
-        'creationTimestamp': '',
-        'generation': 0,
-        'namespace': '',
-        'resourceVersion': 0,
-        'selfLink': '',
-        'uid': ''
-    })
-    metadata['annotations']['kubectl.kubernetes.io/last-applied-configuration'] = ''
+    if metadata:
+        set_dict_defaults(metadata, {
+            'annotations': {}
+        })
+        metadata.update({
+            'creationTimestamp': '',
+            'generation': 0,
+            'namespace': '',
+            'resourceVersion': 0,
+            'selfLink': '',
+            'uid': ''
+        })
+        metadata['annotations']['kubectl.kubernetes.io/last-applied-configuration'] = ''
 
 def normalize_ObjectReference_V1(ref):
     set_dict_defaults(ref, {
