@@ -45,7 +45,7 @@
     openshift-3-version-facts.yml
     {%- endif %}
   vars:
-    oc_version_output: get_version.stdout
+    oc_version_output: "{{ get_version.stdout }}"
 
 - name: Get cluster-vars configmap from kube-public
   command: >-
