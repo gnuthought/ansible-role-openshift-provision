@@ -1465,13 +1465,14 @@ class OpenShiftProvision:
             return
 
         # Perform action on resource
+        resource_fqdn = self.resource['kind'] + "." + self.resource['apiVersion'].split("/")[0]
         if self.action == 'delete':
-            command = ['delete', self.resource['kind'], self.resource['metadata']['name']]
+            command = ['delete', resource_fqdn, self.resource['metadata']['name']]
             if self.namespace:
                 command += ['-n', self.namespace]
             (rc, stdout, stderr) = self.run_oc(command, check_rc=True)
         elif self.action == 'patch':
-            command = ['patch', self.resource['kind'], self.resource['metadata']['name'],
+            command = ['patch', resource_fqdn, self.resource['metadata']['name'],
                 '--patch=' + json.dumps(self.resource),
                 '--type=' + self.patch_type
             ]
