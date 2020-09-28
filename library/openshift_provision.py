@@ -1476,13 +1476,15 @@ class OpenShiftProvision:
                 command += ['-n', self.namespace]
             (rc, stdout, stderr) = self.run_oc(command, check_rc=True)
         elif self.action == 'patch':
-            command = ['patch', resource_fqdn, self.resource['metadata']['name'],
+            command = ['patch',
+                    '-f',
+                    '-',
                     '--patch=' + json.dumps(self.resource),
                     '--type=' + self.patch_type
             ]
             if self.namespace:
                 command += ['-n', self.namespace]
-            self.run_oc(command, check_rc=True)
+            self.run_oc(command, data=json.dumps(self.resource), check_rc=True)
         else: # apply, create, replace
             if self.action == 'apply':
                 self.set_resource_version_and_last_applied_configuration(
