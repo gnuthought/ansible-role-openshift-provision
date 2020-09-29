@@ -1464,19 +1464,9 @@ class OpenShiftProvision:
             resource_file.close()
             return
 
-        if self.resource['apiVersion'] == "v1":
-            resource_fqdn = self.resource['kind']
-        else:
-            resource_fqdn = self.resource['kind'] + "." + self.resource['apiVersion'].split("/")[0]
-
         # Perform action on resource
-        if self.action == 'delete':
-            command = ['delete', resource_fqdn, self.resource['metadata']['name']]
-            if self.namespace:
-                command += ['-n', self.namespace]
-            (rc, stdout, stderr) = self.run_oc(command, check_rc=True)
-        elif self.action == 'patch':
-            command = ['patch',
+        if self.action == 'patch':
+            command = [self.action,
                     '-f',
                     '-',
                     '--patch=' + json.dumps(self.resource),
@@ -1485,7 +1475,7 @@ class OpenShiftProvision:
             if self.namespace:
                 command += ['-n', self.namespace]
             self.run_oc(command, data=json.dumps(self.resource), check_rc=True)
-        else: # apply, create, replace
+        else: # apply, create, delete, replace
             if self.action == 'apply':
                 self.set_resource_version_and_last_applied_configuration(
                     current_resource_version,
