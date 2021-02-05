@@ -132,6 +132,9 @@
     {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} patch namespace {{ project.name | quote }}
     --type=json -o json -p {{ patch | to_json | quote }}
+  with_items: "{{ current_labels }}"
+  loop_control:
+    loop_var: label
   vars:
     current_labels: >-
       {{
@@ -139,16 +142,10 @@
       | from_json
       | json_query('metadata.labels')
       }}
-    patch:
-    - op: add
-      path: /metadata/labels
-      value: "{{ project.labels | default({}) }}"
   when: >
-    project.labels is defined and (
-      get_project.rc != 0 or
-      current_labels is not defined or
-      current_labels != project.labels
-    )
+    ( project.remove_unlisted | default(false) | bool or
+      project.remove_unlisted_labels | default(false) | bool ) and
+    label not in projects.labels | default([])
   check_mode: false
   register: command
   changed_when: >-
@@ -157,14 +154,14 @@
 - name: Handle project join_pod_network
   include_tasks: project-pod-network.yml
   when:
-  - project.join_pod_network is defined
-  - project.join_pod_network != ''
+    - project.join_pod_network is defined
+    - project.join_pod_network != ''
 
 - name: Handle project multicast_enabled
   include_tasks: project-multicast.yml
   when:
-  - project.multicast_enabled is defined
-  - project.multicast_enabled != ''
+    - project.multicast_enabled is defined
+    - project.multicast_enabled != ''
 
 - name: Handle project service_accounts
   include_tasks: service-accounts.yml

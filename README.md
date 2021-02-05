@@ -65,8 +65,8 @@ ansible-galaxy install https://github.com/gnuthought/ansible-role-openshift-prov
 Requirements
 ------------
 
-OpenShift 3.4, 3.5, 3.7, 3.9, 3.10, 3.11, & 4.0
-ansible 2.4+ with Python 2.7+
+OpenShift 3.9, 3.11, 4.0, 4.5, and 4.6
+Ansible 2.4+ with Python 2.7+
 
 A host with the `oc` command to run from.
 
@@ -236,7 +236,7 @@ List of cluster role assignments. Each entry is a dictionary containing:
 * `groups` - List of group names that should be granted access to this cluster
   role. Optional
 
-* `remove_unlisted` - Boolean to indicate whether users or groups not listed
+* `remove_unlisted` - Boolean to indicate whether users, or groups not listed
   should be removed from any current access to this cluster role. Optional,
   default "false"
 
@@ -253,6 +253,10 @@ List of OpenShift groups to manage
 * `name` - Group name. Required
 
 * `members` - List of user names that should belong to this group. Optional
+
+* `remove_unlisted` - Boolean to indicate whether members not listed
+  should be removed from this group. Optional,
+  default "false"
 
 * `remove_unlisted_members` - Boolean to indicate whether unlisted users should
   be removed from this group. Optional, default "false"
@@ -310,6 +314,16 @@ that list is processed by `openshift_provision`.
 
 * `process_templates` - Templates to process to create resources within this
   project, described below
+
+* `remove_unlisted` - Boolean to indicate whether labels or annotations not listed
+  should be removed from this project. Optional,
+  default "false"
+
+* `remove_unlisted_labels` - Same as `remove_unlisted`, but specifically
+  targeting labels. Optional, default "false"
+
+* `remove_unlisted_annotations` - Same as `remove_unlisted`, but specifically
+  targeting annotations. Optional, default "false"
 
 * `resource_path` - List of paths to search for resource definitons specified
   by relative file path under `resources`, defaults to `resource_path` value at

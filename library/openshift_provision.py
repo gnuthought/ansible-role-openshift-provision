@@ -454,6 +454,13 @@ def normalize_ClusterRoleBinding_V1(role_binding):
         normalize_Subject_V1(subject)
     mark_list_is_set(role_binding['subjects'])
 
+def normalize_Project_V1(project):
+    set_dict_defaults(project, {
+        'metadata': {}
+    })
+    normalize_ObjectMeta_V1(project['metadata'])
+
+
 def normalize_ConfigMapVolumeSource_V1(value):
     set_dict_defaults(value, {
         'defaultMode': 0o644
@@ -1232,6 +1239,9 @@ class OpenShiftProvision:
 
     def normalize_resource_PersistentVolumeClaim(self, resource):
         normalize_PersistentVolumeClaim_V1(resource)
+
+    def normalize_resource_Project(self, resource):
+        normalize_Project_V1(resource)
 
     def normalize_resource_ResourceQuota(self, resource):
         normalize_ResourceQuota_V1(resource)
