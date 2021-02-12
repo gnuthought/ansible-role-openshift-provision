@@ -100,7 +100,35 @@
   changed_when: >-
     command | record_change_command(change_record)
 
-- name: Set project annotations for {{ project.name }}
+- name: Remove unlisted project annotations for {{ project.name }}
+  command: >
+    {% if ansible_check_mode %}echo{% endif %}
+    {{ oc_cmd }} patch namespace {{ project.name | quote }}
+    --type=json -o json -p {{ remove | to_json | quote }}
+  with_items: "{{ current_annotations }}"
+  loop_control:
+    loop_var: annotation
+  vars:
+    current_annotations: >-
+      {{
+      ( get_project.stdout if get_project.rc == 0 else '{}' )
+      | from_json
+      | json_query('metadata.annotations')
+      }}
+    remove:
+      - op: remove
+        path: /metadata/annotations
+        value: "{{ project.annotations | default({}) }}"
+  when: >
+    ( project.remove_unlisted | default(false) | bool or
+      project.remove_unlisted_annotations | default(false) | bool ) and
+    annotation not in project.annotations | default({})
+  check_mode: false
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)
+
+- name: Set custom project annotations for {{ project.name }}
   command: >
     {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} patch namespace {{ project.name | quote }}
