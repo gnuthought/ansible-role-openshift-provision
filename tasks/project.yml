@@ -100,7 +100,35 @@
   changed_when: >-
     command | record_change_command(change_record)
 
-- name: Set project annotations for {{ project.name }}
+- name: Remove unlisted project annotations for {{ project.name }}
+  command: >
+    {% if ansible_check_mode %}echo{% endif %}
+    {{ oc_cmd }} patch namespace {{ project.name | quote }}
+    --type=json -o json -p {{ remove | to_json | quote }}
+  with_items: "{{ current_annotations }}"
+  loop_control:
+    loop_var: annotation
+  vars:
+    current_annotations: >-
+      {{
+      ( get_project.stdout if get_project.rc == 0 else '{}' )
+      | from_json
+      | json_query('metadata.annotations')
+      }}
+    remove:
+      - op: remove
+        path: /metadata/annotations
+        value: "{{ project.annotations | default({}) }}"
+  when: >
+    ( project.remove_unlisted | default(false) | bool or
+      project.remove_unlisted_annotations | default(false) | bool ) and
+    annotation not in project.annotations | default({})
+  check_mode: false
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)
+
+- name: Set custom project annotations for {{ project.name }}
   command: >
     {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} patch namespace {{ project.name | quote }}
@@ -127,11 +155,39 @@
   changed_when: >-
     command | record_change_command(change_record)
 
-- name: Set project labels for {{ project.name }}
+- name: Remove unlisted project labels for {{ project.name }}
   command: >
     {% if ansible_check_mode %}echo{% endif %}
     {{ oc_cmd }} patch namespace {{ project.name | quote }}
-    --type=json -o json -p {{ patch | to_json | quote }}
+    --type=json -o json -p {{ remove | to_json | quote }}
+  with_items: "{{ current_labels }}"
+  loop_control:
+    loop_var: label
+  vars:
+    current_labels: >-
+      {{
+      ( get_project.stdout if get_project.rc == 0 else '{}' )
+      | from_json
+      | json_query('metadata.labels')
+      }}
+    remove:
+      - op: remove
+        path: /metadata/labels
+        value: "{{ project.labels | default({}) }}"
+  when: >
+    ( project.remove_unlisted | default(false) | bool or
+      project.remove_unlisted_labels | default(false) | bool ) and
+    label not in project.labels | default({})
+  check_mode: false
+  register: command
+  changed_when: >-
+    command | record_change_command(change_record)
+
+- name: Add custom project labels for {{ project.name }}
+  command: >
+    {% if ansible_check_mode %}echo{% endif %}
+    {{ oc_cmd }} patch namespace {{ project.name | quote }}
+    -R -p {{ patch | to_json | quote }}
   vars:
     current_labels: >-
       {{
@@ -140,9 +196,8 @@
       | json_query('metadata.labels')
       }}
     patch:
-    - op: add
-      path: /metadata/labels
-      value: "{{ project.labels | default({}) }}"
+      metadata:
+        labels: "{{ project.labels | default({}) }}"
   when: >
     project.labels is defined and (
       get_project.rc != 0 or
@@ -157,14 +212,14 @@
 - name: Handle project join_pod_network
   include_tasks: project-pod-network.yml
   when:
-  - project.join_pod_network is defined
-  - project.join_pod_network != ''
+    - project.join_pod_network is defined
+    - project.join_pod_network != ''
 
 - name: Handle project multicast_enabled
   include_tasks: project-multicast.yml
   when:
-  - project.multicast_enabled is defined
-  - project.multicast_enabled != ''
+    - project.multicast_enabled is defined
+    - project.multicast_enabled != ''
 
 - name: Handle project service_accounts
   include_tasks: service-accounts.yml
