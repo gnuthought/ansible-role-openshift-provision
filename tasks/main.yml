@@ -1,5 +1,8 @@
 ---
 # Process openshift resources
+- set_fact:
+    provision_retry_limit: "{{ 0 if provision_retry_limit is undefined else provision_retry_limit }}"
+    provision_retry_wait_seconds: "{{ 5 if provision_retry_wait_seconds is undefined else provision_retry_wait_seconds }}"
 - name: Handle openshift_clusters
   include_tasks: openshift-cluster.yml
   with_items: >-
