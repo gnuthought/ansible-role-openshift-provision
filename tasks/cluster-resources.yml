@@ -16,7 +16,7 @@
   loop_control:
     loop_var: resource
     label:
-      - Resource_kind - "{{ resource.kind }}"
+      - Resource_kind - "{{ resource.kind }} ({{ resource.apiVersion }})"
       - Resource_name  - "{{ resource.metadata.name }}"
   vars:
     provision_action: >-
