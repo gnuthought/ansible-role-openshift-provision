@@ -189,6 +189,16 @@ Top level definition of how to manage a cluster:
 * `provision_pre_tasks` - List of ansible tasks files to include immediately
   before processing provision for this cluster
 
+* `provision_retry_limit` - Number of times to attempt to reapply resources.
+  Defaults to 0.  
+  NOTE: Setting this to anything greater than 0 will cause ansible to report
+  failed tasks in the play recap when retries are needed. However, ansible will
+  still exit successfully if all resources were able to provision within the
+  retry limit.
+
+* `provision_retry_wait_seconds` - Number of seconds to wait before reapplying
+  resources.  Defaults to 5
+
 * `resource_path` - List of paths to search for resource definitons specified
   by relative file path under `cluster_resources` and `resources`, defaults
   to value of `openshift_resource_path`

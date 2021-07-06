@@ -1,0 +1,64 @@
+---
+- name: provision-retry
+  block:
+  - name: increment retry count
+    set_fact:
+      retry_count: "{{ retry_count | int + 1 }}"
+  - pause:
+      seconds: "{{ provision_retry_wait_seconds }}"
+    when: (provision_retry_wait_seconds | int) > 0
+
+  - name: "retry provisioning resources (attempt {{ retry_count }})"
+    openshift_provision:
+      action: "{{ provision_args.action | default(omit) }}"
+      patch_type: "{{ provision_args.patch_type | default(omit) }}"
+      connection: "{{ provision_args.connection | default(omit) }}"
+      resource: "{{ provision_resource }}"
+      generate_resources: "{{ provision_args.generate_resources | default(omit) }}"
+      fail_on_change: "{{ provision_args.fail_on_change | default(omit) }}"
+      namespace: "{{ provision_args.namespace | default(omit) }}"
+    with_items: "{{ provision_failures }}"
+    loop_control:
+      loop_var: provision_failure
+      label:
+      - Resource_kind - "{{ provision_resource.kind | default('', true) }}"
+      - Resource_namespace - "{{ provision_args.namespace | default('<none>', true) }}"
+      - Resource_name - "{{ provision_resource.metadata.name | default('', true) }}"
+    vars:
+      provision_args: "{{ provision_failure.invocation.module_args | default({}, true) }}"
+      provision_resource: "{{ provision_failure.resource | default({}, true) }}"
+    when: provision_failure.failed | default(false, true)
+    register: provision_retry_status
+    ignore_errors: True
+
+  # Reset provision failures
+  - name: Clear failed resources
+    set_fact:
+      provision_failures: []
+  - name: Record new failures
+    set_fact:
+      provision_failures: "{{ provision_failures + [provision_failure] }}"
+    with_items: "{{ provision_retry_status.results }}"
+    loop_control:
+      label:
+      - Resource_kind - "{{ provision_resource.kind | default('', true) }} ({{ provision_resource.apiVersion | default('', true) }})"
+      - Resource_namespace - "{{ provision_args.namespace | default('<none>', true) }}"
+      - Resource_name - "{{ provision_resource.metadata.name | default('', true) }}"
+    vars:
+      provision_failure: "{{ item.provision_failure }}"
+      provision_args: "{{ item.provision_failure.invocation.module_args | default({}, true) }}"
+      provision_resource: "{{ item.provision_failure.resource | default({}, true) }}"
+    when: item.failed | default(false, true)
+
+  - name: Check for failures
+    fail:
+      msg: "{{ provision_failures }}"
+    when: provision_failures | length > 0
+
+  rescue:
+  - name: Check retry limit
+    fail:
+      msg: "Maximum retries reached ({{ provision_retry_limit }})"
+    when: (retry_count | int) >= (provision_retry_limit | int)
+
+  - include_tasks: provision-retry.yml

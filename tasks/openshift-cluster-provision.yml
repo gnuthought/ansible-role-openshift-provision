@@ -2,71 +2,79 @@
 # Process cluster_resources before processing other items, including projects.
 # This allows items like cluster roles to be defined within cluster_resources.
 
-- name: Handle cluster_resources
-  include_tasks: cluster-resources.yml
-  with_items: "{{ openshift_cluster.cluster_resources | default([]) }}"
-  vars:
-    resource_path: "{{ openshift_cluster.resource_path | default(openshift_resource_path) }}"
-    resource_list: >-
-      {%- if resource_item is mapping -%}
-      {{ [resource_item] }}
-      {%- else -%}
-      {{ lookup(
-           'template' if resource_item.endswith('.j2') else 'file',
-           lookup('first_found', {'files':resource_item, 'paths': resource_path})
-         ) | yaml_to_resource_list
-      }}
-      {%- endif -%}
-  loop_control:
-    loop_var: resource_item
+- name: openshift-cluster-provision
+  block:
+  - name: clear failures
+    set_fact:
+      provision_failures: []
+      provision_failures_skipped: []
+  - name: init retry count
+    set_fact:
+      retry_count: 0
 
-- name: Handle cluster process_templates
-  include_tasks: process-template.yml
-  with_items: "{{ openshift_cluster.process_templates | default([]) }}"
-  loop_control:
-    loop_var: template
+  - name: Handle cluster_resources
+    include_tasks: cluster-resources.yml
+    with_items: "{{ openshift_cluster.cluster_resources | default([]) }}"
+    vars:
+      resource_path: "{{ openshift_cluster.resource_path | default(openshift_resource_path) }}"
+      resource_list: >-
+        {%- if resource_item is mapping -%}
+        {{ [resource_item] }}
+        {%- else -%}
+        {{ lookup(
+            'template' if resource_item.endswith('.j2') else 'file',
+            lookup('first_found', {'files':resource_item, 'paths': resource_path})
+          ) | yaml_to_resource_list
+        }}
+        {%- endif -%}
+    loop_control:
+      loop_var: resource_item
 
-- name: Handle cluster helm_charts
-  include_tasks: helm-chart.yml
-  with_items: "{{ openshift_cluster.helm_charts | default([]) }}"
-  loop_control:
-    loop_var: helm_chart
+  - name: Handle cluster process_templates
+    include_tasks: process-template.yml
+    with_items: "{{ openshift_cluster.process_templates | default([]) }}"
+    loop_control:
+      loop_var: template
 
-- name: Handle groups
-  include_tasks: group.yml
-  with_items: "{{ openshift_cluster.groups | default([]) }}"
-  loop_control:
-    loop_var: group
+  - name: Handle cluster helm_charts
+    include_tasks: helm-chart.yml
+    with_items: "{{ openshift_cluster.helm_charts | default([]) }}"
+    loop_control:
+      loop_var: helm_chart
 
-- name: Handle cluster_role_bindings
-  include_tasks: cluster-role-bindings.yml
-  when: openshift_cluster.cluster_role_bindings is defined
+  - name: Handle groups
+    include_tasks: group.yml
+    with_items: "{{ openshift_cluster.groups | default([]) }}"
+    loop_control:
+      loop_var: group
 
-- name: Handle projects
-  include_tasks: project.yml
-  with_items: "{{ openshift_cluster.projects | default([]) }}"
-  loop_control:
-    loop_var: project
-  vars:
-    cluster_resource_path: "{{ openshift_cluster.resource_path | default(openshift_resource_path) }}"
+  - name: Handle cluster_role_bindings
+    include_tasks: cluster-role-bindings.yml
+    when: openshift_cluster.cluster_role_bindings is defined
 
-# Process resources after processing other items such as projects. This
-# allows creation of resources in multiple projects in a specific order by
-# specifying the namespace in the resource metadata.
-- name: Handle cluster level resources
-  include_tasks: cluster-resources.yml
-  with_items: "{{ openshift_cluster.cluster_resources | default([]) }}"
-  vars:
-    resource_path: "{{ openshift_cluster.resource_path | default(openshift_resource_path) }}"
-    resource_list: >-
-      {%- if resource_item is mapping -%}
-      {{ [resource_item] }}
-      {%- else -%}
-      {{ lookup(
-           'template' if resource_item.endswith('.j2') else 'file',
-           lookup('first_found', {'files':resource_item, 'paths': resource_path})
-         ) | yaml_to_resource_list
-      }}
-      {%- endif -%}
-  loop_control:
-    loop_var: resource_item
+  - name: Handle projects
+    include_tasks: project.yml
+    with_items: "{{ openshift_cluster.projects | default([]) }}"
+    loop_control:
+      loop_var: project
+    vars:
+      cluster_resource_path: "{{ openshift_cluster.resource_path | default(openshift_resource_path) }}"
+
+  - name: Check for failures
+    fail:
+      msg: "{{ provision_failures }}"
+    when: provision_failures | length > 0
+
+  rescue:
+  - name: Check retry limit
+    fail:
+      msg: "Maximum retries reached ({{ provision_retry_limit }})"
+    when: (retry_count | int) >= (provision_retry_limit | int)
+
+  - include_tasks: provision-retry.yml
+
+  always:
+  - name: Check unhandled failures
+    fail:
+      msg: "{{ provision_failures_skipped }}"
+    when: provision_failures_skipped | length > 0
