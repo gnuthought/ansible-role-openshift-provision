@@ -4,7 +4,7 @@ import yaml
 def yaml_to_resource_list(value):
     resource_list = []
     for yaml_doc in value.split("\n---\n"):
-        resource = yaml.load(yaml_doc)
+        resource = yaml.load(yaml_doc, Loader=yaml.Loader)
         if resource:
             if resource.get('kind', '') == 'List':
                 resource_list.extend(resource.get('items', []))
