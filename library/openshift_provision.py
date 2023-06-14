@@ -1281,6 +1281,10 @@ class OpenShiftProvision:
           return ['metadata', 'labels', 'objects', 'parameters']
         elif self.resource['kind'] == 'SecurityContextConstraints':
           return self.resource.keys()
+        elif self.resource['kind'] == 'ValidatingWebhookConfiguration':
+          return ['metadata','webhooks']
+        elif self.resource['kind'] == 'MutatingWebhookConfiguration':
+          return ['metadata','webhooks']
         else:
           return ['metadata', 'spec']
 
