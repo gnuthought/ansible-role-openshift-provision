@@ -1094,6 +1094,9 @@ class OpenShiftProvision:
                 self.oc_cmd += ['--insecure-skip-tls-verify']
             elif connection['insecure_skip_tls_verify']:
                 self.oc_cmd += ['--insecure-skip-tls-verify='+connection['insecure_skip_tls_verify']]
+        for arg in self.oc_cmd:
+            if arg.startswith('--token='):
+                module.no_log_values.add(arg[8:])
 
     def run_oc(self, args, **kwargs):
         if self.module._verbosity < 3:
