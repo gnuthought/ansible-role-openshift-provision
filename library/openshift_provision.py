@@ -1086,9 +1086,15 @@ class OpenShiftProvision:
             self.oc_cmd = connection['oc_cmd'].split()
         else:
             self.oc_cmd = ['oc']
+        for arg in self.oc_cmd.split():
+            arg = ""
+            if arg.startswith('--token='):
+                module.no_log_values.add(arg[8:])
         for opt in ['server', 'certificate_authority', 'token']:
             if opt in connection:
                 self.oc_cmd += ['--' + opt.replace('_', '-') + '=' + connection[opt]]
+                if opt == 'token':
+                    module.no_log_values.add(connection[opt])
         if 'insecure_skip_tls_verify' in connection:
             if type(connection['insecure_skip_tls_verify']) == types.BooleanType:
                 self.oc_cmd += ['--insecure-skip-tls-verify']
