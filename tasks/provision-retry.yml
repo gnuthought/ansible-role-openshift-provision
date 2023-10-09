@@ -35,6 +35,10 @@
     register: provision_retry_status
     ignore_errors: True
 
+  - name: PRINT PROVISION RETRY STATUS
+    debug:
+      var: provision_retry_status
+
   # Reset provision failures
   - name: Clear failed resources
     set_fact:
