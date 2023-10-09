@@ -1386,10 +1386,10 @@ class OpenShiftProvision:
 
         metadata = resource.get('metadata', {})
         resource_version = metadata \
-            .get('resourceVersion', None)
+            .pop('resourceVersion', None)
         last_applied_configuration = metadata \
             .get('annotations', {}) \
-            .get('kubectl.kubernetes.io/last-applied-configuration', None)
+            .pop('kubectl.kubernetes.io/last-applied-configuration', None)
         return resource_version, last_applied_configuration
 
     def set_resource_version_and_last_applied_configuration(self, resource_version, last_applied_configuration):
