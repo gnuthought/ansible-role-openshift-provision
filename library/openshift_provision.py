@@ -1392,17 +1392,17 @@ class OpenShiftProvision:
             .pop('kubectl.kubernetes.io/last-applied-configuration', None)
         return resource_version, last_applied_configuration
 
-    def set_resource_version_and_last_applied_configuration(self, resource_version, last_applied_configuration):
-        if not resource_version or not last_applied_configuration:
-            return
-        merge_dict(self.resource, {
-            'metadata': {
-                'annotations': {
-                    'kubectl.kubernetes.io/last-applied-configuration': last_applied_configuration
-                },
-                'resourceVersion': resource_version
-            }
-        }, overwrite=True)
+    # def set_resource_version_and_last_applied_configuration(self, resource_version, last_applied_configuration):
+    #     if not resource_version or not last_applied_configuration:
+    #         return
+    #     merge_dict(self.resource, {
+    #         'metadata': {
+    #             'annotations': {
+    #                 'kubectl.kubernetes.io/last-applied-configuration': last_applied_configuration
+    #             },
+    #             'resourceVersion': resource_version
+    #         }
+    #     }, overwrite=True)
 
     def provision(self):
         current_resource = self.get_current_resource()
@@ -1495,17 +1495,22 @@ class OpenShiftProvision:
                 command += ['-n', self.namespace]
             self.run_oc(command, data=json.dumps(self.resource), check_rc=True)
         else: # apply, create, delete, replace
+            resource = copy.deepcopy(self.resource)
             if self.action == 'apply':
-                self.set_resource_version_and_last_applied_configuration(
-                    current_resource_version,
-                    current_last_applied_configuration
-                )
+                merge_dict(resource, {
+                    'metadata': {
+                        'annotations': {
+                            'kubectl.kubernetes.io/last-applied-configuration': current_last_applied_configuration
+                        },
+                        'resourceVersion': current_resource_version
+                    }
+                })
             command = [self.action, '-f', '-']
             if self.namespace:
                 command += ['-n', self.namespace]
             if reset_last_applied_configuration:
                 command += ['--save-config']
-            self.run_oc(command, data=json.dumps(self.resource), check_rc=True)
+            self.run_oc(command, data=json.dumps(resource), check_rc=True)
 
 def run_module():
     module_args = {
