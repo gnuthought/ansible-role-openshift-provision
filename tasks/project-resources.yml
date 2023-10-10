@@ -32,9 +32,6 @@
   changed_when: >-
     provision | record_change_provision(change_record)
   ignore_errors: True
-- name: PRINT OUT PROVISION
-  debug:
-    var: provision
 - set_fact:
     provision_failures: "{{ provision_failures + provision.results }}"
   when: "'failed' in provision and 'results' in provision"

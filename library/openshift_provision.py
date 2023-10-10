@@ -1392,18 +1392,6 @@ class OpenShiftProvision:
             .pop('kubectl.kubernetes.io/last-applied-configuration', None)
         return resource_version, last_applied_configuration
 
-    # def set_resource_version_and_last_applied_configuration(self, resource_version, last_applied_configuration):
-    #     if not resource_version or not last_applied_configuration:
-    #         return
-    #     merge_dict(self.resource, {
-    #         'metadata': {
-    #             'annotations': {
-    #                 'kubectl.kubernetes.io/last-applied-configuration': last_applied_configuration
-    #             },
-    #             'resourceVersion': resource_version
-    #         }
-    #     }, overwrite=True)
-
     def provision(self):
         current_resource = self.get_current_resource()
         current_resource_version, current_last_applied_configuration = \

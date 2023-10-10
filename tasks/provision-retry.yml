@@ -8,10 +8,6 @@
       seconds: "{{ provision_retry_wait_seconds }}"
     when: (provision_retry_wait_seconds | int) > 0
 
-  # - name: Remove resourceVersion to force latest
-  #   set_fact:
-  #     provision_resource: "{{ provision_resource | combine({'metadata': {'resourceVersion': None}}, recursive=True) }}"
-
   - name: "retry provisioning resources (attempt {{ retry_count }})"
     openshift_provision:
       action: "{{ provision_args.action | default(omit) }}"
@@ -34,10 +30,6 @@
     when: provision_failure.failed | default(false, true)
     register: provision_retry_status
     ignore_errors: True
-
-  - name: PRINT PROVISION RETRY STATUS
-    debug:
-      var: provision_retry_status
 
   # Reset provision failures
   - name: Clear failed resources
