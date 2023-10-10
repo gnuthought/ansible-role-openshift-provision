@@ -1410,6 +1410,7 @@ class OpenShiftProvision:
             self.get_resource_version_and_last_applied_configuration(current_resource)
         if current_resource and self.action in ['apply', 'replace']:
             self.set_dynamic_values(current_resource)
+        self.current_resource_version = current_resource_version
 
         # Check if changes are required and if we need to reset the apply metadata.
         reset_last_applied_configuration = False
@@ -1564,14 +1565,16 @@ def run_module():
             msg=str(e),
             action=provisioner.action,
             traceback=traceback.format_exc().split('\n'),
-            resource=provisioner.resource
+            resource=provisioner.resource,
+            current_resource_version=provisioner.current_resource_version
         )
 
     module.exit_json(
         action=provisioner.action,
         changed=provisioner.changed,
         patch=provisioner.patch,
-        resource=provisioner.resource
+        resource=provisioner.resource,
+        current_resource_version=provisioner.current_resource_version
     )
 
 def main():
